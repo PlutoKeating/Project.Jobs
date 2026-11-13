@@ -74,10 +74,23 @@ export async function calibrateSeeded(studyId: string) {
   const cands = await db.select().from(issueCandidates).where(eq(issueCandidates.study_id, studyId));
   const objectiveOnly = (id: string) => { const cs = cands.filter((c) => c.issue_id === id); return cs.length > 0 && cs.every((c) => c.source === 'axe'); };
   const unmatched = productIssues.filter((i) => !matches.some((m) => m.issue_id === i.id));
-  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint));
+  // 在干净版本上重放复现路径：能复现说明问题独立于植入缺陷而真实存在（基线问题），不是误报
+  const cleanUrl = cleanVersions.length ? (await db.select().from(appVersions).where(eq(appVersions.id, cleanVersions[0])))[0]?.env_url : undefined;
+  const replayedOnClean = new Set<string>();
+  if (cleanUrl) {
+    const { cleanReplay } = await import('../evaluation/replay.ts');
+    const { reproPaths } = await import('@pux/db');
+    for (const i of unmatched) {
+      if (objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || !i.repro_path_id) continue;
+      const rp = (await db.select().from(reproPaths).where(eq(reproPaths.id, i.repro_path_id)))[0];
+      if (!rp) continue;
+      try { const r = await cleanReplay({ start_url: cleanUrl, steps: rp.steps as never }, { issueId: i.id, fromSession: (i.session_ids ?? [])[0] ?? '', studyId }); if (r.reproduced) replayedOnClean.add(i.id); } catch { /* ignore */ }
+    }
+  }
+  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || replayedOnClean.has(i.id));
   const fp = unmatched.filter((i) => !baseline.includes(i));
   const denom = productIssues.length - baseline.length;
-  await save('*', 'false_positive_rate', fp.length, denom, { unmatched: fp.map((i) => ({ id: i.id, title: i.title })), baseline_real_issues: baseline.map((i) => ({ id: i.id, title: i.title, why: objectiveOnly(i.id) ? 'axe-core' : 'also found on clean version' })) });
+  await save('*', 'false_positive_rate', fp.length, denom, { unmatched: fp.map((i) => ({ id: i.id, title: i.title })), baseline_real_issues: baseline.map((i) => ({ id: i.id, title: i.title, why: objectiveOnly(i.id) ? 'axe-core' : replayedOnClean.has(i.id) ? 'reproduced on clean version' : 'also found on clean version' })) });
   return { set_id: setId, recall: detected.size / defects.length, false_positive_rate: denom ? fp.length / denom : null, baseline: baseline.length, matches, results: out };
 }
 
