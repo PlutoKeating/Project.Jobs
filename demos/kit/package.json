@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
-  "dependencies": { "fastify": "^5.12.8", "@fastify/formbody": "^9.0.1", "@fastify/cookie": "^11.0.2", "openai": "^7.56.0", "yaml": "^2.9.1", "dotenv": "^18.0.10" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "fastify": "^5.12.8",
+    "@fastify/formbody": "^9.0.1",
+    "@fastify/cookie": "^11.0.2",
+    "openai": "^7.56.0",
+    "yaml": "^2.9.1",
+    "dotenv": "^18.0.10"
+  },
+  "scripts": {
+    "start": "tsx src/launch.ts"
+  }
 }
