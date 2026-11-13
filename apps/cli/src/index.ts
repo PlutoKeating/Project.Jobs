@@ -143,6 +143,10 @@ program.command('interview').argument('<sessionId>').argument('[question...]').d
   rl.close();
 }));
 
+const issueCmd = program.command('issue').description('问题分诊（人工确认 / 驳回，用于误报率下界与校准）');
+issueCmd.command('confirm').argument('<issueId>').action(wrap(async (id: string) => { await getDb().update(issues).set({ status: 'confirmed' }).where(eq(issues.id, id)); console.log('✅ 已确认为真实问题'); }));
+issueCmd.command('reject').argument('<issueId>').action(wrap(async (id: string) => { await getDb().update(issues).set({ status: 'rejected' }).where(eq(issues.id, id)); console.log('✅ 已驳回（计为误报）'); }));
+
 // ---------------------------------------------------------------- 校准
 const cal = program.command('calibrate').description('校准与学习回路');
 cal.command('seeded').argument('<studyId>').description('在植入缺陷版本上计算检出率/误报率').action(wrap(async (id: string) => out(await E.calibrateSeeded(id))));

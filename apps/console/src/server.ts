@@ -102,7 +102,7 @@ app.get('/studies/:id', async (q, r) => {
 ${existsSync(dataPath('reports', id, 'index.html')) ? `<p>📄 <a href="/reports/${id}/index.html" target="_blank">HTML 报告</a> · <a href="/reports/${id}/report.zh.md" target="_blank">Markdown（中文）</a> · <a href="/reports/${id}/report.en.md" target="_blank">Markdown（English）</a></p>` : ''}
 ${job ? `<details ${live ? 'open' : ''}><summary>运行日志${job.error ? `（失败：${esc(job.error)}）` : ''}</summary><pre>${esc(job.log.slice(-80).join('\n'))}</pre></details>` : ''}</div>
 <div class="card"><h3>Session</h3><table><tr><th>ID</th><th>Persona</th><th>世界</th><th>模式</th><th>状态</th><th>结局</th><th>步数</th><th>原因</th></tr>${ss.map((x) => `<tr><td><a href="/sessions/${x.id}">${x.id}</a>${x.is_expert_baseline ? ' 🎓' : ''}${x.revisit_day ? ` 📅D${x.revisit_day}` : ''}</td><td>${esc(x.persona_id)}</td><td>${esc(x.world_template_id)}</td><td>${esc(x.mode)}</td><td>${esc(x.status)}</td><td>${esc(x.outcome ?? '')}</td><td>${x.steps_count}</td><td>${esc((x.end_reason ?? '').slice(0, 60))}</td></tr>`).join('')}</table></div>
-<div class="card"><h3>问题（${iss.length}）</h3><table><tr><th>严重度</th><th>标题</th><th>类别</th><th>归因</th><th>可信度</th><th>状态</th><th>人群</th></tr>${iss.map((i) => `<tr><td><span class="sev ${i.severity}">${i.severity}</span></td><td>${esc(i.title)}${i.seeded_match ? ` <span class="mut">≈${esc(i.seeded_match)}</span>` : ''}</td><td>${esc(i.category)}</td><td>${esc(i.attribution)}</td><td>${esc(i.trust_level)}</td><td>${esc(i.status)}</td><td>${esc((i.affected_segments ?? []).join(','))}</td></tr>`).join('')}</table></div>`, !!live));
+<div class="card"><h3>问题（${iss.length}）</h3><table><tr><th>严重度</th><th>标题</th><th>类别</th><th>归因</th><th>可信度</th><th>状态</th><th>人群</th></tr>${iss.map((i) => `<tr><td><span class="sev ${i.severity}">${i.severity}</span></td><td>${esc(i.title)}${i.seeded_match ? ` <span class="mut">≈${esc(i.seeded_match)}</span>` : ''}</td><td>${esc(i.category)}</td><td>${esc(i.attribution)}</td><td>${esc(i.trust_level)}</td><td>${esc(i.status)} <form method="post" action="/issues/${i.id}/triage" style="display:inline"><input type="hidden" name="back" value="/studies/${id}"><button name="status" value="confirmed" title="确认是真实问题" style="padding:1px 6px">✓</button><button name="status" value="rejected" title="驳回（误报）" style="padding:1px 6px;background:#868e96">✗</button></form></td><td>${esc((i.affected_segments ?? []).join(','))}</td></tr>`).join('')}</table><p class="mut">✓/✗ 为人工分诊：用于误报率下界与校准（pux calibrate seeded 重新计算）。</p></div>`, !!live));
 });
 
 app.get('/sessions/:id', async (q, r) => {
@@ -134,6 +134,7 @@ app.get('/human', async (_q, r) => {
 });
 app.post('/human/:id/resolve', async (q, r) => { const id = (q.params as { id: string }).id; await E.resolveHumanTask(id, 'resolved', 'console'); try { const { signalHuman } = await import('@pux/worker/client'); await signalHuman(id); } catch { /* inline */ } r.redirect('/human'); });
 
+app.post('/issues/:id/triage', async (q, r) => { const b = q.body as Record<string, string>; if (['confirmed', 'rejected', 'open'].includes(b.status)) await getDb().update(issues).set({ status: b.status }).where(eq(issues.id, (q.params as { id: string }).id)); r.redirect(b.back || '/'); });
 app.get('/healthz', async () => ({ ok: true }));
 
 const port = env.consolePort;

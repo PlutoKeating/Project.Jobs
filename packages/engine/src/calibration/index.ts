@@ -87,10 +87,13 @@ export async function calibrateSeeded(studyId: string) {
       try { const r = await cleanReplay({ start_url: cleanUrl, steps: rp.steps as never }, { issueId: i.id, fromSession: (i.session_ids ?? [])[0] ?? '', studyId }); if (r.reproduced) replayedOnClean.add(i.id); } catch { /* ignore */ }
     }
   }
-  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || replayedOnClean.has(i.id));
+  // 人工分诊：status=confirmed 视为真实问题（基线），status=rejected 视为确认误报，其余为未分诊
+  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || replayedOnClean.has(i.id) || i.status === 'confirmed');
   const fp = unmatched.filter((i) => !baseline.includes(i));
+  const rejected = fp.filter((i) => i.status === 'rejected');
   const denom = productIssues.length - baseline.length;
-  await save('*', 'false_positive_rate', fp.length, denom, { unmatched: fp.map((i) => ({ id: i.id, title: i.title })), baseline_real_issues: baseline.map((i) => ({ id: i.id, title: i.title, why: objectiveOnly(i.id) ? 'axe-core' : replayedOnClean.has(i.id) ? 'reproduced on clean version' : 'also found on clean version' })) });
+  await save('*', 'false_positive_rate_lower', rejected.length, denom, { note: '只计人工驳回（rejected）的问题；未分诊问题视为真实' });
+  await save('*', 'false_positive_rate', fp.length, denom, { upper_bound: true, rejected: rejected.length, unverified: fp.length - rejected.length, unmatched: fp.map((i) => ({ id: i.id, title: i.title })), baseline_real_issues: baseline.map((i) => ({ id: i.id, title: i.title, why: objectiveOnly(i.id) ? 'axe-core' : replayedOnClean.has(i.id) ? 'reproduced on clean version' : 'also found on clean version' })) });
   return { set_id: setId, recall: detected.size / defects.length, false_positive_rate: denom ? fp.length / denom : null, baseline: baseline.length, matches, results: out };
 }
 

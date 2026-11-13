@@ -20,6 +20,7 @@
 - Study 结束时自动执行；也可 `pnpm pux calibrate seeded <study>`。
 - 匹配：judge.meta 语义匹配（同类别置信度 ≥ 0.5，跨类别 ≥ 0.75）+ 关键词兜底（同类别且 ≥ 3 个关键词）；按类别输出检出率，附 Wilson 95% CI。
 - 误报率 =（未匹配已知缺陷、且不属于「基线真实问题」的产品问题）/（产品问题 − 基线真实问题）。基线真实问题指 axe-core 客观规则检出的问题，或同一 App 干净版本上也发现的问题（相同 fingerprint），或其复现路径在干净版本上重放也能复现：它们不在植入清单里，但并非误报，会在校准详情中单独列出。建议对干净版本也跑一次 Study 以建立基线。
+- 人工分诊：`pnpm pux issue confirm|reject <issue_id>`（或控制台 Study 页的 ✓/✗）。确认的问题计入基线；驳回的问题计为确认误报。`false_positive_rate` 为**上界**（未分诊问题按误报计，保守），`false_positive_rate_lower` 为**下界**（只计驳回）。分诊后重新执行 `pnpm pux calibrate seeded <study>`。
 - 验收阈值（可调）：检出率 ≥ 60%，误报率 ≤ 30%。
 
 ## 2. 真人基准
