@@ -31,6 +31,7 @@ export interface SessionOptions {
   policy: SafetyPolicy;
   record?: { video?: boolean; rrweb?: boolean; axe?: boolean };
   rng: Rng;
+  geolocation?: { latitude: number; longitude: number } | null;   // null：拒绝定位授权
 }
 
 interface NetState { inflight: Map<Request, number>; failed: { url: string; status: number; method?: string; at: number }[]; slowest: number; total: number; log: unknown[] }
@@ -124,7 +125,10 @@ export class BrowserSession implements Executor {
     this.ctx = this.pw.contexts()[0];
     await this.ctx.addInitScript(INIT_SCRIPT);
     if (o.record?.rrweb !== false && RRWEB_SRC) await this.ctx.addInitScript(`${RRWEB_SRC}\n;${RRWEB_BOOT}`);
-    await this.ctx.grantPermissions(['geolocation', 'notifications', 'microphone', 'camera', 'clipboard-read', 'clipboard-write']).catch(() => {});
+    const perms = ['notifications', 'microphone', 'camera', 'clipboard-read', 'clipboard-write'];
+    if (o.geolocation !== null) perms.push('geolocation');
+    await this.ctx.grantPermissions(perms).catch(() => {});
+    if (o.geolocation) await this.ctx.setGeolocation({ ...o.geolocation, accuracy: 50 }).catch(() => {});
     this.page = this.ctx.pages().find((pg) => !pg.url().startsWith('chrome-extension://')) ?? await this.ctx.newPage();
     this.attachPage(this.page);
     if (o.executor === 'midscene') await this.initMidscene();
