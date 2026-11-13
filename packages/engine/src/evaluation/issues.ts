@@ -1,8 +1,8 @@
 // 问题合成、归因（§12.1）、严重度、假设判定、分数聚合
 import { loadConfig, logger, newId, shortHash, z, type Severity } from '@pux/core';
-import { and, eq, evidence, getDb, hypotheses, inArray, issueCandidates, issues, judgments, sessions, studies, scores, worldTemplates, interviews, calibrationResults, vec } from '@pux/db';
+import { and, eq, evidence, evidenceLinks as evidenceLinksT, getDb, hypotheses, inArray, issueCandidates, issues, judgments, sessions, studies, scores, worldTemplates, interviews, calibrationResults, vec } from '@pux/db';
 import { blobs } from '@pux/storage';
-import { checkVendorIsolation, gateway, type ContentPart } from '@pux/llm';
+import { checkVendorIsolation, cosine, gateway, type ContentPart } from '@pux/llm';
 import { linkEvidence, urlTemplate } from '@pux/executor';
 import { getPersona } from '../human/persona.ts';
 import { personaAccount } from '../exploration/goals.ts';
@@ -104,10 +104,18 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
     if (objectiveOnly && trust === 'unknown') trust = 'medium';
     const disagreement = await disagreementFor(sessIds);
     const folded = attribution !== 'product' || severity === 'P3' || g.noise;
-    const existing = (await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.fingerprint, fingerprint))))[0];
-    const issueId = existing?.id ?? newId('iss');
     const emb = await gateway().embed(`${g.title} ${g.description}`);
-    const row = { title: g.title, title_en: g.title_en, description: `${g.description}\n\n归因：${rationale}`, category: g.category, heuristics: g.heuristics, severity, attribution, affected_segments: [...new Set([...(existing?.affected_segments ?? []), ...segments])], affected_personas: [...new Set([...(existing?.affected_personas ?? []), ...sessIds.map((s) => personaOf.get(s)!)])], session_ids: [...new Set([...(existing?.session_ids ?? []), ...sessIds])], fingerprint, disagreement, trust_level: trust, status: folded ? 'folded' : 'open', recommendation: g.recommendation, url_pattern: pathOf(mainUrl), repro_path_id: replay?.repro_path_id ?? existing?.repro_path_id, embedding: emb, study_id: studyId };
+    // 跨轮/跨 Study 去重：同版本、同类别、语义相近（cosine ≥ 0.86）的已有问题视为同一问题
+    let existing = (await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.fingerprint, fingerprint))))[0];
+    if (!existing) {
+      const same = await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.category, g.category)));
+      let best: { i: typeof same[number]; c: number } | undefined;
+      for (const i of same) { const e = i.embedding as unknown as number[] | null; if (!e?.length) continue; const c = cosine(e, emb); if (c >= 0.86 && (!best || c > best.c)) best = { i, c }; }
+      if (best) existing = best.i;
+    }
+    const issueId = existing?.id ?? newId('iss');
+    const fp = existing?.fingerprint ?? fingerprint;
+    const row = { title: existing && existing.severity < severity ? existing.title : g.title, title_en: g.title_en, description: `${g.description}\n\n归因：${rationale}`, category: g.category, heuristics: g.heuristics, severity: existing && existing.severity < severity ? existing.severity as Severity : severity, attribution: existing?.attribution === 'product' ? 'product' : attribution, affected_segments: [...new Set([...(existing?.affected_segments ?? []), ...segments])], affected_personas: [...new Set([...(existing?.affected_personas ?? []), ...sessIds.map((s) => personaOf.get(s)!)])], session_ids: [...new Set([...(existing?.session_ids ?? []), ...sessIds])], fingerprint: fp, disagreement, trust_level: trust, status: existing && ['confirmed', 'rejected'].includes(existing.status) ? existing.status : folded ? 'folded' : 'open', recommendation: g.recommendation, url_pattern: pathOf(mainUrl) || existing?.url_pattern, repro_path_id: replay?.repro_path_id ?? existing?.repro_path_id, embedding: emb, study_id: studyId };
     if (existing) await db.update(issues).set(row).where(eq(issues.id, issueId));
     else await db.insert(issues).values({ id: issueId, app_version_id: study.app_version_id, ...row });
     await db.update(issueCandidates).set({ issue_id: issueId, attribution, attribution_detail: { replay: replay?.reproduced ?? null, expert_hit: expertHit, rationale } }).where(inArray(issueCandidates.id, members.map((m) => m.id)));
@@ -115,7 +123,7 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
     for (const [i, e] of evIds.entries()) await linkEvidence(e, 'issue', issueId, i === 0 ? 'primary' : 'supporting');
     if (replay) await linkEvidence(replay.evidence_id, 'issue', issueId, replay.reproduced ? 'supporting' : 'counter');
     const isNew = !existing;
-    await touch(study.app_version_id, 'issue', fingerprint, sessIds[0], { label: g.title, newIssue: isNew });
+    await touch(study.app_version_id, 'issue', fp, sessIds[0], { label: g.title, newIssue: isNew });
     created.push(issueId);
   }
   return created;
@@ -194,3 +202,33 @@ export async function aggregateScores(studyId: string) {
   return bucket.size;
 }
 export { vec };
+
+/** 合并同一版本下语义重复的问题（同类别、cosine ≥ 0.86），保留较早的问题 */
+export async function dedupeIssues(appVersionId: string) {
+  const db = getDb();
+  const all = (await db.select().from(issues).where(eq(issues.app_version_id, appVersionId))).sort((a, b) => a.created_at.getTime() - b.created_at.getTime());
+  const removed = new Set<string>(); let merged = 0;
+  for (let i = 0; i < all.length; i++) {
+    const a = all[i]; if (removed.has(a.id)) continue;
+    const ea = a.embedding as unknown as number[] | null; if (!ea?.length) continue;
+    for (let j = i + 1; j < all.length; j++) {
+      const b = all[j]; if (removed.has(b.id) || b.category !== a.category) continue;
+      const eb = b.embedding as unknown as number[] | null; if (!eb?.length || cosine(ea, eb) < 0.86) continue;
+      a.session_ids = [...new Set([...(a.session_ids ?? []), ...(b.session_ids ?? [])])];
+      a.affected_segments = [...new Set([...(a.affected_segments ?? []), ...(b.affected_segments ?? [])])];
+      a.affected_personas = [...new Set([...(a.affected_personas ?? []), ...(b.affected_personas ?? [])])];
+      if (b.severity < a.severity) a.severity = b.severity;
+      if (b.attribution === 'product') a.attribution = 'product';
+      if (a.status === 'folded' && b.status === 'open') a.status = 'open';
+      a.repro_path_id ??= b.repro_path_id; a.seeded_match ??= b.seeded_match;
+      await db.update(issueCandidates).set({ issue_id: a.id }).where(eq(issueCandidates.issue_id, b.id));
+      const links = await db.select().from(evidenceLinksT).where(and(eq(evidenceLinksT.subject_type, 'issue'), eq(evidenceLinksT.subject_id, b.id)));
+      for (const l of links) await db.insert(evidenceLinksT).values({ ...l, subject_id: a.id, role: 'supporting' }).onConflictDoNothing();
+      await db.delete(evidenceLinksT).where(and(eq(evidenceLinksT.subject_type, 'issue'), eq(evidenceLinksT.subject_id, b.id)));
+      await db.delete(issues).where(eq(issues.id, b.id));
+      removed.add(b.id); merged++;
+    }
+    if (merged) await db.update(issues).set({ session_ids: a.session_ids, affected_segments: a.affected_segments, affected_personas: a.affected_personas, severity: a.severity, attribution: a.attribution, status: a.status, repro_path_id: a.repro_path_id, seeded_match: a.seeded_match }).where(eq(issues.id, a.id));
+  }
+  return merged;
+}

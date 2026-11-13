@@ -12,7 +12,7 @@ import { SessionRunner, resolveHumanTask } from '../runtime/session-runner.ts';
 import { extractCandidates, objectiveMetrics } from '../evaluation/objective.ts';
 import { evaluateAiQuality, judgeSession } from '../evaluation/judges.ts';
 import { postSessionInterview } from '../evaluation/interview.ts';
-import { aggregateScores, evaluateHypotheses, synthesizeIssues } from '../evaluation/issues.ts';
+import { aggregateScores, dedupeIssues, evaluateHypotheses, synthesizeIssues } from '../evaluation/issues.ts';
 import { calibrateSeeded, learnFromCalibration } from '../calibration/index.ts';
 import { generateReport } from '../intelligence/report.ts';
 
@@ -203,6 +203,8 @@ export async function finalizeStudy(studyId: string, progress: Progress = () => 
   await db.update(studies).set({ status: 'evaluating', ...(stopReason ? { stop_reason: stopReason } : {}) }).where(eq(studies.id, studyId));
   progress('🧩 合成问题与归因');
   await synthesizeIssues(studyId, { cleanReplay: config.clean_replay, lang: 'zh' });
+  const merged = await dedupeIssues((await studyCtx(studyId)).av.id).catch(() => 0);
+  if (merged) progress(`   合并重复问题 ${merged} 个`);
   progress('🧪 判定产品假设');
   await evaluateHypotheses(studyId).catch((e) => logger.warn({ err: String(e).slice(0, 200) }, '假设判定失败'));
   progress('📐 校准（已知缺陷注入版本）');
