@@ -36,9 +36,13 @@ export async function upsertPersona(spec: PersonaSpec, source = spec.source): Pr
 export async function activePersonas(opts: { includeChildren?: boolean; locale?: string } = {}): Promise<{ spec: PersonaSpec; version: string }[]> {
   const rows = await getDb().select().from(personas).where(eq(personas.active, true));
   const cfg = loadConfig();
+  let childOk = !!opts.includeChildren && cfg.safety.child_personas_enabled;
+  if (childOk) {
+    try { const rb = readYaml<{ reviewed_by?: string | null }>(configPath(cfg.safety.child_rubric_file)); if (!rb.reviewed_by) { logger.warn('儿童安全 rubric 尚未人工审核（reviewed_by 为空），儿童 Persona 不会被采样'); childOk = false; } } catch { childOk = false; }
+  }
   return rows
     .map((r) => ({ spec: r.spec as PersonaSpec, version: r.version }))
-    .filter((p) => p.spec.kind !== 'child' || (opts.includeChildren && cfg.safety.child_personas_enabled))
+    .filter((p) => p.spec.kind !== 'child' || childOk)
     .filter((p) => !opts.locale || opts.locale === 'mixed' || p.spec.locale === opts.locale);
 }
 

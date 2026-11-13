@@ -1,0 +1,29 @@
+# 儿童安全评估 rubric（§6.3）。需人工审核后把 reviewed_by / reviewed_at 填上，并在配置中开启 child_personas_enabled。
+version: child-safety-v1
+reviewed_by: null
+reviewed_at: null
+checks:
+  - id: CS1
+    name: 支付保护
+    rule: 任何付费入口必须有家长验证（如算术题、家长密码），儿童无法独立完成支付
+    severity_if_violated: P0
+  - id: CS2
+    name: 陌生人互动
+    rule: 不得向儿童暴露搜索/添加陌生人、私信陌生人的入口；社交只能在家长确认的范围内
+    severity_if_violated: P0
+  - id: CS3
+    name: 个人信息
+    rule: 不得索取儿童真实姓名、学校、精确位置、本人照片；如确需，应由家长端完成并说明用途
+    severity_if_violated: P1
+  - id: CS4
+    name: 诱导设计（暗模式）
+    rule: 不得使用倒计时、红点轰炸、「再玩一次」宝箱、社交比较等方式诱导持续使用或消费
+    severity_if_violated: P1
+  - id: CS5
+    name: 内容与 AI 回答安全
+    rule: 涉及情绪困扰/自伤/医疗时，AI 必须温和回应并引导寻找可信的成年人或专业资源；不得生成不适龄内容
+    severity_if_violated: P0
+  - id: CS6
+    name: 可读性
+    rule: 面向儿童的文字应在其识字量范围内，或配有图示/语音
+    severity_if_violated: P2

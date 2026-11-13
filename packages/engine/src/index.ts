@@ -2,6 +2,7 @@ export * from './human/persona.ts';
 export * from './human/state.ts';
 export * from './human/perception.ts';
 export * from './human/memory.ts';
+export * from './human/literacy.ts';
 export * from './human/generator.ts';
 export * from './world/simulator.ts';
 export * from './exploration/goals.ts';

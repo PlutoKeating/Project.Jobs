@@ -84,7 +84,19 @@ export async function planRound(opts: {
     const exp = cands.find((c) => c.is_expert_baseline && c.task && !expertTasksDone.has(c.task.id) && c.mode === 'goal');
     if (exp) { picked.push(exp); usedP.add(exp.persona.id); }
   }
-  for (const c of cands) { if (picked.length >= opts.size) break; if (usedP.has(c.persona.id)) continue; if (c.is_expert_baseline) continue; picked.push(c); usedP.add(c.persona.id); }
-  for (const c of cands) { if (picked.length >= opts.size) break; if (picked.includes(c)) continue; picked.push(c); }
+  // 逐个挑选：每选一个，对同模式 / 同世界 / 同任务的候选降权，保证一轮内的多样性
+  const adj = (c: PlanItem) => {
+    const m = picked.filter((x) => x.mode === c.mode).length; const wd = picked.filter((x) => x.world.id === c.world.id).length; const tk = c.task ? picked.filter((x) => x.task?.id === c.task!.id).length : 0;
+    const target = (mix[c.mode] / mixTotal) * opts.size;
+    return c.priority - 1.2 * Math.max(0, m + 1 - target) - 1.0 * wd - 0.8 * tk;
+  };
+  while (picked.length < opts.size) {
+    const pool = cands.filter((c) => !picked.includes(c) && !c.is_expert_baseline && !usedP.has(c.persona.id));
+    const fallback = cands.filter((c) => !picked.includes(c));
+    const from = pool.length ? pool : fallback;
+    if (!from.length) break;
+    const best = from.reduce((a, b) => (adj(b) > adj(a) ? b : a));
+    picked.push(best); usedP.add(best.persona.id);
+  }
   return picked.slice(0, opts.size);
 }

@@ -62,10 +62,14 @@ export async function judgeSession(sessionId: string, studyId: string, metrics: 
   const violSteps = (await db.select().from(steps).where(eq(steps.session_id, sessionId))).filter((x) => x.expectation_violated).map((x) => x.idx).slice(0, 3);
   const frames = await keyFrames(sessionId, violSteps);
   const roles = ['judge_0', 'judge_1', 'judge_2'].slice(0, judgeCount);
+  let childRubric = '';
+  if (p.kind === 'child' || p.identity.age < 14) {
+    try { const rb = (await import('@pux/core')).readYaml<{ checks: { id: string; name: string; rule: string; severity_if_violated: string }[] }>((await import('@pux/core')).configPath(cfg.safety.child_rubric_file)); childRubric = `\n这是儿童用户，请额外按儿童安全 rubric 检查（违反时 category=safety，heuristics 填 child_safety 与条目编号）：\n${rb.checks.map((c) => `${c.id} ${c.name}：${c.rule}（违反时 ${c.severity_if_violated}）`).join('\n')}`; } catch { /* rubric 缺失时忽略 */ }
+  }
   const userDesc = `用户画像（客观信息）：${p.identity.age} 岁 ${p.identity.gender}，${p.identity.occupation}，数字素养 ${p.capability.digital_literacy}，视力 ${p.capability.body.vision}，人群 ${p.segment}。处境：${world?.name}。目标：${goal}`;
   const results = await Promise.all(roles.map(async (role) => {
     const r = cfg.roles[role];
-    const sys = `${PERSPECTIVE[r.perspective ?? 'objective_first']}\n你在 Session 结束后评审一次模拟用户使用真实产品的记录。分数为 1–7（perceived_difficulty/cognitive_load/abandonment_intent 越高越差；trust/satisfaction/value 越高越好）。这些分数是「模拟估计」，不是真实测量。issues 只报告有证据支撑的产品问题（step 指向证据所在步骤），heuristics 用 Nielsen 十大启发式编号（例如 H1 系统状态可见、H3 用户控制与自由、H4 一致性与标准、H5 防错、H6 识别而非回忆、H8 美观简约、H9 帮助用户识别/诊断/恢复错误）或 dark_pattern / wcag / ai_hallucination / child_safety。不要把模拟器或执行器自身的问题（SIM_*、EXEC_*、ENV_*、INJECTED_*）当成产品问题。`;
+    const sys = `${PERSPECTIVE[r.perspective ?? 'objective_first']}\n你在 Session 结束后评审一次模拟用户使用真实产品的记录。分数为 1–7（perceived_difficulty/cognitive_load/abandonment_intent 越高越差；trust/satisfaction/value 越高越好）。这些分数是「模拟估计」，不是真实测量。issues 只报告有证据支撑的产品问题（step 指向证据所在步骤），heuristics 用 Nielsen 十大启发式编号（例如 H1 系统状态可见、H3 用户控制与自由、H4 一致性与标准、H5 防错、H6 识别而非回忆、H8 美观简约、H9 帮助用户识别/诊断/恢复错误）或 dark_pattern / wcag / ai_hallucination / child_safety。不要把模拟器或执行器自身的问题（SIM_*、EXEC_*、ENV_*、INJECTED_*）当成产品问题。${childRubric}`;
     const user: ContentPart[] = [{ type: 'text', text: `${userDesc}\n结局：${s.outcome}（${s.end_reason}）\n客观指标：${JSON.stringify({ steps: metrics.steps, errors: metrics.errors_by_code, violations: metrics.expectation_violations, task_completed: metrics.task_completed, a11y: metrics.a11y_rules, ai_wait_s: metrics.ai_wait_seconds })}\n\n动作时间线（只有客观证据）：\n${timelineObj}` }, ...frames];
     const j1 = await gateway().chat(role, { messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], schema: JudgeSchema, schemaName: 'judge', tags: { study_id: studyId, session_id: sessionId, purpose: 'judge_objective' } });
     const ratEv = await putEvidence('judge_rationale', { study_id: studyId, session_id: sessionId }, { inline: { role, phase: 'objective_only', ...j1.data } });

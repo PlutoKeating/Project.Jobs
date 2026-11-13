@@ -1,0 +1,66 @@
+# AI 产品体验官（pux）
+
+让**模拟真人**在**模拟世界**里使用**真实产品**，发现可用性问题、流程断点、「突然不对劲」时刻和 AI 回答质量问题；每条结论都有独立证据链、复现路径、受影响人群和**可信度标签**。
+
+> 设计文档：[`docs/SPEC_v0.2.md`](docs/SPEC_v0.2.md) · 实现架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · API：[`docs/API.md`](docs/API.md) · 校准：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+
+## 它做什么
+
+```
+灌入一个 Web App（URL）
+  → Product Intelligence：爬取页面、LLM 归纳功能/任务/假设（YAML 可人工确认）
+  → Exploration：按覆盖缺口、未验证假设、低可信区域自适应采样「谁 × 在什么世界 × 带着什么生活目标 × 哪种模式」
+  → Simulation：每个 Session 一个独立浏览器沙箱；World Simulator 推进时钟、制造打断/弱网/社交压力；
+                Persona Mind（第一人称、不知道自己在被测试）决定意图；Operator 把意图落成 UAP 动作；Policy Gate 拦截高风险动作
+  → Evidence：截图、感知过滤后截图、a11y、axe、rrweb、录像、网络日志、独白、世界事件，全部内容寻址入库
+  → Evaluation（Session 结束后）：客观指标 → 问题候选 → 两阶段评审团 → AI 回答质量 → 事后访谈（SUS/UMUX-Lite 模拟估计）
+                → 问题合成 → 干净重放 + 专家对照 + 复核归因 → 假设判定
+  → Calibration：已知缺陷注入版本的检出率/误报率、真人基准、埋点漏斗、评论 → 可信度（high/medium/low/unknown）
+  → Report：中英双语 Markdown + 离线 HTML 查看器（截图时间线、rrweb 回放、录像、校准卡、热力矩阵、版本对比）
+```
+
+## 一分钟开始
+
+```bash
+cp .env.example .env               # 填 VERTEX_PROJECT 与 GOOGLE_ADC_FILE
+pnpm install && npx playwright install chromium
+docker compose up -d               # Postgres+pgvector / MinIO / LiteLLM / Temporal
+pnpm pux doctor                    # 检查全部依赖
+pnpm pux init                      # 迁移 + 导入 Persona/世界模板 + 注册内置 Demo
+pnpm demos &                       # 启动 11 个 Demo × (干净版 + 植入缺陷版)
+
+# 全自动评测任意 Web App（新项目一步到位）
+pnpm pux auto --url http://127.0.0.1:5501/ --name my-app --sessions 6 --steps 30
+
+# 或者打开控制台，在「灌入新项目」里填 URL
+pnpm console                       # http://127.0.0.1:5300/
+```
+
+报告输出在 `data/reports/<study_id>/`（`report.zh.md`、`report.en.md`、`index.html`）。
+
+## 仓库结构
+
+| 路径 | 说明 |
+|---|---|
+| `apps/cli` | `pux` 命令行（主入口） |
+| `apps/console` | 本地 Web 控制台 + REST API（`POST /studies`，支持 `Idempotency-Key`） |
+| `apps/worker` | Temporal worker（Study=工作流，Session=子工作流，Step=Activity，人工接管=Signal） |
+| `packages/core` | UAP v0.2 类型、领域 schema（六层 Persona、世界模板、ProductSpec、Study）、配置 |
+| `packages/db` | Drizzle schema（spec §16 全部实体）与迁移 |
+| `packages/storage` | MinIO/S3 证据存储（内容寻址） |
+| `packages/llm` | LiteLLM 角色别名网关、结构化输出、trace、厂商隔离校验 |
+| `packages/executor` | UAP 执行层：浏览器沙箱、成功标准、错误分层、Policy Gate、模态注入、录像/rrweb/axe |
+| `packages/engine` | Human / World / Exploration / Product / Runtime / Evaluation / Calibration / Report / Control |
+| `demos/kit` | 11 个被测 Demo（AI 助手、记账、待办、外卖、游戏、资讯、健身、笔记、天气、菜谱、儿童识字），每个都有干净版与植入缺陷版 |
+| `config/` | 全局配置、Persona、世界模板、人口分布、规则 |
+| `infra/` | LiteLLM 角色别名配置、Postgres 初始化 |
+| `examples/calibration` | 真人基准 / 漏斗 / 评论的示例文件 |
+| `data/` | 运行时数据（不入库）：报告、产品理解草稿、生成的 Persona、学习参数 |
+
+## 本机模型
+
+本机只配置了 Vertex AI 上的 Gemini（经 LiteLLM 代理，ADC 鉴权）：`gemini-4-hydrogen`（≈flash，用于 Mind/Operator）、`gemini-4-argon`（≈pro，用于记忆整理/访谈/评审）、`gemini-4-carbon`（≈ultra，用于评审/归因复核）。由于只有一家厂商，厂商隔离为 `warn` 模式：报告会标注并把相关结论可信度降一级。新增厂商只需修改 `infra/litellm/config.yaml` 与 `config/pux.config.yaml` 的 `roles`。
+
+## 定位声明
+
+合成用户的反馈偏浅、偏正面、缺少长尾（NN/g、ACM 2025）。本系统**不取代真人用户研究**：所有主观指标都是「模拟估计」；没有校准数据的结论一律标为「未校准（仅作假设）」。已知缺陷注入版本是早期最主要的客观校准源。
