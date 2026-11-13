@@ -73,7 +73,14 @@ export async function calibrateSeeded(studyId: string) {
   for (const v of cleanVersions) for (const i of await db.select().from(issues).where(eq(issues.app_version_id, v))) if (i.attribution === 'product') cleanFps.add(i.fingerprint);
   const cands = await db.select().from(issueCandidates).where(eq(issueCandidates.study_id, studyId));
   const objectiveOnly = (id: string) => { const cs = cands.filter((c) => c.issue_id === id); return cs.length > 0 && cs.every((c) => c.source === 'axe'); };
-  const unmatched = productIssues.filter((i) => !matches.some((m) => m.issue_id === i.id));
+  // 误报率只针对报告主清单中的结论（折叠到附录的问题不作为结论）
+  const mainIssues = productIssues.filter((i) => i.status !== 'folded');
+  const unmatched = mainIssues.filter((i) => !matches.some((m) => m.issue_id === i.id));
+  // 语义基线：与干净版本上同类别问题语义相近（cosine ≥ 0.86）
+  const cleanIssues: { category: string; embedding: number[] }[] = [];
+  for (const v of cleanVersions) for (const i of await db.select().from(issues).where(eq(issues.app_version_id, v))) if (i.attribution === 'product' && i.status !== 'rejected' && i.embedding) cleanIssues.push({ category: i.category, embedding: i.embedding as unknown as number[] });
+  const { cosine } = await import('@pux/llm');
+  const semanticBaseline = (i: typeof issues.$inferSelect) => { const e = i.embedding as unknown as number[] | null; return !!e && cleanIssues.some((c) => c.category === i.category && cosine(c.embedding, e) >= 0.86); };
   // 在干净版本上重放复现路径：能复现说明问题独立于植入缺陷而真实存在（基线问题），不是误报
   const cleanUrl = cleanVersions.length ? (await db.select().from(appVersions).where(eq(appVersions.id, cleanVersions[0])))[0]?.env_url : undefined;
   const replayedOnClean = new Set<string>();
@@ -81,17 +88,17 @@ export async function calibrateSeeded(studyId: string) {
     const { cleanReplay } = await import('../evaluation/replay.ts');
     const { reproPaths } = await import('@pux/db');
     for (const i of unmatched) {
-      if (objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || !i.repro_path_id) continue;
+      if (objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || semanticBaseline(i) || !i.repro_path_id) continue;
       const rp = (await db.select().from(reproPaths).where(eq(reproPaths.id, i.repro_path_id)))[0];
       if (!rp) continue;
       try { const r = await cleanReplay({ start_url: cleanUrl, steps: rp.steps as never }, { issueId: i.id, fromSession: (i.session_ids ?? [])[0] ?? '', studyId }); if (r.reproduced) replayedOnClean.add(i.id); } catch { /* ignore */ }
     }
   }
   // 人工分诊：status=confirmed 视为真实问题（基线），status=rejected 视为确认误报，其余为未分诊
-  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || replayedOnClean.has(i.id) || i.status === 'confirmed');
+  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint) || semanticBaseline(i) || replayedOnClean.has(i.id) || i.status === 'confirmed');
   const fp = unmatched.filter((i) => !baseline.includes(i));
   const rejected = fp.filter((i) => i.status === 'rejected');
-  const denom = productIssues.length - baseline.length;
+  const denom = mainIssues.length - baseline.length;
   await save('*', 'false_positive_rate_lower', rejected.length, denom, { note: '只计人工驳回（rejected）的问题；未分诊问题视为真实' });
   await save('*', 'false_positive_rate', fp.length, denom, { upper_bound: true, rejected: rejected.length, unverified: fp.length - rejected.length, unmatched: fp.map((i) => ({ id: i.id, title: i.title })), baseline_real_issues: baseline.map((i) => ({ id: i.id, title: i.title, why: objectiveOnly(i.id) ? 'axe-core' : replayedOnClean.has(i.id) ? 'reproduced on clean version' : 'also found on clean version' })) });
   return { set_id: setId, recall: detected.size / defects.length, false_positive_rate: denom ? fp.length / denom : null, baseline: baseline.length, matches, results: out };

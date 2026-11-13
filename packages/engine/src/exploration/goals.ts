@@ -41,7 +41,9 @@ export async function makeLifeGoal(opts: { persona: PersonaSpec; world: WorldTem
 /** Persona 在该 App 的个人账号习惯（用于自己注册/登录；回访时保持一致） */
 export function personaAccount(p: PersonaSpec, appId: string) {
   const h = shortHash(`${p.id}:${appId}`, 6);
-  return { username: `${p.id.replace(/^(zh|en)_/, '')}_${h}`.slice(0, 20), password: `Pw${h}2026` };
+  // 数字素养低的人习惯用简单密码（常被注册规则拒绝，需要自己想办法改）
+  const weak = p.capability.digital_literacy < 0.6 || p.kind === 'child';
+  return { username: `${p.id.replace(/^(zh|en)_/, '')}_${h}`.slice(0, 20), password: weak ? (p.identity.age > 50 ? '888888' : `${p.identity.age}${p.identity.age}${p.identity.age}`.slice(0, 6)) : `Pw${h}2026` };
 }
 
 export function accountHint(p: PersonaSpec, appId: string, given?: { username: string; password: string }) {

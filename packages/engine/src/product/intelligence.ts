@@ -91,7 +91,7 @@ const DraftSchema = z.object({
 export async function induceProductSpec(appName: string, version: string, crawlRes: CrawlResult, prd?: string): Promise<ProductSpec> {
   const pagesTxt = crawlRes.pages.map((p) => `- ${p.template}  「${p.title}」\n  标题: ${p.headings.join(' / ')}\n  操作: ${p.actions.join('，')}\n  输入: ${p.inputs.join('，')}\n  文本: ${p.text.replace(/\s+/g, ' ').slice(0, 200)}`).join('\n');
   const r = await gateway().chat('product_induce', {
-    messages: [{ role: 'system', content: '你是资深产品分析师。根据产品爬取结果与说明，归纳功能清单、用户可以完成的任务（TaskDef）和值得验证的产品假设。功能 id 用 f_ 前缀的英文短名，任务 id 用 t_ 前缀，假设 id 用 h_ 前缀。任务 statement 用普通用户的生活语言描述要完成的事（例如「把这周的工作整理成周报」），不要出现「测试」「验证」等词。success_signals 必须是客观可检查的：url_matches 填正则（匹配路径即可），text_visible 填完成后页面上会出现的文字。url_patterns 填匹配该功能页面路径的正则。给出 5–12 个功能、4–8 个任务、3–6 个假设（target_segments 从 office_worker, senior, student, skeptic, freeloader, busy_parent, child_primary_low, child_primary_high 中选）。' },
+    messages: [{ role: 'system', content: '你是资深产品分析师。根据产品爬取结果与说明，归纳功能清单、用户可以完成的任务（TaskDef）和值得验证的产品假设。功能 id 用 f_ 前缀的英文短名，任务 id 用 t_ 前缀，假设 id 用 h_ 前缀。任务 statement 用普通用户的生活语言描述要完成的事（例如「把这周的工作整理成周报」），不要出现「测试」「验证」等词。success_signals 必须是客观可检查的：url_matches 填正则（匹配路径即可），text_visible 填完成后页面上会出现的文字。url_patterns 填匹配该功能页面路径的正则。给出 5–12 个功能、6–10 个任务、3–6 个假设。任务必须覆盖每一个功能（每个功能至少一个任务），并且至少包含这些边界情形中与产品相关的任务：输入很长的内容、做到一半被打断后回来继续、找到不常用的次要功能（如导出、设置、历史）、新用户注册；如果产品含 AI 对话，还要包含一个用户在情绪低落时向 AI 倾诉的任务（target_segments 从 office_worker, senior, student, skeptic, freeloader, busy_parent, child_primary_low, child_primary_high 中选）。' },
       { role: 'user', content: `产品：${appName}（版本 ${version}）\n${prd ? `产品说明（PRD）：\n${prd}\n` : ''}\n爬取到的页面（${crawlRes.pages.length} 个）：\n${pagesTxt}` }],
     schema: DraftSchema, schemaName: 'product_spec',
   });
