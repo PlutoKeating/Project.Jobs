@@ -38,6 +38,7 @@
 | `GET /evidence/:id` | 证据原文件（截图/视频/rrweb 等，从 MinIO 读取）或内联 JSON |
 | `GET /reports/<study>/index.html` | 离线 HTML 报告 |
 | `POST /sessions/:id/ask` | 可追问访谈（表单字段 `q`） |
+| `POST /issues/:id/triage` | 问题分诊（表单字段 `status`：confirmed / rejected / open） |
 | `POST /human/:id/resolve` | 标记人工接管完成（Temporal 模式下同时发送 Signal） |
 | `GET /healthz` | 健康检查 |
 

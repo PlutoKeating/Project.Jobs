@@ -78,6 +78,16 @@ sequenceDiagram
 | 语音注入 | TTS → fake audio | Vertex `gemini-3.8-flash-tts`（ADC 直连）→ ffmpeg 48k wav → `--use-file-for-fake-audio-capture`；失败回退 espeak | LiteLLM 暂不稳定支持 Vertex 音频输出 |
 | 页面可见性打断 | 切标签页 | 注入脚本覆盖 `document.visibilityState` 并派发事件 + CDP `Page.setWebLifecycleState` 冻结 | headless 下切标签页不改变可见性 |
 
-## 6. 数据模型
+## 6. 关键机制补充
+
+- **问题去重**：每轮聚类前，同一 axe 规则 + 同一页面模板的候选先确定性合并；LLM 聚类使用短编号；创建问题前与同版本、同类别的已有问题比较 embedding（cosine ≥ 0.86）以复用；finalize 时再做一次全量语义去重（`dedupeIssues`）。
+- **人工分诊**：`pux issue confirm|reject` 或控制台 ✓/✗；用于误报率下界与基线。
+- **基线问题**：axe 客观检出、干净版本同 fingerprint、或复现路径在干净版本重放成功的问题不计入误报（见 `docs/CALIBRATION.md`）。
+- **默认定位**：Persona 所在城市坐标 + 随机偏移；隐私敏感度 ≥ 0.75 的 Persona 拒绝定位授权。
+- **感知一致性**：「瞥一眼」时元素列表与感知截图使用同一可见区域（上方 60%）。
+- **信息隔离兜底**：给 Persona 侧使用的产品描述会剔除含测试/缺陷类词汇的句子。
+- **模拟器错误不惩罚 Persona**：模拟器/执行器层的失败不计入预期违背与耐心消耗。
+
+## 7. 数据模型
 
 见 `packages/db/src/schema.ts`（完整实现 spec §16 的全部实体，另加 `issue_candidates`、`persona_global_state`、`human_tasks`、`llm_traces`、`executor_comparisons`）。迁移位于 `packages/db/migrations/`。
