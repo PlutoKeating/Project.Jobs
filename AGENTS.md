@@ -40,7 +40,7 @@
 - `**/docker-compose.yml`
 - `**/.dockerignore`
 
-注：本文件是通用规范设定，如果你看到这段文本，说明该文件是在仓库创建初始化时复制到此处的，需要严格根据当前的项目架构选型，主动询问人类开发者是否需要包含docker的涉及和使用，若用户明确说明我们的项目开发和部署不涉及docker,则需要将本段及上述关于docker相关的描述全部删除，并与人类开发者确认该决策和操作。
+注：本项目已确认（2026-11-14）：**依赖服务（Postgres+pgvector、MinIO、LiteLLM、Temporal）使用 Docker Compose 运行，应用、worker、控制台与 Demo 在宿主机原生运行**。因此上述 Docker 相关阅读要求保留，涉及依赖服务时须阅读根目录 `docker-compose.yml` 与 `.dockerignore`。
 
 ### 1.3 阅读后的执行要求
 
