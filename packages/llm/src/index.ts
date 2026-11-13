@@ -61,7 +61,7 @@ function extractJson(text: string): unknown {
 export class Gateway {
   readonly client: OpenAI;
   constructor() {
-    this.client = new OpenAI({ baseURL: `${env.litellmBaseUrl}/v1`, apiKey: env.litellmKey, timeout: 240_000, maxRetries: 2 });
+    this.client = new OpenAI({ baseURL: `${env.litellmBaseUrl}/v1`, apiKey: env.litellmKey, timeout: 300_000, maxRetries: 0 });
   }
 
   role(roleKey: RoleKey) {

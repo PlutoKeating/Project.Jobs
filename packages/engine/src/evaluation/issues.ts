@@ -33,19 +33,32 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
   // ① 层初判：environment / simulator 层直接排除
   const productish = cands.filter((c) => !(c.error_layer === 'environment' || c.error_layer === 'simulator' || c.error_layer === 'injected'));
   for (const c of cands.filter((x) => !productish.includes(x))) await db.update(issueCandidates).set({ attribution: c.error_layer === 'environment' ? 'environment' : 'simulator' }).where(eq(issueCandidates.id, c.id));
-  // 分块聚类（LLM），每块最多 80 条
-  const groups: z.infer<typeof GroupSchema>['groups'] = [];
-  for (let i = 0; i < productish.length; i += 50) {
-    const chunk = productish.slice(i, i + 50);
-    const list = chunk.map((c) => `${c.id} | ${c.source} | ${c.category} | ${segOf.get(c.session_id)} | ${pathOf(c.url)} | ${c.error_code ?? ''} | ${c.title} | ${(c.description ?? '').replace(/\s+/g, ' ').slice(0, 220)}`).join('\n');
-    const r = await gateway().chat('judge_meta', { messages: [{ role: 'system', content: `你是用户体验研究负责人。把同一个底层产品问题的候选合并为一组（不同人群、不同 Session 遇到同一问题要合并），每组给出：key（稳定的英文短 slug，描述问题本质，例如 export_entry_hidden）、中文 title、英文 title_en、description（问题是什么、在哪里、影响谁）、category、heuristics（Nielsen 编号 H1–H10 或 dark_pattern/wcag/ai_hallucination/child_safety）、severity（${Object.entries(cfg.severity).map(([k, v]) => `${k}：${v}`).join('；')}）、recommendation（具体修复建议）。如果候选只是模拟用户自身的误操作、个人偏好或没有产品层面证据，noise=true。每个候选 id 只能出现在一组中。` }, { role: 'user', content: `候选（id | 来源 | 类别 | 人群 | 页面 | 错误码 | 标题 | 描述）：\n${list}` }], schema: GroupSchema, schemaName: 'issue_groups', reasoning: 'low', tags: { study_id: studyId, purpose: 'issue_synthesis' } });
-    groups.push(...r.data.groups);
+  // 预聚合：同一 axe 规则 + 同一页面模板的候选确定性合并，只把代表交给 LLM
+  const dupKey = (c: Cand) => (c.source === 'axe' ? `${c.error_code}|${pathOf(c.url).replace(/\?.*$/, '')}` : c.id);
+  const reps = new Map<string, Cand[]>();
+  for (const c of productish) { const k = dupKey(c); reps.set(k, [...(reps.get(k) ?? []), c]); }
+  const repList = [...reps.values()].map((v) => v[0]);
+  const expand = (c: Cand) => reps.get(dupKey(c)) ?? [c];
+  // 分块聚类（LLM）：使用短编号，避免模型抄错长 ID
+  const groups: (z.infer<typeof GroupSchema>['groups'][number] & { members: Cand[] })[] = [];
+  for (let i = 0; i < repList.length; i += 40) {
+    const chunk = repList.slice(i, i + 40);
+    const list = chunk.map((c, k) => `c${k + 1} | ${c.source} | ${c.category} | ${segOf.get(c.session_id)} | ${pathOf(c.url)} | ${c.error_code ?? ''} | ${c.title} | ${(c.description ?? '').replace(/\s+/g, ' ').slice(0, 200)}${expand(c).length > 1 ? ` | (同类 ${expand(c).length} 处)` : ''}`).join('\n');
+    const r = await gateway().chat('judge_meta', { messages: [{ role: 'system', content: `你是用户体验研究负责人。把同一个底层产品问题的候选合并为一组（不同人群、不同 Session 遇到同一问题要合并），每组给出：candidate_ids（使用 c1、c2 这样的编号）、key（稳定的英文短 slug，描述问题本质，例如 export_entry_hidden）、中文 title、英文 title_en、description（问题是什么、在哪里、影响谁）、category、heuristics（Nielsen 编号 H1–H10 或 dark_pattern/wcag/ai_hallucination/child_safety）、severity（${Object.entries(cfg.severity).map(([k, v]) => `${k}：${v}`).join('；')}）、recommendation（具体修复建议）。如果候选只是模拟用户自身的误操作、个人偏好或没有产品层面证据，noise=true。每个编号只能出现在一组中，所有编号都要分配。` }, { role: 'user', content: `候选（编号 | 来源 | 类别 | 人群 | 页面 | 错误码 | 标题 | 描述）：\n${list}` }], schema: GroupSchema, schemaName: 'issue_groups', reasoning: 'low', tags: { study_id: studyId, purpose: 'issue_synthesis' } });
+    const assigned = new Set<number>();
+    for (const g of r.data.groups) {
+      const idx = g.candidate_ids.map((x) => Number(String(x).replace(/^c/i, '')) - 1).filter((n) => Number.isInteger(n) && n >= 0 && n < chunk.length && !assigned.has(n));
+      idx.forEach((n) => assigned.add(n));
+      if (idx.length) groups.push({ ...g, members: idx.flatMap((n) => expand(chunk[n])) });
+    }
+    // 模型遗漏的候选：各自成组（保留，交给归因复核）
+    chunk.forEach((c, n) => { if (!assigned.has(n)) groups.push({ candidate_ids: [], key: `${c.source}_${(c.error_code ?? c.category).toLowerCase()}_${shortHash(c.title, 6)}`, title: c.title, title_en: c.title, description: c.description ?? c.title, category: c.category as never, heuristics: c.heuristics ?? [], severity: (c.severity_hint as never) ?? 'P2', recommendation: '', noise: false, members: expand(c) }); });
   }
   const iso = checkVendorIsolation(['judge_0', 'judge_1', 'judge_2'].slice(0, (study.config as { judges?: number }).judges ?? 2));
   const experts = sess.filter((s) => s.is_expert_baseline);
   const created: string[] = [];
   for (const g of groups) {
-    const members = productish.filter((c) => g.candidate_ids.includes(c.id));
+    const members = g.members;
     if (!members.length) continue;
     const mainUrl = members.find((m) => m.url)?.url;
     const fingerprint = `fp_${shortHash(`${g.category}|${pathOf(mainUrl).replace(/\?.*$/, '')}|${g.key.toLowerCase()}`, 14)}`;
