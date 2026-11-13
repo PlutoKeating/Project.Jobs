@@ -200,7 +200,7 @@ export async function runStudyInline(studyId: string, progress: Progress = (m) =
 
 export async function finalizeStudy(studyId: string, progress: Progress = () => {}, stopReason = '') {
   const db = getDb(); const { config, app } = await studyCtx(studyId);
-  await db.update(studies).set({ status: 'evaluating' }).where(eq(studies.id, studyId));
+  await db.update(studies).set({ status: 'evaluating', ...(stopReason ? { stop_reason: stopReason } : {}) }).where(eq(studies.id, studyId));
   progress('🧩 合成问题与归因');
   await synthesizeIssues(studyId, { cleanReplay: config.clean_replay, lang: 'zh' });
   progress('🧪 判定产品假设');
