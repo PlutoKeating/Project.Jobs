@@ -64,7 +64,7 @@ pnpm pux study run <study_id> --temporal      # 终端 B：提交工作流；进
 | `pnpm pux study status <id>` / `pnpm pux issues <id>` | 查看 Session 与问题 |
 | `pnpm pux report <id>` | 重新生成报告 |
 | `pnpm pux study finalize <id>` | 重新合成问题、去重、校准并生成报告 |
-| `pnpm pux issue confirm|reject <issue>` | 人工分诊（影响误报率与基线） |
+| `pnpm pux issue confirm <issue>` / `pnpm pux issue reject <issue>` | 人工分诊（影响误报率与基线） |
 | `PUX_INTEGRATION=1 pnpm test` | 含模态注入/打断/弱网的集成测试 |
 | `pnpm pux interview <session_id>` | 可追问访谈（交互式） |
 | `pnpm pux human list` / `pnpm pux human resolve <task>` | 人工接管（验证码等） |
