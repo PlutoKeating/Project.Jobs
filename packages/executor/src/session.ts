@@ -81,6 +81,7 @@ export class BrowserSession implements Executor {
   private net: NetState = { inflight: new Map(), failed: [], slowest: 0, total: 0, log: [] };
   private pendingDialog?: Dialog;
   private dialogLog: string[] = [];
+  private downloads: string[] = [];
   private lastObs?: Observation & { elements: UIElement[] };
   private lastScreenshotEv = '';
   private seenStates = new Set<string>();
@@ -119,6 +120,7 @@ export class BrowserSession implements Executor {
       viewport, locale: o.locale ?? 'zh-CN', hasTouch: !!o.mobile,
       args: [...this.modality.launchArgs(), '--disable-features=Translate', '--lang=' + (o.locale ?? 'zh-CN'), '--remote-allow-origins=*'],
       userDataDir: join(this.modality.dir, 'profile'),
+      acceptDownloads: true, downloadsPath: join(this.modality.dir, 'downloads'),
     });
     if (o.executor === 'stagehand') this.sh = await Stagehand.create({ browser: this.sb, model: { generate: stagehandGenerate(this.ev) } as never, domSettleTimeoutMs: 3000 });
     this.pw = await chromium.connectOverCDP(this.cdpUrl);
@@ -129,6 +131,7 @@ export class BrowserSession implements Executor {
     if (o.geolocation !== null) perms.push('geolocation');
     await this.ctx.grantPermissions(perms).catch(() => {});
     if (o.geolocation) await this.ctx.setGeolocation({ ...o.geolocation, accuracy: 50 }).catch(() => {});
+    try { const bs = await this.pw.newBrowserCDPSession(); await bs.send('Browser.setDownloadBehavior', { behavior: 'allowAndName', downloadPath: join(this.modality.dir, 'downloads'), eventsEnabled: true }); } catch { /* ignore */ }
     this.page = this.ctx.pages().find((pg) => !pg.url().startsWith('chrome-extension://')) ?? await this.ctx.newPage();
     this.attachPage(this.page);
     if (o.executor === 'midscene') await this.initMidscene();
@@ -159,6 +162,8 @@ export class BrowserSession implements Executor {
     p.on('requestfinished', async (r) => { const resp = await r.response().catch(() => null); done(r, resp?.status() ?? 0); });
     p.on('requestfailed', (r) => done(r, 0));
     p.on('dialog', (d) => { this.pendingDialog = d; this.dialogLog.push(`${d.type()}: ${d.message()}`); });
+    // 下载：像浏览器下载栏一样告知用户
+    p.on('download', (dl) => { this.downloads.push(dl.suggestedFilename()); dl.saveAs(join(this.modality.dir, 'downloads', dl.suggestedFilename())).catch(() => {}); });
     p.on('crash', () => { this.consoleErrors.push('[crash] page crashed'); });
     // 只跟随被测页面自己打开的新标签页（例如 target=_blank），忽略 Stagehand 扩展等后台页面
     p.on('popup', (np) => { this.page = np; this.attachPage(np); });
@@ -223,7 +228,7 @@ export class BrowserSession implements Executor {
       console_errors: this.consoleErrors.splice(0),
       network: { pending: this.net.inflight.size, failed: this.net.failed.splice(0).map(({ url, status, method }) => ({ url, status, method })), slowest_ms: this.net.slowest, requests: this.net.total },
       dialogs: [...this.dialogLog.splice(0), ...(extracted.dialogsInDom > 0 ? ['(页面内弹层)'] : [])],
-      notifications: extracted.notifications,
+      notifications: [...extracted.notifications, ...this.downloads.splice(0).map((f) => `浏览器下载完成：${f}`)],
       page_visibility: extracted.hidden ? 'hidden' : 'visible',
       elements, scroll: extracted.scroll, is_new_state: isNew,
       captcha: extracted.captcha, text: extracted.text,
@@ -303,7 +308,8 @@ export class BrowserSession implements Executor {
           if (el?.selector.startsWith('dialog:')) { await this.handleDialog(true, String(req.args?.text ?? '')); break; }
           if (el) { const p = this.motorPoint(el, point, motor, r); await this.page.mouse.click(p.x, p.y); motorMiss = p.miss; }
           if (req.args?.clear) { await this.page.keyboard.press('Control+A'); await this.page.keyboard.press('Backspace'); }
-          await this.humanType(String(req.args?.text ?? ''), motor, r);
+          if (req.args?.paste) await this.page.keyboard.insertText(String(req.args?.text ?? ''));
+          else await this.humanType(String(req.args?.text ?? ''), motor, r);
           if (req.args?.submit) await this.page.keyboard.press('Enter');
           break;
         }

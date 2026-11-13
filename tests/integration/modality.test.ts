@@ -8,7 +8,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dataPath, newId, Rng, type ActionRequest } from '@pux/core';
 import { BrowserSession } from '@pux/executor';
 
-const PAGE = `<!doctype html><html><body><h1>media</h1><button id="mic">mic</button><button id="cam">cam</button><button id="geo">geo</button><button id="noti">noti</button><div id="out"></div>
+const PAGE = `<!doctype html><html><body><h1>media</h1><button id="mic">mic</button><button id="cam">cam</button><button id="geo">geo</button><button id="noti">noti</button><a id="dl" href="data:text/plain,hello" download="note.md">下载</a><input id="tx"><div id="out"></div>
 <script>
 document.getElementById('mic').onclick=async()=>{const s=await navigator.mediaDevices.getUserMedia({audio:true});const ac=new AudioContext();const src=ac.createMediaStreamSource(s);const an=ac.createAnalyser();src.connect(an);const d=new Float32Array(an.fftSize);let peak=0;const t0=Date.now();while(Date.now()-t0<2500){await new Promise(r=>setTimeout(r,50));an.getFloatTimeDomainData(d);for(const v of d)peak=Math.max(peak,Math.abs(v));}document.getElementById('out').textContent='peak='+peak.toFixed(3);};
 document.getElementById('cam').onclick=async()=>{const s=await navigator.mediaDevices.getUserMedia({video:true});const v=document.createElement('video');v.srcObject=s;await v.play();await new Promise(r=>setTimeout(r,700));const c=document.createElement('canvas');c.width=64;c.height=48;const x=c.getContext('2d');x.drawImage(v,0,0,64,48);const p=x.getImageData(0,0,64,48).data;let r=0,g=0;for(let i=0;i<p.length;i+=4){r+=p[i];g+=p[i+1];}document.getElementById('out').textContent='red='+(r>g*1.5);};
@@ -64,6 +64,19 @@ run('模态注入与打断（集成）', () => {
     await s.act(req('return', { injected: true }));
     expect(await s.page.title()).toBe('vis:visible');
   }, 30000);
+
+  it('下载有可感知反馈，粘贴一次性插入长文本', async () => {
+    await s.observe('it', 2);
+    await s.act(req('click', { target: { by: 'selector', value: '#dl' } }));
+    await new Promise((r) => setTimeout(r, 1500));
+    const o = await s.observe('it', 3);
+    expect(o.notifications.join()).toContain('note.md');
+    const long = '会议记录'.repeat(200);
+    const t0 = Date.now();
+    await s.act(req('type', { target: { by: 'selector', value: '#tx' }, args: { text: long, paste: true } }));
+    expect(Date.now() - t0).toBeLessThan(8000);
+    expect((await s.page.inputValue('#tx')).length).toBe(long.length);
+  }, 60000);
 
   it('弱网注入被标记为 injected', async () => {
     await s.setNetwork({ down_kbps: 50, up_kbps: 20, rtt_ms: 800 });

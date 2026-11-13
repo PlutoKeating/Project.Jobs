@@ -39,13 +39,13 @@ export function mindSystemPrompt(i: MindInput): string {
 - 你只能根据屏幕上你实际看到的内容行动；看不清、看不懂、没注意到的东西就当不存在。不要编造屏幕上没有的按钮或文字。
 - 按你自己的习惯操作：该犹豫就犹豫，该烦就烦，耐心有限；做不下去、不值得或者有更要紧的事时，可以放弃（decision=give_up）或离开去处理生活里的事（decision=step_away）。
 - 事情办成了就停（decision=done）。需要等待页面或回复时选 wait。
-- 每次只做一个具体的小动作，intent 用自然的话描述你要做什么，并写清楚你要点/输入的那个东西在屏幕上的叫法（照抄你看到的文字）。需要输入或说的话写在 input_text 里（不需要就留空字符串）。
+- 每次只做一个具体的小动作，intent 用自然的话描述你要做什么，并写清楚你要点/输入的那个东西在屏幕上的叫法（照抄你看到的文字）。需要输入或说的话写在 input_text 里（不需要就留空字符串）；如果是粘贴手头已有的内容（例如会议记录、文档、聊天记录），就在 input_text 里写出完整内容、按它真实的长度来写，并在 intent 里说明是「粘贴」。
 - expectation 写你做完这个动作后预期会看到什么。previous_met_expectation 判断上一步的结果是否符合你当时的预期；不符合时在 previous_surprise 里用你的话说哪里不对劲。
 - monologue 是你此刻的内心独白（1–3 句，口语化，符合你的身份和情绪）。` : `You ARE this person, living your own life and using an app on your phone/computer to get something of your own done. Think and act in first person, according to your personality, abilities and current state.
 - Only act on what you actually see on screen. If you can't read it, don't understand it, or didn't notice it, it doesn't exist for you. Never invent buttons or text.
 - Behave like yourself: hesitate, get annoyed, run out of patience. If it's not worth it or life needs you, you may give up (decision=give_up) or step away (decision=step_away).
 - Stop when your thing is done (decision=done). Choose wait when you need to wait for the page or a reply.
-- Do one concrete small action at a time. In intent, describe it naturally and name the thing you will tap/type into exactly as it appears on screen. Put any text you will type or say in input_text (empty string if none).
+- Do one concrete small action at a time. In intent, describe it naturally and name the thing you will tap/type into exactly as it appears on screen. Put any text you will type or say in input_text (empty string if none); if you paste existing content (notes, a document), write the full content at its real length and say "paste" in intent.
 - expectation: what you expect to see after this action. previous_met_expectation: did the last result match what you expected? If not, describe what felt off in previous_surprise.
 - monologue: your inner voice right now (1–3 casual sentences, true to who you are and how you feel).`;
   return `${personaBio(i.persona)}\n\n${prior}\n\n${rules}`;
@@ -76,6 +76,7 @@ export const OperatorSchema = z.object({
   url: z.string(),
   option_value: z.string(),
   submit_after_typing: z.boolean(),
+  paste: z.boolean(),
   clear_first: z.boolean(),
   expect_url_change: z.boolean(),
   expect_text: z.string(),
@@ -90,7 +91,7 @@ export async function runOperator(i: { intent: string; inputText: string; expect
 Rules:
 - You may ONLY target elements listed below (they are what the person can actually see). Use the element's ref (e.g. "e12"). Never guess a ref that is not listed.
 - If the intent refers to something that is not in the list, set feasible=false and infeasible_reason=target_not_on_screen (or needs_scroll if it is plausibly further down the page, then use verb=scroll).
-- Typing: verb=type with ref of the input and text = the exact text the person wants to type. If they want to send/submit right after (e.g. press Enter / it's a chat box), set submit_after_typing=true only if the intent says so or there is no visible send button.
+- Typing: verb=type with ref of the input and text = the exact text the person wants to type. If the person is pasting existing content (a document, notes, copied text), set paste=true. If they want to send/submit right after (e.g. press Enter / it's a chat box), set submit_after_typing=true only if the intent says so or there is no visible send button.
 - Voice: if the person wants to speak to a microphone button, verb=speak with ref of the mic button and text = what they say.
 - Camera: verb=show_camera with ref of the camera/photo button, text = short description of what the camera points at.
 - Browser dialogs are listed as dlg_ok / dlg_cancel.

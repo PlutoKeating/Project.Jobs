@@ -252,7 +252,7 @@ export class SessionRunner {
     if (res.error?.code === 'ENV_BROWSER_CRASH') return this.end('sim_error', 'ENV_BROWSER_CRASH');
     // 模拟耗时：阅读 + 思考 + 动作 + 打字
     const typed = String(req.args?.text ?? '').length;
-    this.pendingSimSeconds = this.readingSeconds(perc.summary) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? typed / motor.typing_cps : 0) + (req.verb === 'speak' ? typed / 4 : 0);
+    this.pendingSimSeconds = this.readingSeconds(perc.summary) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? (req.args?.paste ? 2 : typed / motor.typing_cps) : 0) + (req.verb === 'speak' ? typed / 4 : 0);
     const target = req.target?.resolved?.a11y_name ?? req.target?.value ?? '';
     return this.guards(obs.state_id, `${req.verb}:${target}:${String(req.args?.text ?? '').slice(0, 10)}`, !!obs.is_new_state);
   }
@@ -300,7 +300,7 @@ export class SessionRunner {
     if (op.expect_url_change) any_of.push({ kind: 'url_changed' });
     if (op.expect_text) any_of.push({ kind: 'content_appeared', text: op.expect_text.slice(0, 40) });
     const args: Record<string, unknown> = {};
-    if (verb === 'type' || verb === 'speak') { args.text = op.text || mind.input_text; args.submit = op.submit_after_typing; args.clear = op.clear_first; }
+    if (verb === 'type' || verb === 'speak') { const full = (mind.input_text || '').length > (op.text || '').length ? mind.input_text : op.text; args.text = full || op.text || mind.input_text; args.submit = op.submit_after_typing; args.clear = op.clear_first; args.paste = op.paste || /粘贴|paste/i.test(mind.intent); }
     if (verb === 'show_camera') args.prompt = op.text || mind.input_text || mind.intent;
     if (verb === 'key') args.key = op.key || 'Enter';
     if (verb === 'scroll') { args.direction = op.direction === 'up' ? 'up' : 'down'; args.amount = 600; }
