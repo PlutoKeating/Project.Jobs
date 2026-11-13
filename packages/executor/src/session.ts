@@ -377,7 +377,9 @@ export class BrowserSession implements Executor {
     else if (newFailed.some((f) => f.status === 0) && this.injectedNetwork && !matched.length) { error = makeError('INJECTED_NETWORK', '注入的弱网导致请求失败'); status = 'failed'; }
     else if (extraErr) status = 'failed';
     else if (!matched.length && req.verb === 'click' && motorMiss) {
-      const small = el && (el.bbox[2] < 24 || el.bbox[3] < 24);
+      // WCAG 2.2 目标尺寸（24×24）；行内文本链接豁免
+      const inlineText = el?.role === 'link' && (el.text_len ?? 0) >= 4;
+      const small = !!el && !inlineText && el.bbox[2] < 24 && el.bbox[3] < 24;
       error = makeError(small ? 'PRODUCT_SMALL_TARGET' : 'SIM_MOTOR_MISS', small ? `目标「${el!.name}」尺寸过小（${el!.bbox[2]}×${el!.bbox[3]}px），按动作精度未点中` : '动作精度导致未点中');
     } else if (!matched.length && effects.requests > 0 && ['click', 'key', 'type'].includes(req.verb)) {
       error = makeError('PRODUCT_NO_FEEDBACK', '动作触发了请求，但界面没有任何可见反馈');
