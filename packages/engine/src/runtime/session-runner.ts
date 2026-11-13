@@ -161,7 +161,7 @@ export class SessionRunner {
 
     // ---- 3. 感知过滤
     const cons = this.world.constraints();
-    const perc = await perceive({ persona: this.persona, elements: obs.elements, screenshotEv: obs.screenshot_ev, eyes: cons.hard.glance ? 'glance' : 'full', attention: this.state.attention, ctx: { ...tags, persona_id: this.persona.id }, lang: this.lang });
+    const perc = await perceive({ persona: this.persona, elements: obs.elements, screenshotEv: obs.screenshot_ev, eyes: cons.hard.glance ? 'glance' : 'full', attention: this.state.attention, viewportH: obs.viewport.h, ctx: { ...tags, persona_id: this.persona.id }, lang: this.lang });
 
     // ---- 4. Persona Mind
     const modeHint = this.modeHint();

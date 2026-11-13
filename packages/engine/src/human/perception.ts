@@ -24,7 +24,7 @@ const roleZh: Record<string, string> = { button: '按钮', link: '链接', textb
  * - 视力差：低对比度/小字号看不清
  * - 儿童：超出识字量的字显示为 □
  */
-export async function perceive(opts: { persona: PersonaSpec; elements: UIElement[]; screenshotEv?: string; eyes: 'full' | 'glance' | 'none'; attention: number; ctx: { study_id?: string; session_id?: string; step_idx?: number; persona_id?: string }; lang: 'zh' | 'en' }): Promise<Perception> {
+export async function perceive(opts: { persona: PersonaSpec; elements: UIElement[]; screenshotEv?: string; eyes: 'full' | 'glance' | 'none'; attention: number; viewportH?: number; ctx: { study_id?: string; session_id?: string; step_idx?: number; persona_id?: string }; lang: 'zh' | 'en' }): Promise<Perception> {
   const { persona: p, eyes, lang } = opts;
   const cfg = loadConfig().perception;
   const scan = p.behavior_policy.reading === 'scan';
@@ -35,7 +35,10 @@ export async function perceive(opts: { persona: PersonaSpec; elements: UIElement
   // 视觉显著度：标题/按钮/大字/靠上 优先
   const salience = (e: UIElement) => (e.kind === 'heading' ? 3 : e.kind === 'interactive' ? 2 : 1) + (e.font_px ?? 14) / 14 - e.bbox[1] / 1200 + (e.selector.startsWith('dialog:') ? 10 : 0);
   if (eyes === 'glance' || opts.attention < 0.25) {
-    const keep = Math.max(4, Math.round(cfg.glance_max_elements * (eyes === 'glance' ? 1 : 1.5)));
+    // 与感知截图保持一致：瞥一眼时只看到屏幕上方 60% 区域，并且只记住其中最显眼的若干元素
+    const vh = opts.viewportH ?? 800;
+    if (eyes === 'glance') { const before = els.length; els = els.filter((e) => e.selector.startsWith('dialog:') || e.bbox[1] < vh * 0.6); hidden += before - els.length; }
+    const keep = Math.max(6, Math.round(cfg.glance_max_elements * 1.5));
     const sorted = [...els].sort((a, b) => salience(b) - salience(a));
     hidden += Math.max(0, sorted.length - keep);
     els = sorted.slice(0, keep).sort((a, b) => a.bbox[1] - b.bbox[1] || a.bbox[0] - b.bbox[0]);
