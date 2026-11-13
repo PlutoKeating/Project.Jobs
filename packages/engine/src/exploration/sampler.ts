@@ -9,16 +9,20 @@ export interface PlanItem {
   is_expert_baseline: boolean; priority: number; reason: Record<string, number | string>; revisit_day?: number; hypothesis_ids: string[];
 }
 
-export function learningWeights(): Partial<Record<string, number>> {
+export function learningWeights(appId?: string): Partial<Record<string, number>> {
   const p = dataPath('learning.json');
-  try { return existsSync(p) ? (readJson<{ sampler_weights?: Record<string, number> }>(p).sampler_weights ?? {}) : {}; } catch { return {}; }
+  try {
+    if (!existsSync(p)) return {};
+    const j = readJson<{ sampler_weights?: Record<string, number>; apps?: Record<string, { sampler_weights?: Record<string, number> }> }>(p);
+    return { ...(j.sampler_weights ?? {}), ...((appId && j.apps?.[appId]?.sampler_weights) ?? {}) };
+  } catch { return {}; }
 }
 
 export async function planRound(opts: {
   study: { id: string; config: StudyInput; app_version_id: string; app_id: string; rng_seed: number };
   personas: { spec: PersonaSpec; version: string }[]; worlds: WorldTemplate[]; size: number; round: number;
 }): Promise<PlanItem[]> {
-  const cfg = loadConfig(); const w = { ...cfg.sampler_weights, ...learningWeights() };
+  const cfg = loadConfig(); const w = { ...cfg.sampler_weights, ...learningWeights(opts.study.app_id) };
   const db = getDb(); const rng = new Rng(opts.study.rng_seed + opts.round * 7919);
   const sc = opts.study.config;
   const done = await db.select().from(sessions).where(eq(sessions.study_id, opts.study.id));

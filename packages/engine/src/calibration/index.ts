@@ -123,7 +123,7 @@ export async function calibrateHuman(file: string, studyId: string) {
     const row = { id: newId('cres'), calibration_set_id: setId, study_id: studyId, app_id: av.app_id, segment: '*', scenario_class: '*', dimension: d, metric: 'rank_corr', value: r, ci_low: ci[0], ci_high: ci[1], n: hs.length, method: `spearman; normalization=${norm[d]}`, detail: { candidates: cand, chosen: norm[d] }, trust_level: trustLevel('rank_corr', r, ci, hs.length) };
     await db.insert(calibrationResults).values(row as never); out.push(row);
   }
-  updateLearning({ normalization: norm });
+  updateLearning({ normalization: norm }, av.app_id);
   return { set_id: setId, results: out };
 }
 
@@ -168,10 +168,11 @@ export async function calibrateReviews(file: string, studyId: string) {
 }
 
 /** Learning：校准结果反过来调整采样权重、评审权重、Persona 批评度（写入 data/learning.json） */
-export function updateLearning(patch: Record<string, unknown>) {
+export function updateLearning(patch: Record<string, unknown>, appId?: string) {
   const p = dataPath('learning.json');
-  const cur = existsSync(p) ? readJson<Record<string, unknown>>(p) : {};
-  writeJson(p, { ...cur, ...patch, updated_at: new Date().toISOString() });
+  const cur = existsSync(p) ? readJson<{ apps?: Record<string, Record<string, unknown>> } & Record<string, unknown>>(p) : {};
+  if (appId) { const apps = cur.apps ?? {}; apps[appId] = { ...(apps[appId] ?? {}), ...patch, updated_at: new Date().toISOString() }; writeJson(p, { ...cur, apps }); }
+  else writeJson(p, { ...cur, ...patch, updated_at: new Date().toISOString() });
 }
 
 export async function learnFromCalibration(appId: string) {
@@ -185,7 +186,7 @@ export async function learnFromCalibration(appId: string) {
   const missed = rows.filter((r) => r.metric === 'issue_recall' && r.dimension !== '*' && (r.value ?? 1) < cfg.thresholds.seeded_recall_min).map((r) => r.dimension);
   const bias = rows.filter((r) => r.metric === 'bias' && r.value !== null);
   const persona_criticality = bias.length ? Math.max(-0.3, Math.min(0.3, bias.reduce((a, b) => a + (b.value ?? 0), 0) / bias.length)) : 0;
-  updateLearning({ sampler_weights, weak_categories: missed, persona_criticality, last_recall: recall?.value ?? null, last_fpr: fpr?.value ?? null });
+  updateLearning({ sampler_weights, weak_categories: missed, persona_criticality, last_recall: recall?.value ?? null, last_fpr: fpr?.value ?? null }, appId);
   return { sampler_weights, weak_categories: missed, persona_criticality };
 }
 

@@ -13,3 +13,4 @@ infra/volumes/
 test-results/
 playwright-report/
 midscene_run/
+config/pux.config.local.yaml
