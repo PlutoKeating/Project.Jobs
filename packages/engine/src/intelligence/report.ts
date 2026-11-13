@@ -40,7 +40,8 @@ export async function collectReportData(studyId: string, dir: string) {
   for (const i of iss) {
     const links = await db.select().from(evidenceLinks).where(and(eq(evidenceLinks.subject_type, 'issue'), eq(evidenceLinks.subject_id, i.id)));
     const evs = links.length ? await db.select().from(evidence).where(inArray(evidence.id, links.map((l) => l.evidence_id))) : [];
-    const shotEv = evs.find((e) => e.kind === 'screenshot') ?? evs.find((e) => e.mime?.startsWith('image/'));
+    const primary = links.find((l) => l.role === 'primary');
+    const shotEv = evs.find((e) => e.id === primary?.evidence_id && e.mime?.startsWith('image/')) ?? evs.find((e) => e.kind === 'screenshot') ?? evs.find((e) => e.mime?.startsWith('image/'));
     const shot = await exportEvidence(shotEv?.id, dir);
     const rp = i.repro_path_id ? (await db.select().from(reproPaths).where(eq(reproPaths.id, i.repro_path_id)))[0] : undefined;
     const repro = rp ? (rp.steps as { verb: string; target_name?: string; args?: { text?: string }; url?: string }[]).map((s) => `${s.verb}${s.target_name ? ` 「${s.target_name}」` : ''}${s.args?.text ? ` "${String(s.args.text).slice(0, 40)}"` : ''}`) : [];

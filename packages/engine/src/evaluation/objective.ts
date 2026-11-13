@@ -66,9 +66,11 @@ export async function extractCandidates(sessionId: string, studyId: string, metr
   const obsById = new Map(obs.map((o) => [o.id, o]));
   const out: (typeof issueCandidates.$inferInsert)[] = [];
   const push = (c: Omit<typeof issueCandidates.$inferInsert, 'id' | 'study_id' | 'session_id'>) => out.push({ id: newId('cand'), study_id: studyId, session_id: sessionId, ...c });
+  const shotAt = (idx: number) => { const o2 = obs.find((y) => y.step_idx === idx); return o2 ? (o2.data as { screenshot_ev?: string }).screenshot_ev : undefined; };
   for (const x of st) {
     const r = x.action_result as ActionResult | null; const o = x.observation_id ? obsById.get(x.observation_id) : undefined;
-    const ev = [o ? (o.data as { screenshot_ev?: string }).screenshot_ev : undefined, ...(r?.evidence_ids ?? [])].filter(Boolean) as string[];
+    // 主证据优先用动作之后的画面（结果），其次是动作之前的画面
+    const ev = [shotAt(x.idx + 1), o ? (o.data as { screenshot_ev?: string }).screenshot_ev : undefined, ...(r?.evidence_ids ?? [])].filter(Boolean) as string[];
     if (r?.error) {
       const layer = r.error.layer ?? ERROR_LAYER[r.error.code];
       if (layer === 'product') push({ step_idx: x.idx, source: 'uap_error', title: r.error.message.slice(0, 120), description: `${zh ? '意图' : 'Intent'}：${x.intent}\n${r.error.code}: ${r.error.message}`, category: r.error.code === 'PRODUCT_SMALL_TARGET' ? 'a11y' : r.error.code === 'PRODUCT_NO_FEEDBACK' ? 'ux' : 'bug', state_id: o?.state_id, url: o?.url, error_code: r.error.code, error_layer: layer, evidence_ids: ev });
@@ -83,7 +85,7 @@ export async function extractCandidates(sessionId: string, studyId: string, metr
     const r = x.action_result as ActionResult | null;
     if (r?.error && (r.error.layer === 'simulator' || r.error.layer === 'environment')) continue;
     const o = x.observation_id ? obsById.get(x.observation_id) : undefined;
-    push({ step_idx: x.idx, source: 'expectation_violation', title: zh ? `预期落空：${x.intent?.slice(0, 50)}` : `Expectation violated: ${x.intent?.slice(0, 50)}`, description: `${zh ? '预期' : 'Expected'}：${x.expectation}\n${zh ? '之后的反应' : 'Reaction'}：${nextMono}`, category: 'ux', state_id: o?.state_id, url: o?.url, error_code: r?.error?.code, error_layer: r?.error?.layer, evidence_ids: [(o?.data as { screenshot_ev?: string } | undefined)?.screenshot_ev, ...(r?.evidence_ids ?? [])].filter(Boolean) as string[] });
+    push({ step_idx: x.idx, source: 'expectation_violation', title: zh ? `预期落空：${x.intent?.slice(0, 50)}` : `Expectation violated: ${x.intent?.slice(0, 50)}`, description: `${zh ? '预期' : 'Expected'}：${x.expectation}\n${zh ? '之后的反应' : 'Reaction'}：${nextMono}`, category: 'ux', state_id: o?.state_id, url: o?.url, error_code: r?.error?.code, error_layer: r?.error?.layer, evidence_ids: [shotAt(x.idx + 1), (o?.data as { screenshot_ev?: string } | undefined)?.screenshot_ev, ...(r?.evidence_ids ?? [])].filter(Boolean) as string[] });
   }
   // 放弃 / 停滞
   if (['gave_up', 'stalled'].includes(metrics.outcome)) {
