@@ -12,6 +12,8 @@ const GoalSchema = z.object({ goal: z.string(), why_now: z.string() });
 /** 为 persona × 世界 × 模式（× 任务）生成生活目标；包含测试类词汇时重写 */
 export async function makeLifeGoal(opts: { persona: PersonaSpec; world: WorldTemplate; mode: Mode; task?: TaskLite; appName: string; appDesc: string; studyId: string; hypothesisIds?: string[] }): Promise<{ id: string; statement: string }> {
   const p = opts.persona; const lang = langOf(p.locale); const zh = lang === 'zh';
+  // 信息隔离：给 Persona 侧使用的产品描述中，去掉包含测试/评估类词汇的句子（例如团队写在描述里的测试目的）
+  const appDesc = opts.appDesc.split(/(?<=[。！？.!?\n])/).filter((x) => !containsBannedWords(x) && !/人工接管|验证码测试|植入|缺陷|defect|seeded/i.test(x)).join('').trim();
   const situation = zh ? opts.world.situation : (opts.world.situation_en ?? opts.world.situation);
   const modeGuide = {
     goal: zh ? '这个人此刻有一件具体的事要用这个应用办成。' : 'Right now this person has a concrete thing to get done with this app.',
@@ -23,8 +25,8 @@ export async function makeLifeGoal(opts: { persona: PersonaSpec; world: WorldTem
   for (let attempt = 0; attempt < 3; attempt++) {
     const r = await gateway().chat('mind_slow', {
       messages: [{ role: 'system', content: personaBio(p) }, { role: 'user', content: zh
-        ? `应用：「${opts.appName}」——${opts.appDesc.slice(0, 300)}\n处境：${situation}\n${modeGuide}\n${taskLine}\n\n用这个人自己的口吻（第一人称，一两句话，生活语言），写下他此刻想用这个应用做成的事（goal）和为什么是现在（why_now）。严禁出现「测试」「评估」「可用性」「找问题」「反馈」「体验」这类词，也不要提到界面元素的名称。`
-        : `App: "${opts.appName}" — ${opts.appDesc.slice(0, 300)}\nSituation: ${situation}\n${modeGuide}\n${taskLine}\n\nIn this person's own voice (first person, one or two sentences, everyday language), write what they want to get done with this app right now (goal) and why now (why_now). Never use words like test, evaluate, usability, feedback, bug, experience, and don't mention UI element names.` }],
+        ? `应用：「${opts.appName}」${appDesc ? `——${appDesc.slice(0, 300)}` : ''}\n处境：${situation}\n${modeGuide}\n${taskLine}\n\n用这个人自己的口吻（第一人称，一两句话，生活语言），写下他此刻想用这个应用做成的事（goal）和为什么是现在（why_now）。严禁出现「测试」「评估」「可用性」「找问题」「反馈」「体验」这类词，也不要提到界面元素的名称。`
+        : `App: "${opts.appName}"${appDesc ? ` — ${appDesc.slice(0, 300)}` : ''}\nSituation: ${situation}\n${modeGuide}\n${taskLine}\n\nIn this person's own voice (first person, one or two sentences, everyday language), write what they want to get done with this app right now (goal) and why now (why_now). Never use words like test, evaluate, usability, feedback, bug, experience, and don't mention UI element names.` }],
       schema: GoalSchema, schemaName: 'life_goal', temperature: 0.9, tags: { study_id: opts.studyId, purpose: 'life_goal' },
     });
     const statement = `${r.data.goal}${r.data.why_now ? (zh ? `（${r.data.why_now}）` : ` (${r.data.why_now})`) : ''}`;
