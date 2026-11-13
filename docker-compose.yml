@@ -1,0 +1,69 @@
+# 本地依赖服务（应用、worker、控制台、Demo 均在宿主机用 pnpm 原生运行）
+# 端口统一放在 5xxxx 段，避免与本机其他服务冲突；可在 .env 中覆盖。
+name: pux
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-pux}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-pux}
+      POSTGRES_DB: ${PG_DB:-pux}
+    ports:
+      - "127.0.0.1:${PG_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-pux}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    # 官方 minio/minio 镜像已停止在 Docker Hub 发布，这里使用 elestio 重新打包的 MinIO 二进制
+    image: elestio/minio:latest
+    restart: unless-stopped
+    entrypoint: ["minio"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-puxadmin}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:-puxadmin-secret}
+    ports:
+      - "127.0.0.1:${S3_PORT:-59000}:9000"
+      - "127.0.0.1:${S3_CONSOLE_PORT:-59001}:9001"
+    volumes:
+      - s3data:/data
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    restart: unless-stopped
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-pux-local}
+      VERTEX_PROJECT: ${VERTEX_PROJECT:?请在 .env 中设置 VERTEX_PROJECT}
+      VERTEX_LOCATION: ${VERTEX_LOCATION:-global}
+      GOOGLE_APPLICATION_CREDENTIALS: /secrets/adc.json
+    ports:
+      - "127.0.0.1:${LITELLM_PORT:-54000}:4000"
+    volumes:
+      - ./infra/litellm/config.yaml:/app/config.yaml:ro
+      - ${GOOGLE_ADC_FILE:?请在 .env 中设置 GOOGLE_ADC_FILE}:/secrets/adc.json:ro
+
+  temporal:
+    # Temporal dev server（SQLite 持久化，内置 Web UI）
+    image: temporalio/temporal:latest
+    restart: unless-stopped
+    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db", "--ui-port", "8233"]
+    user: "0:0"
+    ports:
+      - "127.0.0.1:${TEMPORAL_PORT:-57233}:7233"
+      - "127.0.0.1:${TEMPORAL_UI_PORT:-58233}:8233"
+    volumes:
+      - temporaldata:/data
+
+volumes:
+  pgdata:
+  s3data:
+  temporaldata:

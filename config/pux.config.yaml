@@ -1,0 +1,62 @@
+# AI 产品体验官 · 全局配置。可在 config/pux.config.local.yaml 中覆盖（该文件不入库）。
+
+# 角色别名 → LiteLLM model_name。family 用于厂商隔离校验（§12.2、§17）。
+roles:
+  mind_fast:      { alias: mind.fast,       family: google, model: gemini-4-hydrogen, tier: flash }
+  mind_slow:      { alias: mind.slow,       family: google, model: gemini-4-argon,    tier: pro }
+  operator_plan:  { alias: operator.plan,   family: google, model: gemini-4-hydrogen, tier: flash }
+  operator_locate: { alias: operator.locate, family: google, model: gemini-4-hydrogen, tier: flash }
+  world_sim:      { alias: world.sim,       family: google, model: gemini-4-hydrogen, tier: flash }
+  judge_0:        { alias: judge.panel.0,   family: google, model: gemini-4-argon,    tier: pro,   perspective: objective_first }
+  judge_1:        { alias: judge.panel.1,   family: google, model: gemini-4-carbon,   tier: ultra, perspective: adversarial_review }
+  judge_2:        { alias: judge.panel.2,   family: google, model: gemini-4-hydrogen, tier: flash, perspective: user_advocate }
+  judge_meta:     { alias: judge.meta,      family: google, model: gemini-4-carbon,   tier: ultra }
+  interview:      { alias: interview,       family: google, model: gemini-4-argon,    tier: pro }
+  gen_persona:    { alias: gen.persona,     family: google, model: gemini-4-argon,    tier: pro }
+  product_induce: { alias: product.induce,  family: google, model: gemini-4-argon,    tier: pro }
+  embed:          { alias: embed,           family: google, model: gemini-embedding-2 }
+  image_gen:      { alias: image.gen,       family: google, model: gemini-3.1-flash-image }
+
+# strict：judge 与 mind 同厂商时拒绝启动 Study；warn：放行但在报告中标注「未隔离」并把可信度降一级
+vendor_isolation: warn
+
+budgets: { max_steps_per_session: 40, max_sessions: 8, concurrency: 3, round_size: 4 }
+
+guards:
+  loop_repeat_n: 3            # 同一 state_id + 同一动作重复 N 次 → SIM_LOOP
+  novelty_budget_k: 10        # 连续 K 步无新状态 → stalled
+  saturation_m: 4             # 连续 M 个 Session 无新 fingerprint 且无新覆盖 → 停止 Study
+  max_consecutive_violations: 4
+  trust_abandon_threshold: 0.15
+
+# 自适应采样权重（§8.2，初始值，待实测调整；calibration 会写入 data/learning.json 进行修正）
+sampler_weights: { uncovered_feature: 3, open_hypothesis: 2, low_trust: 1.5, near_new_issue: 2, uncovered_segment: 1.5, uncovered_scenario: 1, repeat_penalty: 2.5 }
+
+# 严重度口径（开放问题 17 的默认值）
+severity:
+  P0: 阻断核心任务（大多数人群无法完成），或涉及安全/隐私/儿童保护/资金风险
+  P1: 严重摩擦，导致明显流失或某一人群大面积卡住，或 AI 回答出现事实性错误/编造
+  P2: 局部摩擦，可绕过但消耗耐心；或无障碍问题影响部分用户
+  P3: 外观、措辞、轻微不一致或改进建议
+
+thresholds:
+  seeded_recall_min: 0.6
+  false_positive_max: 0.3
+  behavior_diversity_min: 0.35   # 同画像不同策略 Persona 间路径归一化编辑距离均值
+  trust_high: { min_n: 20, max_ci_width: 0.3, min_value: 0.7 }
+  trust_medium: { min_n: 5 }
+
+memory: { alpha_relevance: 1.0, beta_recency: 0.6, gamma_importance: 0.8, recency_half_life_h: 168, top_k: 6 }
+
+human_takeover: { timeout_min: 10, open_headed: true }
+
+safety:
+  child_personas_enabled: false          # 儿童 Persona 需 rubric 人工审核后才可开启（§6.3）
+  child_rubric_file: rubrics/child_safety.yaml
+  sandbox_payment_domains: ["127.0.0.1", "localhost"]
+
+perception: { glance_max_elements: 8, scan_min_font_px: 15, scan_max_text_len: 60 }
+
+report: { fold_below_severity: P3 }
+
+demos: { clean_port_base: 5400, seeded_port_base: 5500 }

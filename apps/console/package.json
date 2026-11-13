@@ -1,0 +1,8 @@
+{
+  "name": "@pux/console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
+  "dependencies": { "@pux/core": "workspace:*", "@pux/db": "workspace:*", "@pux/storage": "workspace:*", "@pux/engine": "workspace:*", "@pux/worker": "workspace:*", "fastify": "^5.12.8", "@fastify/static": "^10.1.11", "@fastify/formbody": "^9.0.1", "drizzle-orm": "^0.45.4" }
+}

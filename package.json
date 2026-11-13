@@ -1,0 +1,31 @@
+{
+  "name": "pux",
+  "private": true,
+  "version": "0.1.0",
+  "description": "AI 产品体验官 — 用模拟真人在模拟世界里使用真实产品，发现体验问题并给出可信度",
+  "type": "module",
+  "packageManager": "pnpm@12.11.2",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "pux": "tsx apps/cli/src/index.ts",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
+    "db:migrate": "tsx apps/cli/src/index.ts db migrate",
+    "worker": "tsx apps/worker/src/index.ts",
+    "console": "tsx apps/console/src/index.ts",
+    "demos": "tsx demos/kit/src/launch.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "^0.31.11",
+    "tsx": "^4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "^5.1.0"
+  }
+}

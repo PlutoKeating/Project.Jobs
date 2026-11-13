@@ -1,0 +1,8 @@
+{
+  "name": "@pux/storage",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
+  "dependencies": { "@pux/core": "workspace:*", "@aws-sdk/client-s3": "^3.1168.0" }
+}

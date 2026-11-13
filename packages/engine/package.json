@@ -1,0 +1,8 @@
+{
+  "name": "@pux/engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
+  "dependencies": { "@pux/core": "workspace:*", "@pux/db": "workspace:*", "@pux/storage": "workspace:*", "@pux/llm": "workspace:*", "@pux/executor": "workspace:*", "drizzle-orm": "^0.45.4", "zod": "^4.6.7", "yaml": "^2.9.1", "playwright": "^1.65.0", "rrweb-player": "^2.2.2" }
+}

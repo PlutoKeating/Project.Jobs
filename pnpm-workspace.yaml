@@ -1,0 +1,14 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  - "demos/kit"
+minimumReleaseAgeExclude:
+  - "@aws-sdk/client-s3@3.1168.0"
+  - "@fastify/static@10.1.11"
+  - openai@7.56.0
+allowBuilds:
+  esbuild: true
+  sharp: true
+  "@swc/core": true
+  protobufjs: true
+  puppeteer: false
