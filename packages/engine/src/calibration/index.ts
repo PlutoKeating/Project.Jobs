@@ -2,7 +2,7 @@
 // CalibrationResult：在什么人群 × 场景 × 维度上，模拟结论有多可信。没有数据时一律 unknown。
 import { readFileSync } from 'node:fs';
 import { dataPath, loadConfig, newId, readJson, writeJson, z, type TrustLevel } from '@pux/core';
-import { and, appVersions, calibrationResults, calibrationSets, eq, getDb, issues, scores, sessions, studies, type SeededDefect } from '@pux/db';
+import { and, appVersions, calibrationResults, calibrationSets, eq, getDb, issueCandidates, issues, scores, sessions, studies, type SeededDefect } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { existsSync } from 'node:fs';
 
@@ -67,9 +67,18 @@ export async function calibrateSeeded(studyId: string) {
     const ds = defects.filter((d) => c === '*' || d.category === c);
     await save(c, 'issue_recall', ds.filter((d) => detected.has(d.id)).length, ds.length, { detected: ds.filter((d) => detected.has(d.id)).map((d) => d.id), missed: ds.filter((d) => !detected.has(d.id)).map((d) => d.id) });
   }
-  const fp = productIssues.filter((i) => !matches.some((m) => m.issue_id === i.id));
-  await save('*', 'false_positive_rate', fp.length, productIssues.length, { unmatched: fp.map((i) => ({ id: i.id, title: i.title })) });
-  return { set_id: setId, recall: detected.size / defects.length, false_positive_rate: productIssues.length ? fp.length / productIssues.length : null, matches, results: out };
+  // 基线真实问题：axe-core 客观规则检出，或在同一 App 的干净版本上也被发现（相同 fingerprint）——不在植入清单里，但不是误报
+  const cleanVersions = (await db.select().from(appVersions).where(eq(appVersions.app_id, av.app_id))).filter((v) => v.id !== av.id && !(v.seeded_defects ?? []).length).map((v) => v.id);
+  const cleanFps = new Set<string>();
+  for (const v of cleanVersions) for (const i of await db.select().from(issues).where(eq(issues.app_version_id, v))) if (i.attribution === 'product') cleanFps.add(i.fingerprint);
+  const cands = await db.select().from(issueCandidates).where(eq(issueCandidates.study_id, studyId));
+  const objectiveOnly = (id: string) => { const cs = cands.filter((c) => c.issue_id === id); return cs.length > 0 && cs.every((c) => c.source === 'axe'); };
+  const unmatched = productIssues.filter((i) => !matches.some((m) => m.issue_id === i.id));
+  const baseline = unmatched.filter((i) => objectiveOnly(i.id) || cleanFps.has(i.fingerprint));
+  const fp = unmatched.filter((i) => !baseline.includes(i));
+  const denom = productIssues.length - baseline.length;
+  await save('*', 'false_positive_rate', fp.length, denom, { unmatched: fp.map((i) => ({ id: i.id, title: i.title })), baseline_real_issues: baseline.map((i) => ({ id: i.id, title: i.title, why: objectiveOnly(i.id) ? 'axe-core' : 'also found on clean version' })) });
+  return { set_id: setId, recall: detected.size / defects.length, false_positive_rate: denom ? fp.length / denom : null, baseline: baseline.length, matches, results: out };
 }
 
 // ---------------------------------------------------------------- 真人基准

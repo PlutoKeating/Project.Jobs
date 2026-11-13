@@ -18,7 +18,8 @@
 - 内置 Demo 的 `seeded` 版本自带缺陷清单（`demos/kit/src/apps/*.ts` 的 `defects`）。
 - 自有产品：准备一个植入 5–10 个已知问题的测试版本，`pnpm pux app add --name x --version seeded --url … --seeded defects.yaml`。
 - Study 结束时自动执行；也可 `pnpm pux calibrate seeded <study>`。
-- 匹配：judge.meta 语义匹配（置信度 ≥ 0.5）+ 关键词兜底；按类别输出检出率，整体输出误报率（未匹配任何已知缺陷的产品问题 / 全部产品问题），附 Wilson 95% CI。
+- 匹配：judge.meta 语义匹配（同类别置信度 ≥ 0.5，跨类别 ≥ 0.75）+ 关键词兜底（同类别且 ≥ 3 个关键词）；按类别输出检出率，附 Wilson 95% CI。
+- 误报率 =（未匹配已知缺陷、且不属于「基线真实问题」的产品问题）/（产品问题 − 基线真实问题）。基线真实问题指 axe-core 客观规则检出的问题，或同一 App 干净版本上也发现的问题（相同 fingerprint）：它们不在植入清单里，但并非误报，会在校准详情中单独列出。建议对干净版本也跑一次 Study 以建立基线。
 - 验收阈值（可调）：检出率 ≥ 60%，误报率 ≤ 30%。
 
 ## 2. 真人基准
