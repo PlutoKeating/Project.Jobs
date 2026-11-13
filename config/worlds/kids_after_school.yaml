@@ -1,0 +1,12 @@
+id: kids_after_school
+name: 放学后在家用平板
+name_en: After school on the tablet
+scenario_class: kids_home
+modes: [curiosity, goal]
+start_clock: "17:30"
+init: { place: 家里书桌, motion: still, channels: { hands: both, eyes: full, ears: free, mouth: free }, time_band: 放学后, emotion: 开心 }
+resources: { time_left_min: 30, battery_pct: 70, money: 0, attention: 0.4 }
+situation: 放学回家，妈妈说可以用平板学习半小时，用完就要写作业。
+timeline:
+  - { at: "17:45", type: mom_check, text: 妈妈在厨房喊你：「是在学习吗？」, effects: { state: { stress: 0.1 } } }
+event_rules: []

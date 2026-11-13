@@ -23,7 +23,7 @@ const RRWEB_BOOT = `(() => { try { if (window.__puxRr || !window.rrwebRecord) re
 
 export interface SessionOptions {
   sessionId: string; studyId?: string; personaId?: string;
-  executor: 'stagehand' | 'midscene';
+  executor: 'stagehand' | 'midscene' | 'playwright';
   headed?: boolean;
   mobile?: boolean;
   locale?: string;
@@ -125,9 +125,8 @@ export class BrowserSession implements Executor {
     await this.ctx.addInitScript(INIT_SCRIPT);
     if (o.record?.rrweb !== false && RRWEB_SRC) await this.ctx.addInitScript(`${RRWEB_SRC}\n;${RRWEB_BOOT}`);
     await this.ctx.grantPermissions(['geolocation', 'notifications', 'microphone', 'camera', 'clipboard-read', 'clipboard-write']).catch(() => {});
-    this.page = this.ctx.pages()[0] ?? await this.ctx.newPage();
+    this.page = this.ctx.pages().find((pg) => !pg.url().startsWith('chrome-extension://')) ?? await this.ctx.newPage();
     this.attachPage(this.page);
-    this.ctx.on('page', (p) => { this.page = p; this.attachPage(p); });
     if (o.executor === 'midscene') await this.initMidscene();
     if (o.record?.video !== false) await this.startScreencast();
   }
@@ -157,6 +156,8 @@ export class BrowserSession implements Executor {
     p.on('requestfailed', (r) => done(r, 0));
     p.on('dialog', (d) => { this.pendingDialog = d; this.dialogLog.push(`${d.type()}: ${d.message()}`); });
     p.on('crash', () => { this.consoleErrors.push('[crash] page crashed'); });
+    // 只跟随被测页面自己打开的新标签页（例如 target=_blank），忽略 Stagehand 扩展等后台页面
+    p.on('popup', (np) => { this.page = np; this.attachPage(np); });
   }
 
   private async startScreencast() {

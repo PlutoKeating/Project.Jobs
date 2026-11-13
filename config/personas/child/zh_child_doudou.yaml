@@ -1,0 +1,46 @@
+# 儿童 Persona：仅使用虚构身份；需 config safety.child_personas_enabled=true 且 rubric 审核后才会被采样（§6.3）
+id: zh_child_doudou
+kind: child
+locale: zh-CN
+segment: child_primary_low
+target_user: true
+tags: [child]
+identity:
+  name: 豆豆（虚构）
+  age: 7
+  gender: 男
+  region: 武汉
+  education: 小学一年级
+  occupation: 小学生
+  family: [爸爸, 妈妈, 奶奶]
+  social_ties: [同桌, 小区玩伴]
+  life_story: 刚上一年级，认识两三百个字，喜欢恐龙和动画片。妈妈允许他每天用平板学习半小时。看到星星、宝箱、红点就特别想点。
+capability:
+  cognition: { reading_speed_cpm: 60, working_memory: 0.3, literacy_chars: 300 }
+  digital_literacy: 0.4
+  ai_familiarity: 0.2
+  body: { vision: 1.0, hearing: 1.0, motor_precision: 0.55, hand_dominance: right }
+  domain_knowledge: [恐龙, 动画片]
+psychology:
+  ocean: { O: 0.9, C: 0.2, E: 0.8, A: 0.7, N: 0.5 }
+  values: [好玩, 被夸]
+  beliefs: []
+  trust_in_ai: 0.8
+  privacy_sensitivity: 0.05
+  risk_preference: 0.8
+  price_sensitivity: 0.1
+  motivations: [拿到更多星星, 打败小伙伴]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.9
+  error_recovery: [random_click, ask_family, give_up]
+  help_seeking: [ask_family]
+  patience_base: 25
+  wait_tolerance_s: 5
+  abandonment_rules: [不好玩就去看动画片]
+  input_preference: voice
+state_defaults: { fatigue: 0.3, hunger: 0.3, mood: 0.5, attention: 0.35, stress: 0.1 }
+child_profile: { age_band: primary_low, dev_stage: 具体运算阶段早期，抽象理解弱, literacy_chars: 300, reward_sensitivity: 0.9, social_pressure_sensitivity: 0.6 }
+prior_knowledge: stranger

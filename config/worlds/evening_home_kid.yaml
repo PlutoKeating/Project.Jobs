@@ -1,0 +1,15 @@
+id: evening_home_kid
+name: 晚上一边带娃一边处理事情
+name_en: Evening at home with a toddler
+scenario_class: home_evening
+modes: [stress, goal]
+start_clock: "20:10"
+init: { place: 家里客厅, motion: still, channels: { hands: one, eyes: glance, ears: noisy, mouth: free }, time_band: 工作日晚上, emotion: 疲惫 }
+resources: { time_left_min: 30, battery_pct: 40, money: 300, attention: 0.4 }
+constraints: [one_handed]
+situation: 晚上八点多，你一只手抱着闹觉的孩子，另一只手拿着手机，想趁孩子安静的间隙把一件事办了。
+situation_en: It's after 8pm. You're holding a fussy toddler in one arm and your phone in the other, trying to get one thing done in the quiet moments.
+timeline:
+  - { at: "20:18", type: kid_cry, text: 孩子突然哭了，你把手机放下哄了一会儿。, effects: { interrupt: { kind: lock, minutes: 4 }, state: { stress: 0.15, attention: -0.15 } } }
+event_rules:
+  - { id: kid_grab, type: kid_grab, text: 孩子伸手抢手机，你赶紧拿开。, when: "true", prob_per_min: 0.05, once: false, source: random, effects: { state: { stress: 0.05 } } }

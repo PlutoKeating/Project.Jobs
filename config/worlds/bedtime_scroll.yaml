@@ -1,0 +1,13 @@
+id: bedtime_scroll
+name: 睡前躺床上刷手机
+name_en: Bedtime scrolling
+scenario_class: bedtime
+modes: [curiosity, adversarial]
+start_clock: "23:10"
+init: { place: 卧室床上, motion: still, channels: { hands: one, eyes: full, ears: free, mouth: quiet_required }, time_band: 深夜, emotion: 困但不想睡 }
+resources: { time_left_min: 25, battery_pct: 20, money: 300, attention: 0.4 }
+situation: 夜里十一点多，你躺在床上，有点困又不想睡，旁边的人已经睡着了，不能出声。
+situation_en: It's past 11pm. You're in bed, sleepy but not ready to sleep, and your partner is asleep next to you, so you must stay quiet.
+timeline:
+  - { at: "23:25", type: battery_warning, text: 手机提示电量低于 10%。, effects: { resources: { battery_pct: -10 }, state: { fatigue: 0.1 } } }
+event_rules: []

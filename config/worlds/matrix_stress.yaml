@@ -1,0 +1,14 @@
+# 矩阵初始化器：Human I/O 四通道 × 时间 × 地点 × 情绪 × 经济 随机生成初始 WorldState（§7）
+id: matrix_stress
+name: 随机情境（矩阵采样）
+name_en: Random situation (matrix sampled)
+scenario_class: matrix
+modes: [stress, goal, curiosity]
+start_clock: "10:00"
+matrix: true
+init: { place: 随机, motion: still }
+resources: { time_left_min: 30, battery_pct: 50, money: 300, attention: 0.6 }
+situation: （由矩阵初始化器生成）
+timeline: []
+event_rules:
+  - { id: random_interrupt, type: interruption, text: 有人叫你，你分心了一会儿。, when: "true", prob_per_min: 0.04, once: true, source: random, effects: { interrupt: { kind: switch_away, minutes: 1 }, state: { attention: -0.1 } } }

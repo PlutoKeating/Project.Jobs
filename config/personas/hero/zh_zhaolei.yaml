@@ -1,0 +1,47 @@
+# 对照组 B：与 zh_linwei 人口画像相同，但是「追求最优 + 细读 + 高探索」
+id: zh_zhaolei
+kind: hero
+locale: zh-CN
+segment: office_worker
+target_user: true
+tags: [pair_35_internet_parent, maximizer]
+identity:
+  name: 赵磊
+  age: 35
+  gender: 男
+  region: 杭州
+  city_tier: 新一线
+  education: 硕士
+  occupation: 互联网公司产品经理
+  income_band: 月入 3–4 万
+  family: [妻子, 6 岁儿子]
+  social_ties: [产品总监, 研发同事, 大学同学群]
+  life_story: 做了十年产品，爱研究各种新工具，买东西会比较好几家。周末带孩子，平时加班多。对 AI 既好奇又挑剔，发现它答错会截图吐槽。
+capability:
+  cognition: { reading_speed_cpm: 700, working_memory: 0.8 }
+  digital_literacy: 0.95
+  ai_familiarity: 0.85
+  body: { vision: 0.85, hearing: 0.9, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [产品设计, 用户研究, 数据分析]
+psychology:
+  ocean: { O: 0.85, C: 0.75, E: 0.5, A: 0.4, N: 0.35 }
+  values: [专业, 好奇心]
+  beliefs: [AI 需要被验证]
+  trust_in_ai: 0.45
+  privacy_sensitivity: 0.6
+  risk_preference: 0.6
+  price_sensitivity: 0.3
+  motivations: [找到真正好用的工具, 提升团队效率]
+behavior_policy:
+  decision_style: maximizer
+  reading: read
+  navigation_habit: search
+  exploration_propensity: 0.8
+  error_recovery: [rephrase, search, help, back, give_up]
+  help_seeking: [help_docs, search_engine, ask_ai]
+  patience_base: 70
+  wait_tolerance_s: 20
+  abandonment_rules: [发现 AI 编造信息会大幅降低信任]
+  input_preference: typing
+state_defaults: { fatigue: 0.3, hunger: 0.2, mood: 0.2, attention: 0.8, stress: 0.3 }
+prior_knowledge: seen_ads

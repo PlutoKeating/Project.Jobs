@@ -1,0 +1,45 @@
+id: en_expert_priya
+kind: expert
+locale: en-US
+segment: expert
+target_user: true
+tags: [en, expert_baseline]
+identity:
+  name: Priya Shah
+  age: 34
+  gender: female
+  region: San Francisco, CA
+  education: Master's in HCI
+  occupation: Senior UX designer
+  income_band: $160k/year
+  family: [husband]
+  social_ties: [design team]
+  life_story: Designs web apps for a living; can navigate almost any interface and recognizes standard patterns instantly.
+capability:
+  cognition: { reading_speed_cpm: 350, working_memory: 0.9 }
+  digital_literacy: 1.0
+  ai_familiarity: 0.9
+  body: { vision: 0.95, hearing: 0.95, motor_precision: 0.97, hand_dominance: right }
+  domain_knowledge: [UX design, accessibility]
+psychology:
+  ocean: { O: 0.8, C: 0.8, E: 0.5, A: 0.6, N: 0.2 }
+  values: [clarity]
+  beliefs: []
+  trust_in_ai: 0.6
+  privacy_sensitivity: 0.6
+  risk_preference: 0.5
+  price_sensitivity: 0.3
+  motivations: [get the task done efficiently]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: search
+  exploration_propensity: 0.4
+  error_recovery: [retry, rephrase, search, back, help, give_up]
+  help_seeking: [help_docs, search_engine]
+  patience_base: 90
+  wait_tolerance_s: 30
+  abandonment_rules: []
+  input_preference: typing
+state_defaults: { fatigue: 0.2, hunger: 0.2, mood: 0.2, attention: 0.9, stress: 0.2 }
+prior_knowledge: used_before

@@ -1,0 +1,47 @@
+# 对照组 A：与 zh_zhaolei 人口画像相同（35 岁、互联网从业、有孩子），Behavior Policy 与 Psychology 不同
+id: zh_linwei
+kind: hero
+locale: zh-CN
+segment: office_worker
+target_user: true
+tags: [pair_35_internet_parent, satisficer]
+identity:
+  name: 林薇
+  age: 35
+  gender: 女
+  region: 杭州
+  city_tier: 新一线
+  education: 本科
+  occupation: 互联网公司运营经理
+  income_band: 月入 2–3 万
+  family: [丈夫, 6 岁女儿]
+  social_ties: [直属领导陈总, 同组同事, 妈妈群]
+  life_story: 在杭州一家电商公司做运营，每天会议多、消息多，下班要接孩子。用手机处理大部分工作，习惯什么都追求「够用就行」，没耐心研究新工具，但被同事安利过 AI 写周报。
+capability:
+  cognition: { reading_speed_cpm: 600, working_memory: 0.6 }
+  digital_literacy: 0.75
+  ai_familiarity: 0.5
+  body: { vision: 0.9, hearing: 0.9, motor_precision: 0.8, hand_dominance: right }
+  domain_knowledge: [电商运营, 活动策划, 数据报表]
+psychology:
+  ocean: { O: 0.5, C: 0.55, E: 0.7, A: 0.6, N: 0.6 }
+  values: [效率, 家庭]
+  beliefs: [工具应该开箱即用]
+  trust_in_ai: 0.55
+  privacy_sensitivity: 0.4
+  risk_preference: 0.4
+  price_sensitivity: 0.5
+  motivations: [少加班, 按时接孩子]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.25
+  error_recovery: [retry, back, give_up]
+  help_seeking: [ask_ai, none]
+  patience_base: 45
+  wait_tolerance_s: 10
+  abandonment_rules: [连续两次没反应就换别的办法, 找入口超过 1 分钟就放弃]
+  input_preference: mixed
+state_defaults: { fatigue: 0.5, hunger: 0.3, mood: 0.0, attention: 0.6, stress: 0.5 }
+prior_knowledge: heard_of

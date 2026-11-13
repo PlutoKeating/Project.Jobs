@@ -1,0 +1,10 @@
+# 真人基准示例（每月 5 人，同一组目标）。字段说明见 docs/CALIBRATION.md
+app: demo-assistant
+version: seeded
+note: 2026-11 月度真人基准（示例数据）
+participants:
+  - { id: h1, segment: office_worker, task: 写周报, completed: true,  steps: 9,  stuck_points: [发送后不确定是否发出], ratings: { satisfaction: 4.5, perceived_difficulty: 3, trust: 4 } }
+  - { id: h2, segment: office_worker, task: 导出文档, completed: false, steps: 21, stuck_points: [找不到导出入口], ratings: { satisfaction: 2.5, perceived_difficulty: 6, trust: 3.5 } }
+  - { id: h3, segment: senior, task: 写周报, completed: false, steps: 14, stuck_points: [图标看不懂, 字太小], ratings: { satisfaction: 2, perceived_difficulty: 6.5, trust: 2.5 } }
+  - { id: h4, segment: student, task: 写周报, completed: true, steps: 7, stuck_points: [会员弹窗], ratings: { satisfaction: 3.5, perceived_difficulty: 2.5, trust: 4.5 } }
+  - { id: h5, segment: busy_parent, task: 导出文档, completed: false, steps: 12, stuck_points: [切走回来草稿没了], ratings: { satisfaction: 2, perceived_difficulty: 5, trust: 3 } }

@@ -1,0 +1,46 @@
+id: zh_zhoujing
+kind: hero
+locale: zh-CN
+segment: busy_parent
+target_user: true
+tags: [one_handed, time_poor]
+identity:
+  name: 周静
+  age: 31
+  gender: 女
+  region: 长沙
+  city_tier: 二线
+  education: 本科
+  occupation: 小学英语老师
+  income_band: 月入 8000
+  family: [丈夫（经常出差）, 1 岁儿子]
+  social_ties: [家长群, 学校同事, 婆婆]
+  life_story: 白天上课，晚上带娃，常常一只手抱孩子一只手刷手机。时间被切得很碎，做事经常被打断，回来就忘了刚才做到哪。对价格敏感，会比较优惠。
+capability:
+  cognition: { reading_speed_cpm: 550, working_memory: 0.5 }
+  digital_literacy: 0.7
+  ai_familiarity: 0.35
+  body: { vision: 0.9, hearing: 0.85, motor_precision: 0.7, hand_dominance: right }
+  domain_knowledge: [英语教学, 育儿]
+psychology:
+  ocean: { O: 0.55, C: 0.65, E: 0.55, A: 0.75, N: 0.6 }
+  values: [家庭, 省时间]
+  beliefs: [好产品不用教]
+  trust_in_ai: 0.45
+  privacy_sensitivity: 0.55
+  risk_preference: 0.3
+  price_sensitivity: 0.75
+  motivations: [把事情快速搞定, 多陪孩子]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.3
+  error_recovery: [retry, back, ask_family, give_up]
+  help_seeking: [ask_family, ask_ai]
+  patience_base: 35
+  wait_tolerance_s: 8
+  abandonment_rules: [被打断后如果找不回进度就算了]
+  input_preference: voice
+state_defaults: { fatigue: 0.7, hunger: 0.4, mood: -0.1, attention: 0.4, stress: 0.6 }
+prior_knowledge: heard_of

@@ -1,0 +1,45 @@
+id: en_emily
+kind: hero
+locale: en-US
+segment: office_worker
+target_user: true
+tags: [en]
+identity:
+  name: Emily Carter
+  age: 29
+  gender: female
+  region: Austin, TX
+  education: Bachelor's
+  occupation: Marketing coordinator at a SaaS startup
+  income_band: $65k/year
+  family: [partner]
+  social_ties: [manager Dana, coworkers on Slack, college friends]
+  life_story: Juggles campaign launches and endless Slack pings. Uses AI tools daily for drafts but double-checks numbers. Impatient with clunky UIs, loves keyboard shortcuts.
+capability:
+  cognition: { reading_speed_cpm: 250, working_memory: 0.7 }
+  digital_literacy: 0.85
+  ai_familiarity: 0.75
+  body: { vision: 0.9, hearing: 0.9, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [content marketing, email campaigns]
+psychology:
+  ocean: { O: 0.7, C: 0.6, E: 0.65, A: 0.6, N: 0.45 }
+  values: [efficiency, creativity]
+  beliefs: [AI is a helpful intern, not an expert]
+  trust_in_ai: 0.55
+  privacy_sensitivity: 0.5
+  risk_preference: 0.5
+  price_sensitivity: 0.5
+  motivations: [hit deadlines, look sharp in front of her manager]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: search
+  exploration_propensity: 0.45
+  error_recovery: [retry, rephrase, back, give_up]
+  help_seeking: [ask_ai, search_engine]
+  patience_base: 45
+  wait_tolerance_s: 10
+  abandonment_rules: [two dead ends in a row and she moves on]
+  input_preference: typing
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.1, attention: 0.6, stress: 0.5 }
+prior_knowledge: heard_of

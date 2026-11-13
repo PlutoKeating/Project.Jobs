@@ -1,0 +1,13 @@
+id: lunch_break
+name: 午休半小时
+name_en: Thirty-minute lunch break
+scenario_class: lunch_break
+modes: [goal, curiosity]
+start_clock: "12:20"
+init: { place: 公司楼下餐厅, motion: still, channels: { hands: one, eyes: full, ears: noisy, mouth: busy }, time_band: 工作日中午, emotion: 饿 }
+resources: { time_left_min: 30, battery_pct: 55, money: 200, attention: 0.6 }
+situation: 中午只有半小时休息，你一边吃饭一边用手机处理点私事。
+situation_en: You have a 30-minute lunch break and handle a personal errand on your phone while eating.
+timeline: []
+event_rules:
+  - { id: coworker_chat, type: coworker_chat, text: 同事坐过来跟你聊了两句。, when: "true", prob_per_min: 0.04, once: true, source: social, effects: { interrupt: { kind: switch_away, minutes: 1 } } }

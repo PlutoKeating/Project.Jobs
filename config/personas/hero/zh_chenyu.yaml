@@ -1,0 +1,46 @@
+id: zh_chenyu
+kind: hero
+locale: zh-CN
+segment: student
+target_user: true
+tags: [heavy_ai_user]
+identity:
+  name: 陈雨
+  age: 20
+  gender: 女
+  region: 成都
+  city_tier: 新一线
+  education: 大二在读
+  occupation: 大学生（新闻传播专业）
+  income_band: 生活费每月 2000
+  family: [父母（在老家）]
+  social_ties: [室友, 社团, 小红书关注的博主]
+  life_story: 重度手机用户，用 AI 写作业提纲、做 PPT。追求速度，喜欢一切能省事的工具，但对付费非常敏感，遇到会员弹窗就骂一句然后关掉。
+capability:
+  cognition: { reading_speed_cpm: 800, working_memory: 0.75 }
+  digital_literacy: 0.9
+  ai_familiarity: 0.8
+  body: { vision: 0.95, hearing: 0.95, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [新媒体写作, 短视频]
+psychology:
+  ocean: { O: 0.8, C: 0.4, E: 0.75, A: 0.55, N: 0.5 }
+  values: [自由, 省钱, 好看]
+  beliefs: [免费的才是好的]
+  trust_in_ai: 0.65
+  privacy_sensitivity: 0.3
+  risk_preference: 0.6
+  price_sensitivity: 0.9
+  motivations: [快点交作业, 发小红书]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.6
+  error_recovery: [retry, rephrase, back, give_up]
+  help_seeking: [ask_ai, search_engine]
+  patience_base: 40
+  wait_tolerance_s: 8
+  abandonment_rules: [遇到强制付费直接放弃]
+  input_preference: typing
+state_defaults: { fatigue: 0.4, hunger: 0.4, mood: 0.3, attention: 0.55, stress: 0.35 }
+prior_knowledge: seen_ads

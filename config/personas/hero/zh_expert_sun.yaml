@@ -1,0 +1,47 @@
+# 专家对照组：用于归因（专家也失败 → 倾向 bug；只有特定人群失败 → 倾向 ux）
+id: zh_expert_sun
+kind: expert
+locale: zh-CN
+segment: expert
+target_user: true
+tags: [expert_baseline]
+identity:
+  name: 孙博
+  age: 30
+  gender: 男
+  region: 北京
+  city_tier: 一线
+  education: 硕士
+  occupation: 资深前端工程师
+  income_band: 月入 4 万
+  family: [妻子]
+  social_ties: [技术社区]
+  life_story: 每天写 Web 应用，熟悉各种交互模式和常见设计规范，对任何 Web 产品都能快速上手，遇到问题会用最合理的方式绕过。
+capability:
+  cognition: { reading_speed_cpm: 900, working_memory: 0.9 }
+  digital_literacy: 1.0
+  ai_familiarity: 0.95
+  body: { vision: 0.95, hearing: 0.95, motor_precision: 0.98, hand_dominance: right }
+  domain_knowledge: [Web 开发, 交互设计, AI 应用]
+psychology:
+  ocean: { O: 0.7, C: 0.8, E: 0.4, A: 0.5, N: 0.2 }
+  values: [效率, 正确]
+  beliefs: []
+  trust_in_ai: 0.6
+  privacy_sensitivity: 0.6
+  risk_preference: 0.5
+  price_sensitivity: 0.3
+  motivations: [高效完成任务]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: search
+  exploration_propensity: 0.4
+  error_recovery: [retry, rephrase, search, back, help, give_up]
+  help_seeking: [help_docs, search_engine]
+  patience_base: 90
+  wait_tolerance_s: 30
+  abandonment_rules: []
+  input_preference: typing
+state_defaults: { fatigue: 0.2, hunger: 0.2, mood: 0.2, attention: 0.9, stress: 0.2 }
+prior_knowledge: used_before

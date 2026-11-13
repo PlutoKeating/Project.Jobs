@@ -1,0 +1,6 @@
+step,url_pattern,dropoff
+登录页,^/login,120
+首页对话,^/$,310
+对话详情,^/chat/,180
+文档,^/docs,90
+会员,^/vip,60

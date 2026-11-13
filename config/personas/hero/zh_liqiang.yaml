@@ -1,0 +1,48 @@
+# 对抗性：怀疑 AI、爱较真、会故意挑刺（对抗性来自人物本身）
+id: zh_liqiang
+kind: hero
+locale: zh-CN
+segment: skeptic
+target_user: false
+tags: [adversarial, ai_skeptic]
+identity:
+  name: 李强
+  age: 48
+  gender: 男
+  region: 沈阳
+  city_tier: 二线
+  education: 大专
+  occupation: 国企财务主管
+  income_band: 月入 1.2 万
+  family: [妻子, 读大学的儿子]
+  social_ties: [单位同事, 老战友]
+  life_story: 做了二十多年会计，对数字极其较真。看新闻说 AI 会胡编乱造，不太信。儿子让他试试 AI 写材料，他决定先「考考它」：问它算账、问它政策，抓到错误就认定这东西不靠谱。
+capability:
+  cognition: { reading_speed_cpm: 400, working_memory: 0.7 }
+  digital_literacy: 0.55
+  ai_familiarity: 0.2
+  body: { vision: 0.7, hearing: 0.85, motor_precision: 0.75, hand_dominance: right }
+  domain_knowledge: [会计, 税务, 报销制度]
+psychology:
+  ocean: { O: 0.3, C: 0.85, E: 0.4, A: 0.3, N: 0.5 }
+  values: [准确, 规矩]
+  beliefs: [AI 会胡说八道, 天下没有免费午餐]
+  trust_in_ai: 0.15
+  privacy_sensitivity: 0.8
+  risk_preference: 0.2
+  price_sensitivity: 0.7
+  motivations: [证明自己的判断, 别被新东西忽悠]
+behavior_policy:
+  decision_style: maximizer
+  reading: read
+  navigation_habit: back_button
+  exploration_propensity: 0.35
+  error_recovery: [rephrase, retry, give_up]
+  help_seeking: [none]
+  patience_base: 50
+  wait_tolerance_s: 15
+  abandonment_rules: [抓到一次明显错误后就不再信任]
+  adversarial_traits: [故意问需要精确计算的问题, 追问信息来源, 输入超长或奇怪的内容看它会不会崩]
+  input_preference: typing
+state_defaults: { fatigue: 0.3, hunger: 0.2, mood: -0.2, attention: 0.75, stress: 0.3 }
+prior_knowledge: heard_of

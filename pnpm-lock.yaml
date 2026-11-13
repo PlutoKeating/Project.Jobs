@@ -187,6 +187,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@pux/console':
+        specifier: workspace:*
+        version: link:../console
       '@pux/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -217,6 +220,12 @@ importers:
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
+      playwright:
+        specifier: ^1.65.0
+        version: 1.65.0
+      yaml:
+        specifier: ^2.9.1
+        version: 2.9.1
 
   apps/console:
     dependencies:
@@ -341,6 +350,9 @@ importers:
       '@pux/db':
         specifier: workspace:*
         version: link:../db
+      '@pux/demos':
+        specifier: workspace:*
+        version: link:../../demos/kit
       '@pux/executor':
         specifier: workspace:*
         version: link:../executor
@@ -359,6 +371,9 @@ importers:
       rrweb-player:
         specifier: ^2.2.2
         version: 2.2.2
+      sharp:
+        specifier: ^0.35.5
+        version: 0.35.5(@types/node@24.19.2)
       yaml:
         specifier: ^2.9.1
         version: 2.9.1

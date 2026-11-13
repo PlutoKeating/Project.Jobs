@@ -1,0 +1,14 @@
+id: idle_weekend
+name: 周末午后在家闲逛
+name_en: Lazy weekend afternoon
+scenario_class: idle_leisure
+modes: [curiosity, goal, adversarial]
+start_clock: "15:00"
+init: { place: 家里沙发, motion: still, channels: { hands: both, eyes: full, ears: free, mouth: free }, time_band: 周末午后, emotion: 放松 }
+resources: { time_left_min: 45, battery_pct: 85, money: 500, attention: 0.7 }
+situation: 周末下午，你窝在沙发上没什么事，刚好想起最近听说的这个东西，打算随便看看它能干嘛。
+situation_en: It's a slow weekend afternoon on the couch. You remembered hearing about this thing and decide to poke around and see what it can do.
+timeline:
+  - { at: "15:20", type: delivery_knock, text: 快递敲门，你起身去拿，回来接着看。, effects: { interrupt: { kind: lock, minutes: 3 } } }
+event_rules:
+  - { id: friend_msg, type: friend_message, text: 朋友在群里发了个搞笑视频，你看了一会儿。, when: "true", prob_per_min: 0.03, once: true, source: social, effects: { interrupt: { kind: switch_away, minutes: 1 }, state: { mood: 0.1 } } }

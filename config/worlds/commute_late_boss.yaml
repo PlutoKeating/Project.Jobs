@@ -1,0 +1,26 @@
+# §7.2 因果事件链示例：前晚加班 → 睡过头 → 打车 → 堵车+弱网 → 老板催方案 → 低电量 → 想起昨晚的任务
+id: commute_late_boss
+name: 迟到的通勤早晨（老板催方案）
+name_en: Late commute, boss waiting
+scenario_class: commute
+modes: [stress, goal]
+start_clock: "07:40"
+init: { place: 家里卧室, motion: still, channels: { hands: both, eyes: full, ears: free, mouth: free }, time_band: 工作日早高峰, emotion: 焦虑, economy: 普通 }
+resources: { time_left_min: 80, battery_pct: 30, money: 300, attention: 0.5, network: { down_kbps: 30000, up_kbps: 8000, rtt_ms: 30, loss: 0 } }
+constraints: [deadline_0900]
+situation: 你昨晚加班到凌晨一点，方案还没写完。今天早上睡过头了，现在 7:40，九点要准时到公司开会。
+situation_en: You worked until 1am and the proposal is unfinished. You overslept; it's 7:40 and you must be at the office for a 9:00 meeting.
+timeline:
+  - { at: "07:40", type: wake_up_late, text: 你睡过头了，猛地惊醒，距离九点的会议只剩 80 分钟。, caused_by: overtime_last_night, effects: { state: { stress: 0.25, fatigue: 0.2 } } }
+  - { at: "07:45", type: realize_late, text: 你算了一下，坐地铁要一个小时，肯定迟到。, caused_by: wake_up_late, effects: { state: { stress: 0.15 } } }
+  - { at: "07:55", type: take_taxi, text: 你决定打车，一手拎着包，一手拿手机。, caused_by: realize_late, effects: { world: { place: 出租车后座, motion: vehicle, channels.hands: one }, resources: { money: -60 }, constraints_add: [one_handed, bumpy_ride] } }
+  - { at: "08:10", type: traffic_jam, text: 早高峰堵车了，导航显示还要多 20 分钟；车开上高架后手机信号变差。, caused_by: take_taxi, effects: { resources: { time_left_min: -20 }, network: { down_kbps: 400, up_kbps: 150, rtt_ms: 600, loss: 0.02 }, state: { stress: 0.15 }, constraints_add: [weak_network] } }
+  - { at: "08:15", type: boss_message, text: 老板发来消息：「九点前把方案摘要发我」。, caused_by: traffic_jam, effects: { social_request: { from: 老板, text: 九点前把方案摘要发我, urgency: 0.95 }, state: { stress: 0.3, attention: -0.2 } } }
+  - { at: "08:25", type: battery_low, text: 手机提示电量只剩 17%。, caused_by: boss_message, effects: { resources: { battery_pct: -5 }, state: { stress: 0.1 } } }
+  - { at: "08:35", type: recall_unfinished, text: 你突然想起昨晚还有一个任务没做完。, caused_by: boss_message, effects: { memory_cue: 昨晚没写完的方案和待办 } }
+  - { at: "08:50", type: highway_exit, text: 车下了高架，信号恢复了。, caused_by: traffic_jam, effects: { network: { down_kbps: 20000, up_kbps: 5000, rtt_ms: 50, loss: 0 }, constraints_remove: [weak_network] } }
+event_rules:
+  - { id: phone_call_mom, type: phone_call, text: 妈妈打来电话问你周末回不回家，你接了两分钟。, when: "clock >= '08:00' && clock <= '08:40'", prob_per_min: 0.02, once: true, source: social, effects: { interrupt: { kind: switch_away, minutes: 2 }, state: { attention: -0.1 } } }
+  - { id: bumpy, type: bump, text: 车猛地一刹，你差点没拿稳手机。, when: "motion == 'vehicle'", prob_per_min: 0.05, once: false, source: random, effects: { state: { stress: 0.05 } } }
+social:
+  - { id: boss, relation: 上级, name: 陈总, pressure: 0.9, requests: [] }

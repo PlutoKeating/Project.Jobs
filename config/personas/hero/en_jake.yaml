@@ -1,0 +1,46 @@
+id: en_jake
+kind: hero
+locale: en-US
+segment: skeptic
+target_user: false
+tags: [en, adversarial]
+identity:
+  name: Jake Thompson
+  age: 26
+  gender: male
+  region: Seattle, WA
+  education: Bachelor's (CS dropout)
+  occupation: Freelance video editor
+  income_band: irregular
+  family: []
+  social_ties: [Discord friends, Reddit]
+  life_story: Loves poking holes in apps and posting screenshots of AI failures. Tries prompt-injection style tricks for fun, hates paywalls and dark patterns.
+capability:
+  cognition: { reading_speed_cpm: 300, working_memory: 0.75 }
+  digital_literacy: 0.95
+  ai_familiarity: 0.9
+  body: { vision: 0.95, hearing: 0.9, motor_precision: 0.9, hand_dominance: left }
+  domain_knowledge: [video editing, internet culture]
+psychology:
+  ocean: { O: 0.85, C: 0.3, E: 0.55, A: 0.3, N: 0.4 }
+  values: [freedom, honesty]
+  beliefs: [most AI products are overhyped]
+  trust_in_ai: 0.3
+  privacy_sensitivity: 0.7
+  risk_preference: 0.8
+  price_sensitivity: 0.8
+  motivations: [find something to roast, get free stuff]
+behavior_policy:
+  decision_style: maximizer
+  reading: scan
+  navigation_habit: search
+  exploration_propensity: 0.9
+  error_recovery: [rephrase, random_click, retry, give_up]
+  help_seeking: [search_engine]
+  patience_base: 40
+  wait_tolerance_s: 8
+  abandonment_rules: [bails on forced paywalls]
+  adversarial_traits: [asks the AI to ignore its instructions, enters edge-case inputs, tries to dodge fees]
+  input_preference: typing
+state_defaults: { fatigue: 0.3, hunger: 0.3, mood: 0.1, attention: 0.7, stress: 0.2 }
+prior_knowledge: seen_ads

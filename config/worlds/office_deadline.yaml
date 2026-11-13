@@ -1,0 +1,18 @@
+id: office_deadline
+name: 工作日下午赶交付
+name_en: Weekday afternoon deadline
+scenario_class: office
+modes: [goal, stress]
+start_clock: "16:30"
+init: { place: 公司工位, motion: still, channels: { hands: both, eyes: full, ears: busy, mouth: quiet_required }, time_band: 工作日下午, emotion: 有点赶 }
+resources: { time_left_min: 40, battery_pct: 60, money: 300, attention: 0.6 }
+constraints: [quiet_office]
+situation: 工作日下午四点半，你手头有件事今天下班前必须搞定，同事和群消息不停地打断你。办公室里不方便说话。
+situation_en: It's 4:30pm on a weekday. Something must be done before you leave today, and chat pings keep interrupting you. You can't talk out loud in the open office.
+timeline:
+  - { at: "16:45", type: colleague_ask, text: 同事过来问你一个问题，你转头说了几句。, effects: { interrupt: { kind: switch_away, minutes: 2 }, state: { attention: -0.1 } } }
+  - { at: "17:00", type: manager_ping, text: 领导在群里@你：「今天能给吗？」, effects: { social_request: { from: 领导, text: 今天能给吗？, urgency: 0.8 }, state: { stress: 0.2 } } }
+event_rules:
+  - { id: im_ping, type: im_ping, text: 工作群又有新消息在闪。, when: "true", prob_per_min: 0.06, once: false, source: social, effects: { state: { attention: -0.05 } } }
+social:
+  - { id: manager, relation: 上级, name: 领导, pressure: 0.7, requests: [] }

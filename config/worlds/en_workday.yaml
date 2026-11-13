@@ -1,0 +1,13 @@
+id: en_workday
+name: 美式工作日上午
+name_en: Weekday morning at work
+scenario_class: office
+modes: [goal, stress, curiosity, adversarial]
+start_clock: "09:40"
+init: { place: home office, motion: still, channels: { hands: both, eyes: full, ears: busy, mouth: free }, time_band: weekday morning, emotion: busy }
+resources: { time_left_min: 40, battery_pct: 70, money: 200, attention: 0.65 }
+situation: It's a busy weekday morning working from home. You have a standup at 10:30 and want to get one thing done before it.
+timeline:
+  - { at: "10:00", type: slack_ping, text: Your manager pings you on Slack asking for a quick update., effects: { social_request: { from: manager, text: Can you send me a quick update before standup?, urgency: 0.7 }, state: { stress: 0.15 } } }
+  - { at: "10:15", type: doorbell, text: A package arrives and you step away to sign for it., effects: { interrupt: { kind: switch_away, minutes: 2 } } }
+event_rules: []

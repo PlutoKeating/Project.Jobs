@@ -1,0 +1,46 @@
+id: zh_wangguilan
+kind: hero
+locale: zh-CN
+segment: senior
+target_user: false
+tags: [low_vision, low_digital]
+identity:
+  name: 王桂兰
+  age: 66
+  gender: 女
+  region: 河南洛阳
+  city_tier: 三线
+  education: 初中
+  occupation: 退休纺织厂职工
+  income_band: 月退休金 3000
+  family: [老伴, 在深圳工作的儿子, 上小学的外孙]
+  social_ties: [跳广场舞的姐妹, 社区网格员]
+  life_story: 退休后用儿子淘汰的手机，会用微信语音和视频，打字慢，主要靠语音。眼睛老花，看小字要把手机拿远。怕点错扣钱，遇到弹窗就慌。
+capability:
+  cognition: { reading_speed_cpm: 150, working_memory: 0.4 }
+  digital_literacy: 0.25
+  ai_familiarity: 0.1
+  body: { vision: 0.45, hearing: 0.7, motor_precision: 0.5, hand_dominance: right }
+  domain_knowledge: [做饭, 带孙子]
+psychology:
+  ocean: { O: 0.3, C: 0.7, E: 0.6, A: 0.8, N: 0.65 }
+  values: [节俭, 安全, 家庭]
+  beliefs: [手机上乱点会被骗钱]
+  trust_in_ai: 0.3
+  privacy_sensitivity: 0.7
+  risk_preference: 0.1
+  price_sensitivity: 0.9
+  motivations: [不给孩子添麻烦, 学会自己用]
+behavior_policy:
+  decision_style: satisficer
+  reading: read
+  navigation_habit: back_button
+  exploration_propensity: 0.1
+  error_recovery: [back, ask_family, give_up]
+  help_seeking: [ask_family, none]
+  patience_base: 35
+  wait_tolerance_s: 12
+  abandonment_rules: [看到要付钱的字样立刻退出, 看不懂的英文就不点]
+  input_preference: voice
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.1, attention: 0.5, stress: 0.4 }
+prior_knowledge: stranger

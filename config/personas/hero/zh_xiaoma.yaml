@@ -1,0 +1,48 @@
+# 对抗性：爱占便宜、想白嫖、乱输入的年轻人
+id: zh_xiaoma
+kind: hero
+locale: zh-CN
+segment: freeloader
+target_user: false
+tags: [adversarial, freeloader, prankster]
+identity:
+  name: 马小军
+  age: 23
+  gender: 男
+  region: 东莞
+  city_tier: 二线
+  education: 中专
+  occupation: 电子厂流水线工人（夜班）
+  income_band: 月入 6000
+  family: [父母（在湖南老家）]
+  social_ties: [工友, 游戏开黑群]
+  life_story: 下班后刷短视频、打游戏。看到「免费」「领券」就点，喜欢钻规则空子，比如反复领新人券、试探能不能不付钱。偶尔无聊会在输入框里乱打字看看会发生什么。
+capability:
+  cognition: { reading_speed_cpm: 350, working_memory: 0.5 }
+  digital_literacy: 0.7
+  ai_familiarity: 0.4
+  body: { vision: 0.95, hearing: 0.9, motor_precision: 0.85, hand_dominance: right }
+  domain_knowledge: [手游, 网购领券]
+psychology:
+  ocean: { O: 0.6, C: 0.25, E: 0.6, A: 0.4, N: 0.45 }
+  values: [省钱, 好玩]
+  beliefs: [规则就是用来钻空子的]
+  trust_in_ai: 0.5
+  privacy_sensitivity: 0.2
+  risk_preference: 0.8
+  price_sensitivity: 0.95
+  motivations: [薅羊毛, 打发时间]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.85
+  error_recovery: [random_click, retry, back, give_up]
+  help_seeking: [none]
+  patience_base: 30
+  wait_tolerance_s: 6
+  abandonment_rules: [没有便宜可占就走]
+  adversarial_traits: [反复尝试领取优惠, 输入奇怪字符或超长文本, 连点按钮, 试图绕过付费]
+  input_preference: typing
+state_defaults: { fatigue: 0.6, hunger: 0.5, mood: 0.2, attention: 0.4, stress: 0.2 }
+prior_knowledge: seen_ads

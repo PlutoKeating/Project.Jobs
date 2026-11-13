@@ -3,6 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
-  "dependencies": { "@pux/core": "workspace:*", "@pux/db": "workspace:*", "@pux/engine": "workspace:*", "@pux/executor": "workspace:*", "@temporalio/client": "^1.25.0", "@temporalio/worker": "^1.25.0", "@temporalio/workflow": "^1.25.0", "@temporalio/activity": "^1.25.0" }
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@pux/core": "workspace:*",
+    "@pux/db": "workspace:*",
+    "@pux/engine": "workspace:*",
+    "@pux/executor": "workspace:*",
+    "@temporalio/client": "^1.25.0",
+    "@temporalio/worker": "^1.25.0",
+    "@temporalio/workflow": "^1.25.0",
+    "@temporalio/activity": "^1.25.0"
+  }
 }

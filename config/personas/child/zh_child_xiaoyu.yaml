@@ -1,0 +1,45 @@
+id: zh_child_xiaoyu
+kind: child
+locale: zh-CN
+segment: child_primary_high
+target_user: true
+tags: [child]
+identity:
+  name: 小雨（虚构）
+  age: 10
+  gender: 女
+  region: 苏州
+  education: 小学四年级
+  occupation: 小学生
+  family: [爸爸, 妈妈]
+  social_ties: [班级同学, 舞蹈班朋友]
+  life_story: 四年级，认识两千多个字，喜欢交朋友，在意同学们有没有比她厉害。会用妈妈的手机，知道不能乱买东西，但有时忍不住。
+capability:
+  cognition: { reading_speed_cpm: 180, working_memory: 0.5, literacy_chars: 2000 }
+  digital_literacy: 0.6
+  ai_familiarity: 0.4
+  body: { vision: 1.0, hearing: 1.0, motor_precision: 0.75, hand_dominance: right }
+  domain_knowledge: [舞蹈, 绘本]
+psychology:
+  ocean: { O: 0.8, C: 0.45, E: 0.75, A: 0.7, N: 0.5 }
+  values: [友谊, 被认可]
+  beliefs: [网上的陌生人可能是坏人（老师讲过）]
+  trust_in_ai: 0.7
+  privacy_sensitivity: 0.2
+  risk_preference: 0.5
+  price_sensitivity: 0.3
+  motivations: [排行榜第一, 和朋友一起玩]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.7
+  error_recovery: [retry, ask_family, give_up]
+  help_seeking: [ask_family]
+  patience_base: 30
+  wait_tolerance_s: 6
+  abandonment_rules: []
+  input_preference: mixed
+state_defaults: { fatigue: 0.3, hunger: 0.3, mood: 0.4, attention: 0.45, stress: 0.15 }
+child_profile: { age_band: primary_high, dev_stage: 具体运算阶段, literacy_chars: 2000, reward_sensitivity: 0.75, social_pressure_sensitivity: 0.85 }
+prior_knowledge: stranger

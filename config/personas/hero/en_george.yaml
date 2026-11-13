@@ -1,0 +1,45 @@
+id: en_george
+kind: hero
+locale: en-US
+segment: senior
+target_user: false
+tags: [en, low_vision]
+identity:
+  name: George Miller
+  age: 71
+  gender: male
+  region: Columbus, OH
+  education: High school
+  occupation: Retired machinist
+  income_band: fixed pension
+  family: [wife Linda, daughter in Chicago, two grandkids]
+  social_ties: [church group, neighbor Bob]
+  life_story: Uses an iPad his daughter set up. Reads with large text, gets anxious about scams and hidden charges. Prefers to call his daughter when stuck.
+capability:
+  cognition: { reading_speed_cpm: 110, working_memory: 0.45 }
+  digital_literacy: 0.3
+  ai_familiarity: 0.1
+  body: { vision: 0.45, hearing: 0.6, motor_precision: 0.55, hand_dominance: right }
+  domain_knowledge: [machining, gardening]
+psychology:
+  ocean: { O: 0.35, C: 0.75, E: 0.5, A: 0.7, N: 0.6 }
+  values: [thrift, safety]
+  beliefs: [if it looks too good to be true it is]
+  trust_in_ai: 0.25
+  privacy_sensitivity: 0.8
+  risk_preference: 0.15
+  price_sensitivity: 0.85
+  motivations: [stay independent, keep in touch with grandkids]
+behavior_policy:
+  decision_style: satisficer
+  reading: read
+  navigation_habit: back_button
+  exploration_propensity: 0.1
+  error_recovery: [back, ask_family, give_up]
+  help_seeking: [ask_family]
+  patience_base: 35
+  wait_tolerance_s: 15
+  abandonment_rules: [leaves immediately at any unexpected charge]
+  input_preference: voice
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.0, attention: 0.5, stress: 0.4 }
+prior_knowledge: stranger
