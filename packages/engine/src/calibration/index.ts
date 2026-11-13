@@ -39,11 +39,16 @@ export async function calibrateSeeded(studyId: string) {
   // 匹配：LLM 语义匹配 + 关键词兜底
   let matches: { issue_id: string; defect_id: string; confidence: number }[] = [];
   if (productIssues.length) {
-    const r = await gateway().chat('judge_meta', { messages: [{ role: 'user', content: `把模拟发现的问题与已知植入缺陷做一一匹配（一个问题最多匹配一个缺陷，确实描述同一问题才匹配，confidence 0–1）。\n已知缺陷：\n${defects.map((d) => `${d.id} | ${d.category} | ${d.location ?? ''} | ${d.title} | ${d.description}`).join('\n')}\n\n发现的问题：\n${productIssues.map((i) => `${i.id} | ${i.category} | ${i.url_pattern ?? ''} | ${i.title} | ${(i.description ?? '').slice(0, 300)}`).join('\n')}` }], schema: MatchSchema, schemaName: 'seeded_match', tags: { study_id: studyId, purpose: 'calibration_match' } });
-    matches = r.data.matches.filter((m) => m.confidence >= 0.5 && defects.some((d) => d.id === m.defect_id) && productIssues.some((i) => i.id === m.issue_id));
+    const r = await gateway().chat('judge_meta', { messages: [{ role: 'user', content: `把模拟发现的问题与已知植入缺陷做匹配：一个问题最多匹配一个缺陷；只有当问题确实描述了该缺陷的同一个根因与位置时才匹配（仅仅涉及同一页面或同一人群不算），confidence 0–1。\n已知缺陷：\n${defects.map((d) => `${d.id} | ${d.category} | ${d.location ?? ''} | ${d.title} | ${d.description}`).join('\n')}\n\n发现的问题：\n${productIssues.map((i) => `${i.id} | ${i.category} | ${i.url_pattern ?? ''} | ${i.title} | ${(i.description ?? '').slice(0, 300)}`).join('\n')}` }], schema: MatchSchema, schemaName: 'seeded_match', tags: { study_id: studyId, purpose: 'calibration_match' } });
+    matches = r.data.matches.filter((m) => {
+      const d = defects.find((x) => x.id === m.defect_id); const i = productIssues.find((x) => x.id === m.issue_id);
+      if (!d || !i) return false;
+      // 类别不一致时要求更高置信度（例如对比度问题不应匹配到支付保护缺陷）
+      return m.confidence >= (d.category === i.category ? 0.5 : 0.75);
+    });
   }
   for (const i of productIssues) if (!matches.some((m) => m.issue_id === i.id)) {
-    const d = defects.find((x) => (x.keywords ?? []).filter((k) => `${i.title}${i.description}`.toLowerCase().includes(k.toLowerCase())).length >= 2);
+    const d = defects.find((x) => x.category === i.category && (x.keywords ?? []).filter((k) => `${i.title}${i.description}`.toLowerCase().includes(k.toLowerCase())).length >= 3);
     if (d) matches.push({ issue_id: i.id, defect_id: d.id, confidence: 0.5 });
   }
   for (const m of matches) await db.update(issues).set({ seeded_match: m.defect_id }).where(eq(issues.id, m.issue_id));
