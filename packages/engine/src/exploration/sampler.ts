@@ -26,7 +26,7 @@ export async function planRound(opts: {
   const db = getDb(); const rng = new Rng(opts.study.rng_seed + opts.round * 7919);
   const sc = opts.study.config;
   const done = await db.select().from(sessions).where(eq(sessions.study_id, opts.study.id));
-  const tasks = await db.select().from(taskDefs).where(eq(taskDefs.app_version_id, opts.study.app_version_id));
+  const tasks = (await db.select().from(taskDefs).where(eq(taskDefs.app_version_id, opts.study.app_version_id))).filter((t) => !sc.task_keys?.length || sc.task_keys.includes(t.key));
   const hyps = (await db.select().from(hypotheses).where(eq(hypotheses.app_id, opts.study.app_id))).filter((h) => h.status === 'open' || h.status === 'inconclusive');
   const cov = await coverageOf(opts.study.app_version_id);
   const usedFeatures = new Set(cov.filter((c) => c.dimension === 'feature' && c.used).map((c) => c.key));

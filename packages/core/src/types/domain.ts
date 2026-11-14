@@ -242,6 +242,7 @@ export const StudyInputSchema = z.object({
   }).default({ max_sessions: 8, max_steps_per_session: 40, max_tokens: 6_000_000, max_tokens_per_session: 800_000, concurrency: 3, round_size: 4 }),
   executor: z.enum(['stagehand', 'midscene']).default('stagehand'),
   persona_ids: z.array(z.string()).optional(),
+  task_keys: z.array(z.string()).optional(),          // 只采样这些任务（ProductSpec 中的 task id，例如 t_export）
   world_ids: z.array(z.string()).optional(),
   locale: z.enum(['zh-CN', 'en-US', 'mixed']).default('zh-CN'),
   include_children: z.boolean().default(false),
