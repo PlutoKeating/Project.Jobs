@@ -206,7 +206,7 @@ export async function runStudyInline(studyId: string, progress: Progress = (m) =
       await pool(ids, b.concurrency, async (id) => { const o = await runSessionInline(id, progress, opts); progress(`  ■ ${id} 结局：${o}`); await evaluateSessionPost(id, progress).catch((e) => logger.warn({ err: String(e).slice(0, 300) }, '评估失败')); });
       total += ids.length; round++;
       const before = (await db.select().from(issues).where(eq(issues.app_version_id, av.id))).length;
-      await synthesizeIssues(studyId, { cleanReplay: config.clean_replay, lang: config.locale === 'en-US' ? 'en' : 'zh' });
+      await synthesizeIssues(studyId, { cleanReplay: config.clean_replay, lang: config.locale === 'en-US' ? 'en' : 'zh' }).catch((e) => progress(`⚠️ 本轮问题合成失败，收尾时会重试：${String((e as Error).message).slice(0, 120)}`));
       const after = (await db.select().from(issues).where(eq(issues.app_version_id, av.id))).length;
       progress(`🧩 第 ${round} 轮新增问题 ${after - before} 个`);
       if (await saturated(studyId, config.saturation_m, after - before)) { stop = `探索饱和（连续 ${config.saturation_m} 个 Session 无新发现、无新覆盖）`; break; }

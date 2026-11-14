@@ -41,7 +41,7 @@ export async function calibrateSeeded(studyId: string) {
   // 匹配：LLM 语义匹配 + 关键词兜底
   let matches: { issue_id: string; defect_id: string; confidence: number }[] = [];
   if (productIssues.length) {
-    const r = await gateway().chat('judge_meta', { messages: [{ role: 'user', content: `把模拟发现的问题与已知植入缺陷做匹配：一个问题最多匹配一个缺陷；只有当问题确实描述了该缺陷的同一个根因与位置时才匹配（仅仅涉及同一页面或同一人群不算），confidence 0–1。\n已知缺陷：\n${defects.map((d) => `${d.id} | ${d.category} | ${d.location ?? ''} | ${d.title} | ${d.description}`).join('\n')}\n\n发现的问题：\n${productIssues.map((i) => `${i.id} | ${i.category} | ${i.url_pattern ?? ''} | ${i.title} | ${(i.description ?? '').slice(0, 300)}`).join('\n')}` }], schema: MatchSchema, schemaName: 'seeded_match', tags: { study_id: studyId, purpose: 'calibration_match' } });
+    const r = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'user', content: `把模拟发现的问题与已知植入缺陷做匹配：一个问题最多匹配一个缺陷；只有当问题确实描述了该缺陷的同一个根因与位置时才匹配（仅仅涉及同一页面或同一人群不算），confidence 0–1。\n已知缺陷：\n${defects.map((d) => `${d.id} | ${d.category} | ${d.location ?? ''} | ${d.title} | ${d.description}`).join('\n')}\n\n发现的问题：\n${productIssues.map((i) => `${i.id} | ${i.category} | ${i.url_pattern ?? ''} | ${i.title} | ${(i.description ?? '').slice(0, 300)}`).join('\n')}` }], schema: MatchSchema, schemaName: 'seeded_match', tags: { study_id: studyId, purpose: 'calibration_match' } });
     matches = r.data.matches.filter((m) => {
       const d = defects.find((x) => x.id === m.defect_id); const i = productIssues.find((x) => x.id === m.issue_id);
       if (!d || !i) return false;
@@ -192,7 +192,7 @@ export async function calibrateReviews(file: string, studyId: string) {
   const study = (await db.select().from(studies).where(eq(studies.id, studyId)))[0];
   const av = (await db.select().from(appVersions).where(eq(appVersions.id, study.app_version_id)))[0];
   const iss = (await db.select().from(issues).where(eq(issues.app_version_id, av.id))).filter((i) => i.attribution === 'product');
-  const r = await gateway().chat('judge_meta', { messages: [{ role: 'user', content: `从下面的用户评论中提取具体的产品抱怨（去重），并为每条抱怨找出描述同一问题的模拟发现（matched_issue_id，没有则空字符串）。\n模拟发现：\n${iss.map((i) => `${i.id} | ${i.title}`).join('\n')}\n\n评论：\n${text}` }], schema: ComplaintSchema, schemaName: 'reviews', tags: { study_id: studyId, purpose: 'calibration_reviews' } });
+  const r = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'user', content: `从下面的用户评论中提取具体的产品抱怨（去重），并为每条抱怨找出描述同一问题的模拟发现（matched_issue_id，没有则空字符串）。\n模拟发现：\n${iss.map((i) => `${i.id} | ${i.title}`).join('\n')}\n\n评论：\n${text}` }], schema: ComplaintSchema, schemaName: 'reviews', tags: { study_id: studyId, purpose: 'calibration_reviews' } });
   const comp = r.data.complaints; const k = comp.filter((c) => c.matched_issue_id).length;
   const setId = newId('cset');
   await db.insert(calibrationSets).values({ id: setId, app_version_id: av.id, app_id: av.app_id, source: 'reviews', name: file, items: comp });

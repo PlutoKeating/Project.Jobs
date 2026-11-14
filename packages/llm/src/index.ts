@@ -70,6 +70,13 @@ export class Gateway {
     return r;
   }
 
+  /** 带降级的调用：主角色失败（超时等）时改用备选角色，避免单一模型拖垮整个 Study */
+  async chatWithFallback<S extends z.ZodType | undefined = undefined>(roleKeys: RoleKey[], opts: ChatOptions<S>): Promise<ChatResult<S extends z.ZodType ? z.infer<S> : string>> {
+    let last: unknown;
+    for (const r of roleKeys) { try { return await this.chat(r, { ...opts, retries: opts.retries ?? 1 }); } catch (e) { last = e; logger.warn({ role: r, err: String((e as Error).message).slice(0, 160) }, '角色调用失败，尝试降级'); } }
+    throw last;
+  }
+
   async chat<S extends z.ZodType | undefined = undefined>(roleKey: RoleKey, opts: ChatOptions<S>): Promise<ChatResult<S extends z.ZodType ? z.infer<S> : string>> {
     const role = this.role(roleKey);
     const messages = opts.messages.map(toOpenAi);
