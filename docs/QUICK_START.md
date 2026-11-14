@@ -66,6 +66,17 @@ pnpm jobsworld                       # 世界服务 + API（含网页）+ 单端
 
 访问控制（`.env`）：`JW_PASSCODE`（网页共享口令）、`JW_ADMIN_PASSCODE`（管理员口令，可发起评测、控制世界）；都不设置时局域网内任何人都是管理员。
 
+**用 Terraria 进入同一个世界**（游戏服在 docker compose 的 `game` profile 中，首次构建会下载服务端）：
+
+```bash
+docker compose --profile game up -d --build --no-deps tshock   # 原版 Terraria 1.4.5.x 客户端
+docker compose --profile game up -d --build --no-deps tml      # tModLoader（稳定版 1.4.4，带可点击的人物面板）
+```
+
+在游戏里「加入 → 通过 IP 加入」，地址与网页相同（`<本机 IP>`，端口 `7777`）：网关会按客户端类型自动分流。服务器密码为 `.env` 的 `JW_GAME_PASSWORD`（留空则无）。游戏内输入 `/jw who`、`/jw goto 地铁站`、`/jw follow 林薇`、`/jw info 林薇`、`/jw ask 林薇 你刚才为什么生气？`；管理员先 `/jw login <JW_ADMIN_PASSCODE>`，再用 `/jw clock`、`/jw event`、`/jw replay`。详见 [`game/README.md`](../game/README.md)。
+
+没有游戏客户端也能验证：`npx tsx scripts/jw-probe.ts --port 7777 --secs 15`（列出假玩家、气泡、告示牌与时间同步）。
+
 开发网页：`pnpm world`、`pnpm api` 后 `pnpm web`（Vite，`http://127.0.0.1:5321/`，代理到 API）。
 
 ## 6. 使用 Temporal 编排（可选）

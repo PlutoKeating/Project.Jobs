@@ -40,7 +40,7 @@
 - `**/docker-compose.yml`
 - `**/.dockerignore`
 
-注：本项目已确认（2026-11-14）：**依赖服务（Postgres+pgvector、MinIO、LiteLLM、Temporal）使用 Docker Compose 运行，应用、worker、控制台与 Demo 在宿主机原生运行**。因此上述 Docker 相关阅读要求保留，涉及依赖服务时须阅读根目录 `docker-compose.yml` 与 `.dockerignore`。
+注：本项目已确认（2026-11-14）：**依赖服务（Postgres+pgvector、MinIO、LiteLLM、Temporal）使用 Docker Compose 运行，应用、worker 与 Demo 在宿主机原生运行**。另据 2026-11-14 JobsWorld 决策：**NATS 事件总线与两个游戏服（TShock、tModLoader，`profiles: [game]`，镜像见 `infra/game/*/Dockerfile`）同样在 Docker Compose 中运行**；世界服务、API、网页与单端口网关（`apps/world`、`apps/api`、`apps/web`、`apps/gateway`）在宿主机原生运行。因此上述 Docker 相关阅读要求保留，涉及依赖服务时须阅读根目录 `docker-compose.yml` 与 `.dockerignore`。
 
 ### 1.3 阅读后的执行要求
 
