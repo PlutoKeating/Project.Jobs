@@ -60,8 +60,11 @@ export async function planRound(opts: {
           const unc = tFeatures.filter((f) => !usedFeatures.has(f)).length;
           if (tFeatures.length) { reason.uncovered_feature = w.uncovered_feature * (unc / tFeatures.length); pr += reason.uncovered_feature as number; }
           else if (mode === 'curiosity') { const ratio = 1 - (usedFeatures.size / Math.max(1, cov.filter((c) => c.dimension === 'feature').length || 1)); reason.uncovered_feature = w.uncovered_feature * 0.6 * ratio; pr += reason.uncovered_feature as number; }
-          const triedTasks = new Set(done.map((d) => (d.plan_reason as { task_id?: string } | null)?.task_id).filter(Boolean));
-          if (t && !triedTasks.has(t.id)) { reason.uncovered_task = w.uncovered_feature * 0.9; pr += reason.uncovered_task as number; }
+          // 任务覆盖：只有成功的 Session 才算覆盖；尝试过但失败（例如卡在登录）的任务仍保留一半补样权重
+          const taskOf = (d: typeof done[number]) => (d.plan_reason as { task_id?: string } | null)?.task_id;
+          const succeeded = new Set(done.filter((d) => d.outcome === 'success').map(taskOf).filter(Boolean));
+          const attempted = new Set(done.map(taskOf).filter(Boolean));
+          if (t && !succeeded.has(t.id)) { reason.uncovered_task = w.uncovered_feature * (attempted.has(t.id) ? 0.45 : 0.9); pr += reason.uncovered_task as number; }
           const hypIds = hyps.filter((h) => !(h.target_segments ?? []).length || (h.target_segments ?? []).includes(p.spec.segment)).map((h) => h.id);
           if (hypIds.length) { reason.open_hypothesis = w.open_hypothesis * Math.min(1, hypIds.length / 2); pr += reason.open_hypothesis as number; }
           const trust = calib.filter((c) => c.segment === p.spec.segment || c.segment === '*');
