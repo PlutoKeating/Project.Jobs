@@ -4,7 +4,7 @@ import { closeDb, getDb, worldEvents, type NeedsRow } from '@pux/db';
 import {
   absMinute, actKindOf, agendaAt, agendaFor, allResidents, appearanceFor, completeAgenda, computeLayout, connectBus, decode, EVENT_EFFECT, kvPutJson, lastFinishedSession, latestPersonas,
   loadTown, needOverride, needsAt, OUTDOOR, personaMemoryList, personaSessions, phoneAffinity, placeForKind, residentOf, saveAgenda, saveNeeds, saveWorldClock, SUBJ, tickNeeds, tiesOf, toClock, toMin,
-  type ResidentRow,
+  type InviteCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type ResidentRow,
   type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type SessionLive, type Snapshot, type WorldEvent,
 } from '@pux/jobsworld';
 import { WorldClock } from './clock.ts';
@@ -274,6 +274,43 @@ sub(SUBJ.ask, async (d) => {
 });
 
 await loadRoster();
+
+// ---- 发布引擎：已发布的产品出现在人们面前 → 注意到的人自己决定 → 点开的人排队使用 → 用完留下评论与口碑 ----
+const RUNNER = process.env.JW_RUNNER !== '0';
+const Engine = RUNNER ? await import('@pux/engine') : undefined;
+const engine = Engine ? new Engine.LaunchEngine({ concurrency: Number(process.env.JW_CONCURRENCY ?? 3), say: (id, text, tone) => { const p = live.get(id); if (p) say(p, shorten(text), tone); }, log: (m) => logger.info(m) }) : undefined;
+let lastLaunchAbs = absMinute(clock.date, clock.minute);
+let launchBusy = false;
+async function launchTick() {
+  if (!engine || !Engine || launchBusy || clock.paused) return;
+  const abs = absMinute(clock.date, clock.minute); const minutes = abs - lastLaunchAbs;
+  if (minutes < 1) return;
+  launchBusy = true; lastLaunchAbs = abs;
+  try {
+    const citizens = roster.map((r) => { const p = live.get(r.id); const a = agendas.get(r.id); const cur = a ? agendaAt(a, clock.minute).current : undefined; const n = needs.get(r.id);
+      return { id: r.id, spec: r.spec, place_id: p?.place_id ?? '', place_kind: p?.place_kind ?? 'home', phone: p?.phone ?? 0, in_session: !!p?.session, asleep: !cur || actKindOf(cur) === 'sleep', attention: n ? Math.max(0.15, Math.min(1, 0.45 + n.energy * 0.5 - n.stress * 0.25)) : 0.7 }; });
+    await engine.tick({ abs, date: clock.date, minutes, citizens });
+    const ls = await Engine.listLaunches();
+    const out: LaunchLive[] = [];
+    for (const l of ls.slice(0, 20)) { const f = await Engine.launchFunnel(l.id); out.push({ id: l.id, name: l.name, tagline: l.tagline, intensity: l.intensity, status: l.status, reached: f.reached, noticed: f.noticed, interested: f.interested, opened: f.opened, came_back: f.came_back, using_now: f.using_now, rating: f.rating, reviews: f.reviews, queued: engine.busy.queued }); }
+    bus.publish(SUBJ.launches, { launches: out, ts: Date.now() } satisfies LaunchesMsg);
+    void kvPutJson(bus.kv, 'launches', { launches: out, ts: Date.now() });
+  } catch (e) { logger.warn({ err: String((e as Error).message).slice(0, 200) }, '发布引擎出错'); }
+  finally { launchBusy = false; }
+}
+sub(SUBJ.cmdPromote, async (d) => { if (!Engine) throw new Error('runner 未启用'); const c = d as PromoteCmd; return Engine.setPromotion(c.launch_id, { intensity: c.intensity, status: c.status }); });
+sub(SUBJ.cmdInvite, async (d) => {
+  if (!Engine || !engine) throw new Error('runner 未启用');
+  const c = d as InviteCmd; const l = await Engine.getLaunch(c.launch_id); if (!l) throw new Error('没有这个发布');
+  // 把手机递给谁：指定的人，或者按人群/语言随机挑几位还没用过的
+  let pool = roster.filter((r) => r.spec.kind !== 'expert' && (c.persona_ids?.length ? c.persona_ids.includes(r.id) : (!c.segment || r.segment === c.segment) && (!c.locale || r.spec.locale === c.locale) && (r.spec.kind !== 'child')));
+  if (!c.persona_ids?.length) pool = pool.sort(() => Math.random() - 0.5).slice(0, Math.max(1, Math.min(20, c.n ?? 3)));
+  const ids = await Engine.inviteToLaunch(l, pool.map((r) => ({ id: r.id, spec: r.spec })), { want: c.want });
+  engine.enqueue(ids, l);
+  return { invited: ids.length, session_ids: ids };
+});
+
+setInterval(() => void launchTick(), 10_000);
 setInterval(step, 1000);
 setInterval(() => void pollSessions(), 1500);
 setInterval(() => void loadRoster(), 60_000);

@@ -9,14 +9,15 @@ import * as E from '@pux/engine';
 import { computeLayout, kvGetJson, latestPersonas, liveContextFor, loadAgenda, personaById, personaMemoryList, personaSessions, personaTrust, residentOf, tiesOf, SUBJ, type Snapshot } from '@pux/jobsworld';
 import { login, logout, requireAdmin, roleOf, authEnabled } from './auth.ts';
 import { avatarFor } from './avatars.ts';
-import { autoProject, createAndRun, running } from './jobs.ts';
 import { appRollup, cachedVerdict, generateVerdict, sessionFacts } from './rollup.ts';
 import type { Bus } from '@pux/jobsworld';
+import { launchRoutes } from './launches.ts';
 
 type P = { id: string };
 const layout = computeLayout();
 
 export function routes(app: FastifyInstance, bus: Bus | undefined) {
+  launchRoutes(app, bus);
   const snapshot = async () => (bus ? await kvGetJson<Snapshot>(bus.kv, 'snapshot').catch(() => undefined) : undefined);
   const request = async (subject: string, data: unknown, timeout = 120_000) => {
     if (!bus) throw new Error('nats_unavailable');
@@ -132,37 +133,6 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     const lang = (q.body as { lang?: string } | undefined)?.lang === 'en' ? 'en' : 'zh';
     try { return await generateVerdict((q.params as P).id, lang); } catch (e) { return r.code(422).send({ error: String((e as Error).message) }); }
   });
-  app.get('/api/v1/app-versions', async () => getDb().select({ id: appVersions.id, app_id: apps.id, app: apps.name, version: appVersions.version, url: appVersions.env_url, seeded: appVersions.seeded_defects, spec: appVersions.product_spec_path }).from(appVersions).innerJoin(apps, eq(apps.id, appVersions.app_id)).orderBy(apps.name, appVersions.version));
-
-  // ---- Study ----
-  app.get('/api/v1/studies', async () => {
-    const db = getDb();
-    const rows = await db.select({ s: studies, app: apps.name, app_id: apps.id, version: appVersions.version }).from(studies).innerJoin(appVersions, eq(appVersions.id, studies.app_version_id)).innerJoin(apps, eq(apps.id, appVersions.app_id)).orderBy(desc(studies.created_at)).limit(200);
-    const counts = await db.select({ study_id: sessions.study_id, n: count() }).from(sessions).groupBy(sessions.study_id);
-    return rows.map(({ s, app, app_id, version }) => ({ id: s.id, name: s.name, status: s.status, app, app_id, version, created_at: s.created_at, finished_at: s.finished_at, tokens: s.tokens, cost_usd: s.cost_usd, stop_reason: s.stop_reason, sessions: counts.find((c) => c.study_id === s.id)?.n ?? 0, report: existsSync(dataPath('reports', s.id, 'index.html')), job: running.has(s.id) && !running.get(s.id)!.done }));
-  });
-  app.get('/api/v1/studies/:id', async (q, r) => {
-    const id = (q.params as P).id; const db = getDb();
-    const [row] = await db.select({ s: studies, app: apps.name, app_id: apps.id, version: appVersions.version }).from(studies).innerJoin(appVersions, eq(appVersions.id, studies.app_version_id)).innerJoin(apps, eq(apps.id, appVersions.app_id)).where(eq(studies.id, id));
-    if (!row) return r.code(404).send({ error: 'not_found' });
-    const roster = new Map((await latestPersonas()).map((p) => [p.id, p.spec.identity.name]));
-    const ss = (await db.select().from(sessions).where(eq(sessions.study_id, id)).orderBy(sessions.round, sessions.started_at)).map((s) => ({ ...s, persona_name: roster.get(s.persona_id) ?? s.persona_id }));
-    const iss = await E.studyIssues(id);
-    const job = running.get(id);
-    return { study: row.s, app: row.app, app_id: row.app_id, version: row.version, sessions: ss, issues: iss.map((i) => ({ id: i.id, title: i.title, severity: i.severity, category: i.category, attribution: i.attribution, trust: i.trust_level, status: i.status, segments: i.affected_segments ?? [], seeded_match: i.seeded_match, sessions: (i.session_ids ?? []).length, recommendation: i.recommendation })), job: job ? { log: job.log.slice(-200), done: !!job.done, error: job.error } : null, report: existsSync(dataPath('reports', id, 'index.html')) };
-  });
-  app.post('/api/v1/studies', async (q, r) => { if (!requireAdmin(q, r)) return; return createAndRun(q.body as Record<string, unknown>, q.headers['idempotency-key'] as string | undefined); });
-  // 兼容旧 console 的 CI 入口
-  app.post('/api/studies', async (q, r) => { if (!requireAdmin(q, r)) return; return createAndRun(q.body as Record<string, unknown>, q.headers['idempotency-key'] as string | undefined); });
-  app.get('/api/studies/:id', async (q, r) => r.redirect(`/api/v1/studies/${(q.params as P).id}`, 307));
-  app.post('/api/v1/projects', async (q, r) => {
-    if (!requireAdmin(q, r)) return;
-    const b = q.body as Record<string, string | number | boolean>;
-    const id = await autoProject({ name: String(b.name), url: String(b.url), version: String(b.version || 'v1'), form: (b.form as 'web') || 'web', prd: (b.prd as string) || undefined, sessions: Number(b.sessions || 6), steps: Number(b.steps || 30), user: (b.user as string) || undefined, password: (b.password as string) || undefined, temporal: !!b.temporal});
-    return { study_id: id };
-  });
-
-  // ---- Session ----
   app.get('/api/v1/sessions/:id', async (q, r) => {
     const id = (q.params as P).id; const db = getDb();
     const [s] = await db.select().from(sessions).where(eq(sessions.id, id));
@@ -203,7 +173,6 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     if (!requireAdmin(q, r)) return;
     const id = (q.params as P).id;
     await E.resolveHumanTask(id, 'resolved', 'web');
-    try { const { signalHuman } = await import('@pux/worker/client'); await signalHuman(id); } catch { /* inline 模式 */ }
     return { ok: true };
   });
   const evidenceHandler = async (q: { params: unknown }, r: import('fastify').FastifyReply) => {

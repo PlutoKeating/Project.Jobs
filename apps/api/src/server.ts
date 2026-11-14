@@ -20,7 +20,8 @@ await app.register(fstatic, { root: dataPath('reports'), prefix: '/reports/', de
 mkdirSync(WEB_DIST, { recursive: true });
 await app.register(fstatic, { root: WEB_DIST, prefix: '/', wildcard: true, index: false });
 
-const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout', '/healthz']);
+// 收件箱接口对被测产品的测试环境开放（它只能往里投信，读不到任何东西）
+const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout', '/healthz', '/api/v1/inbox/email', '/api/v1/inbox/sms']);
 app.addHook('onRequest', async (q, r) => {
   const path = q.url.split('?')[0];
   const guarded = path.startsWith('/api/') || path.startsWith('/reports/') || path.startsWith('/evidence/');
@@ -33,11 +34,11 @@ try { bus = await connectBus('jobsworld-api'); } catch (e) { logger.warn({ err: 
 // ---- 实时推送：每个浏览器一个 WebSocket，服务端统一订阅 NATS 后扇出 ----
 const clients = new Set<{ send: (s: string) => void; readyState: number }>();
 if (bus) {
-  for (const subject of [SUBJ.snapshot, SUBJ.liveAll, SUBJ.sayAll]) {
+  for (const subject of [SUBJ.snapshot, SUBJ.liveAll, SUBJ.sayAll, SUBJ.launches]) {
     void (async () => {
       for await (const m of bus!.nc.subscribe(subject)) {
         if (!clients.size) continue;
-        const kind = m.subject === SUBJ.snapshot ? 'snapshot' : m.subject.endsWith('.live') ? 'live' : 'say';
+        const kind = m.subject === SUBJ.snapshot ? 'snapshot' : m.subject === SUBJ.launches ? 'launches' : m.subject.endsWith('.live') ? 'live' : 'say';
         const frame = `{"type":"${kind}","data":${new TextDecoder().decode(m.data)}}`;
         for (const c of clients) if (c.readyState === 1) c.send(frame);
       }

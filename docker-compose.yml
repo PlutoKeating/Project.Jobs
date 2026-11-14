@@ -51,18 +51,6 @@ services:
       - ./infra/litellm/config.yaml:/app/config.yaml:ro
       - ${GOOGLE_ADC_FILE:?请在 .env 中设置 GOOGLE_ADC_FILE}:/secrets/adc.json:ro
 
-  temporal:
-    # Temporal dev server（SQLite 持久化，内置 Web UI）
-    image: temporalio/temporal:latest
-    restart: unless-stopped
-    command: ["server", "start-dev", "--ip", "0.0.0.0", "--db-filename", "/data/temporal.db", "--ui-port", "8233"]
-    user: "0:0"
-    ports:
-      - "127.0.0.1:${TEMPORAL_PORT:-57233}:7233"
-      - "127.0.0.1:${TEMPORAL_UI_PORT:-58233}:8233"
-    volumes:
-      - temporaldata:/data
-
   nats:
     # JobsWorld 事件总线（JetStream 持久化；只监听本机）
     image: nats:2.12-alpine
@@ -128,4 +116,3 @@ volumes:
   natsdata:
   pgdata:
   s3data:
-  temporaldata:

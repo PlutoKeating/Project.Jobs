@@ -17,8 +17,10 @@ function cookies(req: FastifyRequest): Record<string, string> {
 
 export function roleOf(req: FastifyRequest): { viewer: boolean; admin: boolean } {
   const c = cookies(req);
-  const adminCookie = !!c.jw_admin && eq(c.jw_admin, sign('admin'));
-  const viewer = !authEnabled() || adminCookie || (!!c.jw_auth && eq(c.jw_auth, sign('viewer')));
+  // 命令行、MCP、飞书等非浏览器入口：用口令作为 Bearer 令牌
+  const bearer = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization ?? ''))?.[1] ?? '';
+  const adminCookie = (!!c.jw_admin && eq(c.jw_admin, sign('admin'))) || (adminEnabled() && !!bearer && eq(bearer, process.env.JW_ADMIN_PASSCODE!));
+  const viewer = !authEnabled() || adminCookie || (!!c.jw_auth && eq(c.jw_auth, sign('viewer'))) || (!!bearer && eq(bearer, process.env.JW_PASSCODE!));
   // 未设置管理员口令时：能进来的人都是管理员；设置了则必须用管理员口令登录
   const admin = adminEnabled() ? adminCookie : viewer;
   return { viewer, admin };

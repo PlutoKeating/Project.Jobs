@@ -10,8 +10,9 @@ import { perceive, type Rect } from '../human/perception.ts';
 import { consolidate, lifeBetween, recall } from '../human/memory.ts';
 import { WorldSimulator } from '../world/simulator.ts';
 import { contextRecord, nextFreeContext, saveSessionContext, stateFromContext, type ContextRecord } from '../world/live.ts';
-import { saveNeeds, toMin as toMinutes } from '@pux/jobsworld';
+import { saveNeeds, tiesOf, toMin as toMinutes } from '@pux/jobsworld';
 import { accountHint } from '../exploration/goals.ts';
+import { amountIn, identityHint, payFromWallet, unseenMail } from '../launch/identity.ts';
 import { taskCompleted } from '../product/intelligence.ts';
 import { normalizeKey, runMind, type MindOut } from './roles.ts';
 
@@ -78,6 +79,8 @@ export class SessionRunner {
   /** 上一步「凑近看」的区域，只对下一眼有效 */
   private focus?: Rect;
   private refreshes = 0;
+  private foundVia?: string; private visit = 1; private fromLaunch = false;
+  private inboxNotes: string[] = [];
 
   static async start(sessionId: string, opts: { headed?: boolean } = {}): Promise<SessionRunner> {
     const r = new SessionRunner(); await r.init(sessionId, opts); SessionRunner.registry.set(sessionId, r); return r;
@@ -93,6 +96,10 @@ export class SessionRunner {
     const av = (await db.select().from(appVersions).where(eq(appVersions.id, st.app_version_id)))[0];
     const app = (await db.select().from(apps).where(eq(apps.id, av.app_id)))[0];
     this.appName = app.name; this.appId = app.id; this.startUrl = av.env_url;
+    // 发布主线：这个人是怎么遇到它的（商店、广告、熟人…），以及他从哪个地址进来（有落地页时先到落地页）
+    const pr = (this.sess.plan_reason ?? {}) as { entry_url?: string; found?: string; visit?: number; launch_id?: string };
+    if (pr.entry_url) this.startUrl = pr.entry_url;
+    this.foundVia = pr.found; this.visit = pr.visit ?? 1; this.fromLaunch = !!pr.launch_id;
     const p = await getPersona(this.sess.persona_id, this.sess.persona_version);
     if (!p) throw new Error(`Persona 不存在：${this.sess.persona_id}@${this.sess.persona_version}`);
     this.persona = p.spec; this.personaVersion = p.version; this.lang = langOf(p.spec.locale);
@@ -121,7 +128,7 @@ export class SessionRunner {
     const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.simDay, undefined, this.memScope, this.persona).catch(() => []);
     // 想起一件事时，也会想起与之相反的经历（记忆树里的冲突边）
     this.memories.push(...mem.map((m) => (m.conflicts_with ? (this.lang === 'zh' ? `不过你也记得：${m.content}` : `But you also remember: ${m.content}`) : m.content)));
-    this.memories.push(accountHint(this.persona, this.appId));
+    this.memories.push(this.fromLaunch ? await identityHint(this.persona) : accountHint(this.persona, this.appId));
     // 同一个网页产品，在路上用手机开，在办公桌前用电脑开：设备跟着人此时此地的处境走
     this.mobile = app.form === 'h5' || deviceFor({ device: this.worldTpl.device, scenario_class: this.worldTpl.scenario_class, init: { ...this.worldTpl.init, place: this.world.state.place, motion: this.world.state.motion, channels: this.world.state.channels } }) === 'phone';
     this.browser = await BrowserSession.launch({ sessionId, studyId: st.id, personaId: this.persona.id, executor: 'midscene', headed: opts.headed ?? this.study.config.headed, mobile: this.mobile, locale: this.persona.locale, policy: policyFor(this.persona), rng: this.rng, deviceStateFile: dataPath('runtime', 'devices', st.id, `${this.persona.id}.json`), geolocation: this.persona.psychology.privacy_sensitivity >= 0.75 ? null : (([lat, lng]) => ({ latitude: lat + this.rng.normal(0, 0.02), longitude: lng + this.rng.normal(0, 0.02) }))(cityCoords(this.persona.identity.region)) });
@@ -161,6 +168,9 @@ export class SessionRunner {
     }
     const net = this.world.takeNetworkChange(); if (net !== undefined) await this.browser.setNetwork(net);
     for (const cue of this.world.takeMemoryCues()) { const m = await recall(this.persona.id, this.appId, cue, this.simDay, 2, this.memScope).catch(() => []); this.memories.push(cue, ...m.map((x) => x.content)); }
+    // 虚拟身份：产品发来的邮件和短信，他真的收得到
+    const mails = await unseenMail(this.persona.id).catch(() => []);
+    this.inboxNotes = mails.map((m) => (zh ? `你的${m.kind === 'sms' ? '手机收到一条短信' : '邮箱收到一封邮件'}${m.sender ? `（${m.sender}）` : ''}：${[m.subject, m.body].filter(Boolean).join(' — ').slice(0, 300)}` : `You got ${m.kind === 'sms' ? 'a text message' : 'an email'}${m.sender ? ` (${m.sender})` : ''}: ${[m.subject, m.body].filter(Boolean).join(' — ').slice(0, 300)}`));
     const wsId = await this.world.persist(this.sess.id, idx, events);
     for (const e of events) await putEvidence('world_event', { ...tags, persona_id: this.persona.id }, { inline: e });
     const stop = this.world.hardStop();
@@ -187,7 +197,7 @@ export class SessionRunner {
     const modeHint = this.modeHint();
     let mind: MindOut;
     try {
-      mind = await runMind({ persona: this.persona, lang: this.lang, device: this.mobile ? 'phone' : 'computer', situation: this.world.situation, worldNow: this.world.describeForPersona(), lifeGoal: this.goalText, modeHint, feelings: feelings(this.state, this.lang), memories: this.memories.slice(-8), priorKnowledge: this.sess.revisit_day > 0 ? 'used_before' : this.persona.prior_knowledge, appName: this.appName, history: this.hist, image: perc.image, zoom: perc.zoom, events: [...events.filter((e) => e.perceived).map((e) => e.perceived_text ?? e.text), ...obs.notifications.map((n) => (zh ? `屏幕上方弹出通知：${n}` : `a notification popped up: ${n}`))], interruptionNote: this.interruptionNote, loopNote: this.loopNote, pageUrlHint: obs.url.replace(/^https?:\/\//, '').replace(/[?#].*$/, '').slice(0, 60), step: idx, maxSteps }, tags);
+      mind = await runMind({ persona: this.persona, lang: this.lang, device: this.mobile ? 'phone' : 'computer', situation: this.world.situation, worldNow: this.world.describeForPersona(), lifeGoal: this.goalText, modeHint, feelings: feelings(this.state, this.lang), memories: this.memories.slice(-8), priorKnowledge: this.sess.revisit_day > 0 || this.visit > 1 ? 'used_before' : this.persona.prior_knowledge, foundVia: this.foundVia, appName: this.appName, history: this.hist, image: perc.image, zoom: perc.zoom, events: [...events.filter((e) => e.perceived).map((e) => e.perceived_text ?? e.text), ...this.inboxNotes, ...obs.notifications.map((n) => (zh ? `屏幕上方弹出通知：${n}` : `a notification popped up: ${n}`))], interruptionNote: this.interruptionNote, loopNote: this.loopNote, pageUrlHint: obs.url.replace(/^https?:\/\//, '').replace(/[?#].*$/, '').slice(0, 60), step: idx, maxSteps }, tags);
       this.llmErrors = 0;
     } catch (e) {
       this.llmErrors++;
@@ -279,6 +289,8 @@ export class SessionRunner {
     this.prevExpectation = mind.expectation; this.prevResult = res;
     this.hist.push({ intent: mind.intent, outcome: describeResult(res, zh, this.persona.kind === 'child'), monologue: mind.monologue });
     if (res.error?.code === 'ENV_BROWSER_CRASH') return this.end('sim_error', 'ENV_BROWSER_CRASH');
+    // 沙箱付款成功：从这个人的钱包里扣掉屏幕上写的金额
+    if (res.status === 'success' && req.verb === 'click' && /支付|付款|pay|purchase|buy now|checkout/i.test(`${req.target?.text ?? ''} ${res.resolved_target?.resolved?.a11y_name ?? ''}`)) { const amt = amountIn(`${req.target?.text ?? ''} ${res.resolved_target?.resolved?.a11y_name ?? ''} ${mind.intent}`); if (amt && amt < 100_000) await payFromWallet(this.persona.id, amt).catch(() => {}); }
     // 模拟耗时：阅读 + 思考 + 动作 + 打字
     const typed = String(req.args?.text ?? '').length;
     this.pendingSimSeconds = this.readingSeconds(perc.read_chars) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? (req.args?.paste ? 2 : typed / motor.typing_cps) : 0) + (req.verb === 'speak' ? typed / 4 : 0);
@@ -341,7 +353,7 @@ export class SessionRunner {
     let memoryResult: unknown;
     try {
       const diary = st.map((s) => `[${s.sim_clock}] ${s.intent ?? ''} — ${s.monologue ?? ''}`).join('\n').slice(0, 6000);
-      memoryResult = await consolidate({ persona: this.persona, appId: this.appId, appName: this.appName, sessionId: this.sess.id, studyId: this.study.id, simDay: this.simDay, simTime: this.world.state.sim_clock, outcome: end.outcome, endReason: end.end_reason, diary });
+      memoryResult = await consolidate({ persona: this.persona, appId: this.appId, appName: this.appName, sessionId: this.sess.id, studyId: this.study.id, simDay: this.simDay, simTime: this.world.state.sim_clock, outcome: end.outcome, endReason: end.end_reason, diary, ties: this.fromLaunch ? (await tiesOf(this.persona.id).catch(() => [])).slice(0, 8).map((t) => t.name) : [] });
     } catch (e) { logger.warn({ err: String((e as Error).message).slice(0, 200) }, '记忆整理失败'); }
     await db.update(sessions).set({ status: 'finished', outcome: end.outcome, end_reason: end.end_reason.slice(0, 500), ended_at: new Date(), video_ev: ev.video_ev, har_ev: ev.har_ev, rrweb_ev: ev.rrweb_ev, path_signature: pathSig, summary: { final_state: this.state, world: this.world.state, memory: memoryResult, objective_completion: this.signals.length ? taskCompleted(this.signals, this.obsLog).done : null } }).where(eq(sessions.id, this.sess.id));
     // 用完之后：这次经历留下的心情和压力带回他在城里的生活（世界服务从这里接着往下算）

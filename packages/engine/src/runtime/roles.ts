@@ -35,6 +35,8 @@ export interface MindInput {
   device: 'phone' | 'computer';
   situation: string; worldNow: string; lifeGoal: string; modeHint: string;
   feelings: string; memories: string[]; priorKnowledge: string; appName: string;
+  /** 发布主线：这个人是怎么遇到这个产品的（他当时看到的原样），有它时替代固定的「听没听说过」 */
+  foundVia?: string;
   history: { intent: string; outcome: string; monologue: string }[];
   image?: Buffer; zoom?: Buffer; events: string[]; interruptionNote?: string; loopNote?: string;
   pageUrlHint: string; step: number; maxSteps: number;
@@ -59,7 +61,7 @@ export function mindSystemPrompt(i: MindInput): string {
 
 【你怎么看屏幕】
 - 你只能看到图里的屏幕。图里看不到的东西对你来说不存在；不要编造屏幕上没有的按钮或文字。
-- 图里模糊的地方，是你这一眼没细看或看不清的：你知道那里有东西，但没读到内容。想知道写了什么，要专门凑近看（action=look_closer），这要花你的时间和耐心。${i.zoom ? '\n- 第二张图是你刚才凑近看的那一块。' : ''}
+- 图里模糊的地方，是你这一眼没细看或看不清的：你知道那里有东西，但没读到内容。想知道写了什么，要专门凑近看（action=look_closer），这要花你的时间和耐心。模糊只是因为你没细看，不是屏幕或这个应用有毛病——不要抱怨「看不清」「模糊」，也不要把它当成应用的问题；真想看就凑近看。${i.zoom ? '\n- 第二张图是你刚才凑近看的那一块。' : ''}
 - 屏幕之外还有没有内容，要自己往下滑才知道。
 
 【你是普通人，不是技术人员】
@@ -93,7 +95,7 @@ export function mindSystemPrompt(i: MindInput): string {
 
 [How you see the screen]
 - You can only see the screen in the image. What is not in the image does not exist for you; never invent buttons or text.
-- Blurry areas are things you did not look at closely or cannot make out: you know something is there but you have not read it. To know what it says you must look closer (action=look_closer), which costs you time and patience.${i.zoom ? '\n- The second image is the part you just looked at closely.' : ''}
+- Blurry areas are things you did not look at closely or cannot make out: you know something is there but you have not read it. To know what it says you must look closer (action=look_closer), which costs you time and patience. The blur only means you haven't looked closely — it is not a flaw of the screen or the app, so never complain that things look blurry or treat it as the app's problem; if you really want to read it, look closer.${i.zoom ? '\n- The second image is the part you just looked at closely.' : ''}
 - Whether there is more below the screen, you only find out by scrolling.
 
 [You are an ordinary person, not a technician]
@@ -124,7 +126,8 @@ export function mindSystemPrompt(i: MindInput): string {
 - expectation: what you expect to see after this action. previous_met_expectation: did the last result match what you expected? If not, say what felt off in previous_surprise.
 - monologue: your inner voice right now (1–3 casual sentences, true to who you are and how you feel; don't restate your goal every time).
 - Fill unused fields with empty strings, false or none.`;
-  return `${personaBio(i.persona)}\n\n${prior}\n\n${rules}`;
+  const met = i.foundVia ? (zh ? `${i.priorKnowledge === 'used_before' ? `你以前用过「${i.appName}」。` : ''}这次是这样遇到它的：${i.foundVia}` : `${i.priorKnowledge === 'used_before' ? `You have used "${i.appName}" before. ` : ''}How you came across it this time: ${i.foundVia}`) : prior;
+  return `${personaBio(i.persona)}\n\n${met}\n\n${rules}`;
 }
 
 export async function runMind(i: MindInput, tags: Tags): Promise<MindOut> {

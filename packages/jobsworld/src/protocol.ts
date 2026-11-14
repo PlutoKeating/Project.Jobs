@@ -11,6 +11,9 @@ export const SUBJ = {
   cmdClock: 'jw.cmd.clock',
   cmdEvent: 'jw.cmd.event',
   cmdReplay: 'jw.cmd.replay',
+  launches: 'jw.launches',      // world → *：已发布的产品与各自的漏斗人数
+  cmdPromote: 'jw.cmd.promote', // 调宣发强度 / 暂停 / 结束
+  cmdInvite: 'jw.cmd.invite',   // 把手机递给一批人
   detail: 'jw.detail',          // 请求/应答：人物详情（游戏面板用）
   ask: 'jw.ask',                // 请求/应答：Session 结束后的追问访谈
 } as const;
@@ -73,3 +76,9 @@ export interface Appearance {
   /** 手持物品（手机替身） */
   held: number;
 }
+
+/** 已发布的产品在城里的现状（漏斗按人去重；数字是这座城里实际发生的人数） */
+export interface LaunchLive { id: string; name: string; tagline: string; intensity: number; status: string; reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; rating: number | null; reviews: number; queued?: number }
+export interface LaunchesMsg { launches: LaunchLive[]; ts: number }
+export interface PromoteCmd { launch_id: string; intensity?: number; status?: 'live' | 'paused' | 'ended' }
+export interface InviteCmd { launch_id: string; persona_ids?: string[]; n?: number; segment?: string; locale?: string; want?: string }

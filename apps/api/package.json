@@ -13,7 +13,6 @@
     "@pux/llm": "workspace:*",
     "@pux/storage": "workspace:*",
     "@pux/engine": "workspace:*",
-    "@pux/worker": "workspace:*",
     "@pux/jobsworld": "workspace:*",
     "fastify": "^5.12.8",
     "@fastify/static": "^10.1.11",

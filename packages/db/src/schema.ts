@@ -573,3 +573,105 @@ export const worldKv = pgTable('world_kv', {
   value: jsonb('value').notNull(),
   updated_at: ts('updated_at').default(sql`now()`),
 });
+
+// ============================================================
+// 发布（阶段③）：把产品发布到世界里，人们自己决定看不看、用不用、跟谁说
+// ============================================================
+export interface AudienceRow { locales?: string[]; age_min?: number; age_max?: number; segments?: string[]; tags?: string[] }
+
+export const launches = pgTable('launches', {
+  id: text('id').primaryKey(),
+  app_id: text('app_id').notNull(),
+  app_version_id: text('app_version_id').notNull(),
+  study_id: text('study_id').notNull(),                  // 内部容器：这次发布产生的所有使用都记在它名下
+  name: text('name').notNull(),
+  tagline: text('tagline').notNull(),                    // 一句话：商店页、广告上的那句话
+  description: text('description'),
+  url: text('url').notNull(),                            // 产品地址（打开就是它）
+  landing_url: text('landing_url'),                      // 官网或落地页；有的话，从广告和推荐来的人先到这里
+  form: text('form').notNull().default('web'),
+  icon_ev: text('icon_ev'),                              // 商店图标（截图裁出来的或上传的）
+  shot_evs: jsonb('shot_evs').$type<string[]>().default([]),   // 商店页截图
+  ad_text: text('ad_text'),                              // 广告文案（不填就用一句话）
+  intensity: real('intensity').notNull().default(0.3),   // 宣发强度 0–1：悄悄上线 → 全城铺开
+  audience: jsonb('audience').$type<AudienceRow>().default({}),   // 投给谁（空 = 所有人）
+  status: text('status').notNull().default('live'),      // live|paused|ended
+  published_min: integer('published_min').notNull(),     // 发布时的世界分钟
+  spend_usd: doublePrecision('spend_usd').notNull().default(0),
+  created_at: createdAt(),
+}, (t) => [index('launches_app').on(t.app_id)]);
+
+/** 漏斗的每一步：谁、在哪个渠道、看到了什么、怎么反应 */
+export const exposures = pgTable('exposures', {
+  id: text('id').primaryKey(),
+  launch_id: text('launch_id').notNull(),
+  persona_id: text('persona_id').notNull(),
+  channel: text('channel').notNull(),                    // store|ad|billboard|feed|word_of_mouth|landing|invite|recall
+  source_persona_id: text('source_persona_id'),          // 口碑：是谁说的
+  world_min: integer('world_min').notNull(),
+  place_id: text('place_id'),
+  reaction: text('reaction').notNull(),                  // unnoticed|ignored|not_for_me|curious_later|opened
+  thought: text('thought'),                              // 当时心里的一句话
+  session_id: text('session_id'),                        // 打开了产品的话，对应的那次使用
+  created_at: createdAt(),
+}, (t) => [index('exposures_launch').on(t.launch_id), index('exposures_persona').on(t.persona_id)]);
+
+/** 商店里的评分与评论 */
+export const storeReviews = pgTable('store_reviews', {
+  id: text('id').primaryKey(),
+  launch_id: text('launch_id').notNull(),
+  persona_id: text('persona_id').notNull(),
+  session_id: text('session_id'),
+  rating: integer('rating').notNull(),                   // 1–5
+  body: text('body').notNull(),
+  world_min: integer('world_min').notNull(),
+  created_at: createdAt(),
+}, (t) => [index('reviews_launch').on(t.launch_id)]);
+
+/** 世界里的社交平台：人们公开发的帖子 */
+export const posts = pgTable('posts', {
+  id: text('id').primaryKey(),
+  persona_id: text('persona_id').notNull(),
+  launch_id: text('launch_id'),
+  session_id: text('session_id'),
+  body: text('body').notNull(),
+  sentiment: real('sentiment').notNull().default(0),     // -1..1
+  likes: integer('likes').notNull().default(0),
+  reply_to: text('reply_to'),
+  world_min: integer('world_min').notNull(),
+  created_at: createdAt(),
+}, (t) => [index('posts_launch').on(t.launch_id), index('posts_time').on(t.world_min)]);
+
+/** 虚拟身份的收件箱：产品发给这个人的邮件和短信（验证码真的收得到） */
+export const mailbox = pgTable('mailbox', {
+  id: text('id').primaryKey(),
+  persona_id: text('persona_id'),                        // 按地址或号码匹配到的人；匹配不到时为空
+  kind: text('kind').notNull(),                          // email|sms
+  address: text('address').notNull(),                    // 收件地址或手机号
+  sender: text('sender'),
+  subject: text('subject'),
+  body: text('body').notNull(),
+  seen: boolean('seen').notNull().default(false),
+  created_at: createdAt(),
+}, (t) => [index('mailbox_persona').on(t.persona_id), index('mailbox_address').on(t.address)]);
+
+/** 一页人话的结论（按发布缓存；basis 变了就重算） */
+export const launchReports = pgTable('launch_reports', {
+  launch_id: text('launch_id').notNull(),
+  lang: text('lang').notNull(),
+  basis: text('basis').notNull(),
+  data: jsonb('data').notNull(),
+  created_at: createdAt(),
+}, (t) => [primaryKey({ columns: [t.launch_id, t.lang] })]);
+
+/** 打算以后再看看的念头（看到了、有点兴趣、当时没空） */
+export const intentions = pgTable('intentions', {
+  id: text('id').primaryKey(),
+  launch_id: text('launch_id').notNull(),
+  persona_id: text('persona_id').notNull(),
+  kind: text('kind').notNull(),                          // try_later|return
+  reason: text('reason'),
+  strength: real('strength').notNull().default(0.5),     // 0–1，随时间衰减
+  created_min: integer('created_min').notNull(),
+  done: boolean('done').notNull().default(false),
+}, (t) => [index('intentions_launch').on(t.launch_id)]);

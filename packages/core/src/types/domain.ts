@@ -237,7 +237,7 @@ export type Mode = 'goal' | 'curiosity' | 'stress' | 'adversarial';
 export const StudyInputSchema = z.object({
   app_version_id: z.string(),
   name: z.string().optional(),
-  trigger: z.enum(['cli', 'console', 'api', 'ci']).default('cli'),
+  trigger: z.enum(['cli', 'console', 'api', 'ci', 'launch']).default('cli'),
   idempotency_key: z.string().optional(),
   mode_mix: ModeMixSchema.default({ goal: 0.4, curiosity: 0.25, stress: 0.2, adversarial: 0.15 }),
   budget: z.object({

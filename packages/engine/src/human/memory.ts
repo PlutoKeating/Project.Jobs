@@ -49,6 +49,14 @@ const ConsolidationSchema = z.object({
   ai_trust_delta: z.number(),
   would_return: z.boolean(),
   reason: z.string(),
+  // 用完之后的事（大多数人什么也不写、什么也不说）
+  store_rating: z.number(),          // 0 = 不会去评分；1–5
+  store_review: z.string(),
+  tell_who: z.string(),              // 会跟哪位熟人提起（名字，没有就空）
+  tell_what: z.string(),
+  public_post: z.string(),           // 会不会公开发一条动态（内容，不会就空）
+  come_back: z.enum(['never', 'if_needed', 'soon', 'habit']),
+  come_back_for: z.string(),
 });
 
 /** 一次经历最多把对某个产品的态度推动这么多 */
@@ -84,14 +92,14 @@ export function updateAttitudes(prev: { ai_trust: number; app_trust: Record<stri
 }
 
 /** 记忆整理：一次使用结束后，由 mind.slow 以这个人的口吻写下会留在脑子里的事，写进他的记忆树 */
-export async function consolidate(opts: { persona: PersonaSpec; appId: string; appName: string; sessionId: string; studyId: string; simDay: number; simTime: string; outcome: string; endReason: string; diary: string }) {
+export async function consolidate(opts: { persona: PersonaSpec; appId: string; appName: string; sessionId: string; studyId: string; simDay: number; simTime: string; outcome: string; endReason: string; diary: string; ties?: string[] }) {
   const lang = langOf(opts.persona.locale);
   const sys = lang === 'en'
     ? `${personaBio(opts.persona)}\n\nYou are thinking back over what just happened while using "${opts.appName}". Write memories the way this person would remember them (first person, short). Valence -1..1, importance 0..1. Trust deltas -0.5..0.5.`
     : `${personaBio(opts.persona)}\n\n你刚刚用完「${opts.appName}」，现在回想这段经历。以这个人的口吻写下会留在脑子里的记忆（第一人称、简短）。valence 取 -1..1，importance 取 0..1，信任变化取 -0.5..0.5。`;
   const user = lang === 'en'
-    ? `How it ended: ${opts.outcome} (${opts.endReason}).\nWhat happened (in order):\n${opts.diary}\n\nWrite 2–6 memories (episodic experiences, beliefs about what it is good/bad at, trust events, habits formed, payment/subscription reasons). scope=app for memories about this product, global for general feelings about AI products.`
-    : `结局：${opts.outcome}（${opts.endReason}）。\n经过（按时间）：\n${opts.diary}\n\n写 2–6 条记忆（经历、对它擅长/不擅长什么的看法、信任事件、形成的习惯、付费/退订原因）。关于这个产品的 scope=app，对 AI 产品整体的感受 scope=global。`;
+    ? `How it ended: ${opts.outcome} (${opts.endReason}).\nWhat happened (in order):\n${opts.diary}\n\nWrite 2–6 memories (episodic experiences, beliefs about what it is good/bad at, trust events, habits formed, payment/subscription reasons). scope=app for memories about this product, global for general feelings about AI products.\n\nThen, what happens afterwards. In reality most people write nothing and tell no one — only when they're delighted, angry, or it happens to come up:\n- store_rating: would you rate it in the app store? 0 if you wouldn't bother; otherwise 1–5 with a short, casual line in store_review.\n- tell_who / tell_what: would you mention it to someone you know? If so pick one name from: ${(opts.ties ?? []).join(', ') || '(nobody)'} and write what you'd say; otherwise leave both empty.\n- public_post: would you post about it publicly? Write the post, or leave empty.\n- come_back: never / if_needed (when the need comes up) / soon (want to use it again in a few days) / habit (would use it regularly); come_back_for: what you'd open it for next time.`
+    : `结局：${opts.outcome}（${opts.endReason}）。\n经过（按时间）：\n${opts.diary}\n\n写 2–6 条记忆（经历、对它擅长/不擅长什么的看法、信任事件、形成的习惯、付费/退订原因）。关于这个产品的 scope=app，对 AI 产品整体的感受 scope=global。\n\n再说说用完之后的事。现实里大多数人用完什么也不写、什么也不说——只有特别满意、特别生气，或者正好想跟某个人说时才会：\n- store_rating：你会不会去应用商店打分？不会就填 0；会就填 1–5，并在 store_review 写一句你会写的评论（口语、短）。\n- tell_who / tell_what：你会不会跟某位熟人提起它？会就从这些人里选一个名字：${(opts.ties ?? []).join('、') || '（没有）'}，并写你会怎么说；不会就都留空。\n- public_post：你会不会公开发一条动态说它？会就写内容，不会就留空。\n- come_back：以后还会不会再打开——never（不会了）、if_needed（哪天正好需要时）、soon（过几天还想用）、habit（会经常用）；come_back_for 写下次会为了什么事打开它。`;
   const r = await gateway().chat('mind_slow', { messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], schema: ConsolidationSchema, schemaName: 'consolidation', tags: { study_id: opts.studyId, session_id: opts.sessionId, purpose: 'memory_consolidation' } });
   await ensureCore(opts.persona).catch(() => {});
   const withEmb: { m: z.infer<typeof ConsolidationSchema>['memories'][number]; emb: number[] }[] = [];

@@ -1,20 +1,18 @@
 {
-  "name": "pux",
+  "name": "jobs",
   "private": true,
   "version": "0.1.0",
-  "description": "AI 产品体验官 — 用模拟真人在模拟世界里使用真实产品，发现体验问题并给出可信度",
+  "description": "Jobs — 把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、跟谁说。",
   "type": "module",
   "packageManager": "pnpm@12.11.2",
   "engines": {
     "node": ">=22"
   },
   "scripts": {
-    "pux": "tsx apps/cli/src/index.ts",
     "infra:up": "docker compose up -d",
     "infra:down": "docker compose down",
     "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
     "db:migrate": "tsx apps/cli/src/index.ts db migrate",
-    "worker": "tsx apps/worker/src/index.ts",
     "demos": "tsx demos/kit/src/launch.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
@@ -23,7 +21,8 @@
     "web": "pnpm --dir apps/web dev",
     "web:build": "pnpm --dir apps/web build",
     "gateway": "tsx apps/gateway/src/index.ts",
-    "jobsworld": "node scripts/jobsworld.mjs"
+    "jobsworld": "node scripts/jobsworld.mjs",
+    "jobs": "tsx apps/cli/src/index.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
