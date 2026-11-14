@@ -2,6 +2,8 @@
 
 让**模拟真人**在**模拟世界**里使用**真实产品**，发现可用性问题、流程断点、「突然不对劲」时刻和 AI 回答质量问题；每条结论都有独立证据链、复现路径、受影响人群和**可信度标签**。
 
+> **重塑决策（2026-11-15，最新，冲突时以它为准）**：[`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md)
+>
 > 设计文档：[`docs/SPEC_v0.2.md`](docs/SPEC_v0.2.md) · JobsWorld：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 实现架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · API：[`docs/API.md`](docs/API.md) · 校准：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
 
 ## 它做什么
