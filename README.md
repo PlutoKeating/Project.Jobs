@@ -82,4 +82,6 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | M0 执行器对比 | Stagehand 100% / 2979ms，Midscene 100% / 3782ms（见 `docs/M0_EXECUTOR_COMPARISON.md`） |
 | 校准验收（助手 Demo 植入缺陷版，16 Session + D1/D7 回访） | 检出率 72.7%（8/11，CI 0.43–0.90）≥ 60% ✅；误报率 9.1%（分诊后，CI 0.02–0.38）≤ 30% ✅；分诊前上界 33%。详见 `docs/CALIBRATION_RECORD.md` |
 
+| JobsWorld 工作台 | 世界服务 + API + 网页 + 单端口网关 + TShock/tModLoader 游戏服，均在本机实测（详见 `docs/JOBSWORLD.md` §7） |
+
 已知局限：本机只有一家模型厂商（Gemini），评审与 Mind 未做到厂商隔离（报告已标注并降级）；单次 Study 的检出率存在抽样波动（n=11，置信区间较宽），需要较深使用才会暴露的缺陷（例如第 3 次提问才出现的弹窗）依赖留存回访与更多轮次；真人基准、埋点、评论校准需要导入真实数据才有意义（已提供示例与命令）；儿童 Persona 的安全 rubric 仍需人工审核后才能在正式环境开启。

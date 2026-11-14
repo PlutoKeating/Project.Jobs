@@ -1,6 +1,6 @@
 # JobsWorld：可视化工作台与 Terraria 世界（计划与决策）
 
-> 状态：实施中（分支 `feature/jobsworld`）。本文是 JobsWorld 的唯一计划与决策记录；实现与本文不一致时以代码为准并回写本文。
+> 状态：已实现并在本机验证（2026-11-14，分支 `feature/jobsworld`）。本文是 JobsWorld 的唯一计划与决策记录；实现与本文不一致时以代码为准并回写本文。
 
 ## 1. 目标
 
@@ -129,3 +129,22 @@ JetStream 流 `JW_LIVE` 保留 `jw.persona.*.live` 24 小时，用于断线补�
 ## 6. 与他人并行工作的约束
 
 另一个会话正在 `main` 上进行后端开发与压测。本分支：不重置共享 Postgres、不调用 Demo 重置接口、不重启已有容器（只单独 `up` 新服务）、不占用已有端口；数据库迁移只新增表。
+
+## 7. 实施结果与验证（2026-11-14，本机）
+
+| 部分 | 结果 |
+|---|---|
+| 世界服务 `apps/world` | 16 个人物都有家与当日日程（骨架 + `mind.slow` 补全）；正在运行的 Session 被只读跟踪并实时直播（实测同时 4 人在用 `demo-assistant`，气泡与名牌实时出现）；回放、世界事件、时钟控制可用 |
+| API `apps/api` | `/api/v1` 全部接口实测；口令/管理员/截图令牌各场景（401/403/200）实测；`judge.meta` 一句话总评已生成（区分「次」与「人」） |
+| 网页 `apps/web` | 世界（像素城市 + 此刻列表 + 人物卡：正在用/在想/刚才/接下来/追问）、人（像素头像由 `image.gen` 生成）、软件汇总（结论、适配度、反馈墙、问题、走势）、评测、Session 时间线、接管；暗/亮主题、中英双语、390px 手机端截图核对；impeccable 收尾评审的问题已修复，设计体系记录在 `DESIGN.md` |
+| 网关 `apps/gateway` | 同一端口 7777：HTTP → API；`Terraria326`（1.4.5.8）→ TShock；`tModLoader v2026.9.3.1!2026.9.3` → tML（单元测试 + 协议探针实测） |
+| TShock | 经 7777 用 `scripts/jw-probe.ts` 实测：世界 JobsWorld、16 个假玩家持续移动、11 块地点告示牌、时间同步到世界时钟、事件引发的头顶气泡、`/jw` 命令 |
+| tModLoader | 经 7777 用 `game/tmodloader/tools/tml-probe.mjs` 实测：mod 同步、16 个假玩家、HUD/名册/人物详情数据包、`/jw` 命令、追问回答 |
+
+**未能验证 / 已知局限**
+
+- 没有真实 Terraria / tModLoader 图形客户端：假玩家外观、气泡渲染、tML 人物面板与截图贴图、无敌/禁止破坏方块只在协议层与编译层验证。
+- 假玩家的坐、躺姿态未实现（网页里有）；时装物品为空。
+- 世界事件只影响 JobsWorld 的呈现，不注入正在运行的 Session（引擎与世界解耦的设计选择）。
+- 同时有多个 Session 时，世界时钟不跟随某一个 Session 的模拟时钟；人物卡单独显示该 Session 的模拟时间。
+- 社区蓝图（`scripts/download-community-assets.sh`）多数无许可证，只下载到 `data/community/` 本机使用，不入库。

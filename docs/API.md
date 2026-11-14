@@ -39,7 +39,7 @@
 | `POST /sessions/:id/ask` `{ q }` | 可追问访谈 → `{ answer }` |
 | `POST /issues/:id/triage`（管理员） `{ status }` | `confirmed` / `rejected` / `open` |
 | `GET /human`、`POST /human/:id/resolve`（管理员） | 人工接管队列；Temporal 模式下同时发送 Signal |
-| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON（旧路径 `/evidence/:id` 仍可用） |
+| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON（旧路径 `/evidence/:id` 仍可用）。设置了 `JW_PASSCODE` 时，游戏内面板用 `?k=<sha256("jw-evidence:"+JW_PASSCODE) 前 32 位十六进制>` 访问（只对本接口有效） |
 | `GET /reports/<study>/index.html` | 离线 HTML 报告 |
 
 兼容旧控制台：`POST /api/studies`（同 `/api/v1/studies`）、`GET /api/studies/:id`（307 到 v1）。
