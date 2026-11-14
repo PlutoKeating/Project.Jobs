@@ -190,7 +190,7 @@ export function CityCanvas({ layout, personas, minute, mode, selectedId, focusId
   }, [focusId, ready]);
   useEffect(() => {
     if (!ready || mode !== 'full' || !focusPlace) return;
-    const pl = layout.places.find((p) => p.id === focusPlace); if (pl) centerOn(pl.x + pl.w / 2, Math.max(pl.top / 2, -20));
+    const pl = layout.places.find((p) => p.id === focusPlace); if (pl) centerOn(pl.x + pl.w / 2, Math.max((pl.top + pl.bottom) / 2, -20) + 6);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusPlace, ready]);
 

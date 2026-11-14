@@ -168,6 +168,12 @@ export function WorldPage() {
             onSelect={pick} onPlace={(id) => { setPlace(id); setSel(null); }}
             overlay={(v) => (
               <div className="pointer-events-none absolute inset-0">
+                {(snap?.events ?? []).map((e) => {
+                  const pl = town.places.find((x) => x.id === e.place_id); if (!pl) return null;
+                  const Icon = EVENTS.find((x) => x.kind === e.kind)?.icon ?? Megaphone;
+                  const pos = toScreen(v, pl.x + pl.w / 2, pl.top - 6);
+                  return <span key={e.id} className="absolute -translate-x-1/2 -translate-y-full rounded-full bg-warning p-1.5 text-bg shadow-md live-dot" style={pos} title={e.kind}><Icon size={14} /></span>;
+                })}
                 {v.s >= 3 && town.places.map((p) => { const pos = toScreen(v, p.x + p.w / 2, p.top - 1.5); return <span key={p.id} className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-[11px] font-medium text-fg-display/80 [text-shadow:0_1px_6px_rgb(0_0_0/0.6)]" style={pos}>{lang === 'zh' ? p.name.zh : p.name.en}</span>; })}
                 {people.map((p) => {
                   const pos = toScreen(v, p.x, p.y - 3.8);
