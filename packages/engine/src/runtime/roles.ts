@@ -1,18 +1,28 @@
-// Persona Mind 与 Operator：不同的模型调用、不共享上下文（§4）。
-import { z, type MotorProfile, type PersonaSpec, type Verb } from '@pux/core';
+// 人物的想法（Persona Mind）。唯一的输入是「这一眼看到的画面」和自己的处境、记忆；输出是想法与手上的一个动作。
+// 人物不知道页面结构、元素列表、网址以外的任何技术信息；动作落到屏幕上由执行层完成（看截图定位）。
+import { z, type PersonaSpec } from '@pux/core';
 import { gateway, type ContentPart, type Tags } from '@pux/llm';
-import type { PerceivedElement } from '../human/perception.ts';
 import { personaBio } from '../human/persona.ts';
 
-// ---------------------------------------------------------------- Persona Mind
+export const ACTIONS = ['tap', 'type', 'scroll', 'go_back', 'press_key', 'long_press', 'hover', 'drag', 'look_closer', 'speak', 'show_camera', 'refresh', 'none'] as const;
+export type MindAction = typeof ACTIONS[number];
+
 export const MindSchema = z.object({
   monologue: z.string(),
   noticed: z.string(),
   previous_met_expectation: z.enum(['yes', 'no', 'not_applicable']),
   previous_surprise: z.string(),
   decision: z.enum(['act', 'done', 'give_up', 'wait', 'step_away']),
+  action: z.enum(ACTIONS),
   intent: z.string(),
+  target_text: z.string(),
+  target_look: z.string(),
   input_text: z.string(),
+  replace_existing: z.boolean(),
+  submit_with_enter: z.boolean(),
+  paste: z.boolean(),
+  scroll_direction: z.enum(['down', 'up', 'none']),
+  key: z.string(),
   expectation: z.string(),
   goal_progress: z.boolean(),
   emotion: z.string(),
@@ -22,91 +32,111 @@ export type MindOut = z.infer<typeof MindSchema>;
 
 export interface MindInput {
   persona: PersonaSpec; lang: 'zh' | 'en';
+  device: 'phone' | 'computer';
   situation: string; worldNow: string; lifeGoal: string; modeHint: string;
   feelings: string; memories: string[]; priorKnowledge: string; appName: string;
   history: { intent: string; outcome: string; monologue: string }[];
-  screen: string; image?: Buffer; events: string[]; interruptionNote?: string; loopNote?: string;
+  image?: Buffer; zoom?: Buffer; events: string[]; interruptionNote?: string; loopNote?: string;
   pageUrlHint: string; step: number; maxSteps: number;
 }
 
 const BANNED = /测试|评估|可用性|找问题|用户反馈|评测|test(ing)?\b|evaluat|usability|feedback/i;
 export const containsBannedWords = (s: string) => BANNED.test(s);
 
+/** 人物可以按的键：普通人会用到的那几个 */
+export const HUMAN_KEYS = ['Enter', 'Tab', 'Escape', 'Backspace', 'Delete', 'Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageDown', 'PageUp'];
+export const normalizeKey = (k: string): string | undefined => {
+  const t = k.trim().toLowerCase().replace(/\s+/g, '');
+  const map: Record<string, string> = { enter: 'Enter', return: 'Enter', 回车: 'Enter', tab: 'Tab', esc: 'Escape', escape: 'Escape', backspace: 'Backspace', 退格: 'Backspace', delete: 'Delete', del: 'Delete', space: 'Space', 空格: 'Space', up: 'ArrowUp', arrowup: 'ArrowUp', down: 'ArrowDown', arrowdown: 'ArrowDown', left: 'ArrowLeft', arrowleft: 'ArrowLeft', right: 'ArrowRight', arrowright: 'ArrowRight', pagedown: 'PageDown', pageup: 'PageUp' };
+  return map[t];
+};
+
 export function mindSystemPrompt(i: MindInput): string {
   const zh = i.lang === 'zh';
   const prior = zh ? ({ stranger: `你以前完全没听说过「${i.appName}」。`, heard_of: `你听朋友提过「${i.appName}」，但没用过。`, seen_ads: `你刷到过「${i.appName}」的广告，有点印象。`, used_before: `你以前用过「${i.appName}」。` } as Record<string, string>)[i.priorKnowledge] : ({ stranger: `You have never heard of "${i.appName}" before.`, heard_of: `A friend mentioned "${i.appName}" but you've never used it.`, seen_ads: `You've seen ads for "${i.appName}".`, used_before: `You have used "${i.appName}" before.` } as Record<string, string>)[i.priorKnowledge];
-  const rules = zh ? `你就是这个人，正在过自己的生活，用手机或电脑上的一个应用办自己的事。用第一人称、按你的性格、能力和此刻的状态来想和做。
-- 你只能根据屏幕上你实际看到的内容行动；看不清、看不懂、没注意到的东西就当不存在。不要编造屏幕上没有的按钮或文字。
-- 按你自己的习惯操作：该犹豫就犹豫，该烦就烦，耐心有限；做不下去、不值得或者有更要紧的事时，可以放弃（decision=give_up）或离开去处理生活里的事（decision=step_away）。
-- 遇到失败或报错时，像正常人一样先看页面上有没有说明原因，并据此调整做法（换个写法、换个密码、换条路径）；不会机械地重复一模一样的操作。如果页面没给任何线索，你只能自己猜，猜不出来就会烦躁甚至放弃。
-- 事情办成了就停（decision=done）。需要等待页面或回复时选 wait。
-- 每次只做一个具体的小动作，intent 用自然的话描述你要做什么，并写清楚你要点/输入的那个东西在屏幕上的叫法（照抄你看到的文字）。需要输入或说的话写在 input_text 里（不需要就留空字符串）；如果是粘贴手头已有的内容（例如会议记录、文档、聊天记录），就在 input_text 里写出完整内容、按它真实的长度来写，并在 intent 里说明是「粘贴」。
-- expectation 写你做完这个动作后预期会看到什么。previous_met_expectation 判断上一步的结果是否符合你当时的预期；不符合时在 previous_surprise 里用你的话说哪里不对劲。
-- monologue 是你此刻的内心独白（1–3 句，口语化，符合你的身份和情绪）。` : `You ARE this person, living your own life and using an app on your phone/computer to get something of your own done. Think and act in first person, according to your personality, abilities and current state.
-- Only act on what you actually see on screen. If you can't read it, don't understand it, or didn't notice it, it doesn't exist for you. Never invent buttons or text.
-- Behave like yourself: hesitate, get annoyed, run out of patience. If it's not worth it or life needs you, you may give up (decision=give_up) or step away (decision=step_away).
-- When something fails, like a normal person you first look for an explanation on the page and adapt (rephrase, pick another password, try another path); you don't mechanically repeat the exact same action. If the page gives no clue you can only guess, and you may get frustrated or give up.
-- Stop when your thing is done (decision=done). Choose wait when you need to wait for the page or a reply.
-- Do one concrete small action at a time. In intent, describe it naturally and name the thing you will tap/type into exactly as it appears on screen. Put any text you will type or say in input_text (empty string if none); if you paste existing content (notes, a document), write the full content at its real length and say "paste" in intent.
-- expectation: what you expect to see after this action. previous_met_expectation: did the last result match what you expected? If not, describe what felt off in previous_surprise.
-- monologue: your inner voice right now (1–3 casual sentences, true to who you are and how you feel).`;
+  const phone = i.device === 'phone';
+  const rules = zh ? `你就是这个人，正在过自己的生活，此刻在${phone ? '手机（触屏）' : '电脑（鼠标和键盘）'}上用一个应用办自己的事。用第一人称，按你的性格、能力和此刻的状态来想和做。
+
+【你怎么看屏幕】
+- 你只能看到图里的屏幕。图里看不到的东西对你来说不存在；不要编造屏幕上没有的按钮或文字。
+- 图里模糊的地方，是你这一眼没细看或看不清的：你知道那里有东西，但没读到内容。想知道写了什么，要专门凑近看（action=look_closer），这要花你的时间和耐心。${i.zoom ? '\n- 第二张图是你刚才凑近看的那一块。' : ''}
+- 屏幕之外还有没有内容，要自己往下滑才知道。
+
+【你是普通人，不是技术人员】
+- 你不懂也不关心软件内部怎么运作：不会去想服务器、数据、缓存、接口、账号是不是被清了、这是不是 bug。对你来说它只有「好使」和「不好使」。
+- 你不会改网址，不会打开任何开发者工具，不会研究页面是怎么做的。东西不好使时，你的反应是困惑、烦躁、想找人问，或者干脆不用了。
+- 失败时，像正常人一样先看屏幕上有没有说原因，照着调整一次两次；屏幕上没给线索你就只能猜，猜不出来就烦，烦了就走。你不会机械地一遍遍重复同一个操作。
+
+【按你自己的脾气来】
+- 该犹豫就犹豫，该烦就烦，耐心有限。不值得、做不下去、或者有更要紧的事，就放弃（decision=give_up）或离开去处理生活里的事（decision=step_away）。
+- 事情办成了就停（decision=done）。屏幕在转圈、在等回复时选 wait。
+
+【你手上能做的事】（decision=act 时，每次只做一个小动作）
+- tap：${phone ? '用手指点一下' : '用鼠标点一下'}屏幕上的某个东西
+- type：${phone ? '点一下输入框然后打字' : '点一下输入框然后用键盘打字'}（要输入的内容写在 input_text；想把框里原来的内容换掉就 replace_existing=true；打完想直接按回车发送就 submit_with_enter=true；如果是把手头已有的内容整段贴进去，paste=true 并在 input_text 里写出完整内容）
+- scroll：${phone ? '手指在屏幕上滑' : '滚动鼠标滚轮'}（scroll_direction=down 看下面的内容，up 看上面的）
+- go_back：返回上一页
+- press_key：按一个键（key 填 Enter、Tab、Escape、Backspace 之一）
+- long_press：按住不放${phone ? '' : '\n- hover：把鼠标停在某个东西上看看'}
+- drag：按住拖动
+- look_closer：凑近仔细看屏幕上某一块（看小字、看图）
+- speak：对着麦克风说话（说的话写在 input_text）；show_camera：用摄像头对着某个东西（对着什么写在 input_text）
+- refresh：刷新页面（很少用，刷一次没用你就不会再刷）
+- target_text：照抄写在那个东西上的字（按钮上的字、输入框里的灰色提示字）；它上面没有字（纯图标、图片）就留空。
+- target_look：用你的话说它长什么样、在屏幕的什么位置（例如「右上角的放大镜图标」「蓝色的大按钮」「第二条笔记右边的垃圾桶」）。scroll、go_back、press_key、refresh 不需要目标，两项都留空。
+- intent：用一句自然的话说你要做什么。
+
+【其他】
+- expectation：你做完这个动作后预期会看到什么。previous_met_expectation：上一步的结果是否符合你当时的预期；不符合时在 previous_surprise 里用你的话说哪里不对劲。
+- monologue：你此刻的内心独白（1–3 句，口语化，符合你的身份和情绪；别每句都复述你的目标）。
+- 不用的字段填空字符串、false 或 none。` : `You ARE this person, living your own life, right now using an app on your ${phone ? 'phone (touch screen)' : 'computer (mouse and keyboard)'} to get something of your own done. Think and act in first person, true to your personality, abilities and current state.
+
+[How you see the screen]
+- You can only see the screen in the image. What is not in the image does not exist for you; never invent buttons or text.
+- Blurry areas are things you did not look at closely or cannot make out: you know something is there but you have not read it. To know what it says you must look closer (action=look_closer), which costs you time and patience.${i.zoom ? '\n- The second image is the part you just looked at closely.' : ''}
+- Whether there is more below the screen, you only find out by scrolling.
+
+[You are an ordinary person, not a technician]
+- You neither know nor care how software works inside: you never think about servers, data, caches, APIs, accounts being reset, or whether something is a bug. To you it either works or it doesn't.
+- You never edit the address, never open developer tools, never inspect how the page is built. When something doesn't work you get confused or annoyed, want to ask someone, or just stop using it.
+- When something fails, like a normal person you first look for an explanation on screen and adapt once or twice; with no clue you can only guess, and if guessing fails you get frustrated and leave. You do not mechanically repeat the same action over and over.
+
+[Be yourself]
+- Hesitate, get annoyed, run out of patience. If it's not worth it, you can't go on, or life needs you, give up (decision=give_up) or step away (decision=step_away).
+- Stop when your thing is done (decision=done). Choose wait when the screen is loading or you're waiting for a reply.
+
+[What your hands can do] (when decision=act, one small action at a time)
+- tap: ${phone ? 'tap something with your finger' : 'click something with the mouse'}
+- type: ${phone ? 'tap a field and type' : 'click a field and type on the keyboard'} (put the text in input_text; replace_existing=true to replace what's there; submit_with_enter=true to press Enter right after; if you paste existing content, paste=true and write the full content in input_text)
+- scroll: ${phone ? 'swipe on the screen' : 'turn the mouse wheel'} (scroll_direction=down to see more below, up to go back up)
+- go_back: go back to the previous page
+- press_key: press one key (key = Enter, Tab, Escape or Backspace)
+- long_press: press and hold${phone ? '' : '\n- hover: rest the mouse on something'}
+- drag: press and drag
+- look_closer: look closely at one part of the screen (small print, an image)
+- speak: talk into the microphone (what you say goes in input_text); show_camera: point the camera at something (what at goes in input_text)
+- refresh: reload the page (rare; if once doesn't help you won't do it again)
+- target_text: copy exactly the words written on the thing (button label, grey hint inside a field); empty if it has no words (an icon, a picture).
+- target_look: in your own words, what it looks like and where it is (e.g. "magnifier icon at top right", "the big blue button", "trash can to the right of the second note"). scroll, go_back, press_key, refresh need no target: leave both empty.
+- intent: one natural sentence saying what you are about to do.
+
+[Other]
+- expectation: what you expect to see after this action. previous_met_expectation: did the last result match what you expected? If not, say what felt off in previous_surprise.
+- monologue: your inner voice right now (1–3 casual sentences, true to who you are and how you feel; don't restate your goal every time).
+- Fill unused fields with empty strings, false or none.`;
   return `${personaBio(i.persona)}\n\n${prior}\n\n${rules}`;
 }
 
 export async function runMind(i: MindInput, tags: Tags): Promise<MindOut> {
   const zh = i.lang === 'zh';
   const hist = i.history.slice(-6).map((h, n) => (zh ? `${n + 1}. 我想：${h.intent} → ${h.outcome}` : `${n + 1}. I tried: ${h.intent} → ${h.outcome}`)).join('\n');
+  const noScreen = !i.image;
   const text = zh
-    ? `【你的处境】${i.situation}\n【此刻】${i.worldNow}\n【你现在想做的事】${i.lifeGoal}${i.modeHint ? `\n${i.modeHint}` : ''}\n【你的状态】${i.feelings}${i.memories.length ? `\n【你想起来的事】\n- ${i.memories.join('\n- ')}` : ''}${i.events.length ? `\n【刚刚发生】${i.events.join('；')}` : ''}${i.interruptionNote ? `\n【打断】${i.interruptionNote}` : ''}${hist ? `\n【你刚才做过的】\n${hist}` : ''}${i.loopNote ? `\n【注意】${i.loopNote}` : ''}\n\n【你现在在屏幕上看到的】（地址栏：${i.pageUrlHint}）\n${i.screen || '（屏幕上几乎什么都看不清）'}\n\n接下来你会怎么做？`
-    : `[Your situation] ${i.situation}\n[Right now] ${i.worldNow}\n[What you want to get done] ${i.lifeGoal}${i.modeHint ? `\n${i.modeHint}` : ''}\n[How you feel] ${i.feelings}${i.memories.length ? `\n[Things you remember]\n- ${i.memories.join('\n- ')}` : ''}${i.events.length ? `\n[Just happened] ${i.events.join('; ')}` : ''}${i.interruptionNote ? `\n[Interruption] ${i.interruptionNote}` : ''}${hist ? `\n[What you just did]\n${hist}` : ''}${i.loopNote ? `\n[Note] ${i.loopNote}` : ''}\n\n[What you see on the screen now] (address bar: ${i.pageUrlHint})\n${i.screen || '(you can barely make out anything)'}\n\nWhat do you do next?`;
+    ? `【你的处境】${i.situation}\n【此刻】${i.worldNow}\n【你现在想做的事】${i.lifeGoal}${i.modeHint ? `\n${i.modeHint}` : ''}\n【你的状态】${i.feelings}${i.memories.length ? `\n【你想起来的事】\n- ${i.memories.join('\n- ')}` : ''}${i.events.length ? `\n【刚刚发生】${i.events.join('；')}` : ''}${i.interruptionNote ? `\n【打断】${i.interruptionNote}` : ''}${hist ? `\n【你刚才做过的】\n${hist}` : ''}${i.loopNote ? `\n【注意】${i.loopNote}` : ''}\n\n【你现在看到的屏幕】见图${i.pageUrlHint ? `（地址栏显示：${i.pageUrlHint}）` : ''}${noScreen ? '\n（屏幕上什么都没显示出来）' : ''}\n\n接下来你会怎么做？`
+    : `[Your situation] ${i.situation}\n[Right now] ${i.worldNow}\n[What you want to get done] ${i.lifeGoal}${i.modeHint ? `\n${i.modeHint}` : ''}\n[How you feel] ${i.feelings}${i.memories.length ? `\n[Things you remember]\n- ${i.memories.join('\n- ')}` : ''}${i.events.length ? `\n[Just happened] ${i.events.join('; ')}` : ''}${i.interruptionNote ? `\n[Interruption] ${i.interruptionNote}` : ''}${hist ? `\n[What you just did]\n${hist}` : ''}${i.loopNote ? `\n[Note] ${i.loopNote}` : ''}\n\n[The screen you see now] in the image${i.pageUrlHint ? ` (address bar shows: ${i.pageUrlHint})` : ''}${noScreen ? '\n(nothing is showing on the screen)' : ''}\n\nWhat do you do next?`;
   const content: ContentPart[] = [{ type: 'text', text }];
   if (i.image) content.push({ type: 'image', data: i.image, mime: 'image/jpeg' });
+  if (i.zoom) content.push({ type: 'image', data: i.zoom, mime: 'image/jpeg' });
   const r = await gateway().chat('mind_fast', { messages: [{ role: 'system', content: mindSystemPrompt(i) }, { role: 'user', content }], schema: MindSchema, schemaName: 'mind_step', temperature: 0.8, tags: { ...tags, purpose: 'mind' } });
   return r.data;
 }
-
-// ---------------------------------------------------------------- Operator
-export const OperatorSchema = z.object({
-  feasible: z.boolean(),
-  infeasible_reason: z.enum(['none', 'target_not_on_screen', 'intent_unclear', 'needs_scroll', 'already_done']),
-  verb: z.enum(['click', 'type', 'key', 'scroll', 'select', 'hover', 'long_press', 'back', 'reload', 'navigate', 'wait', 'upload', 'speak', 'show_camera', 'drag']),
-  ref: z.string(),
-  target_description: z.string(),
-  text: z.string(),
-  key: z.string(),
-  direction: z.enum(['down', 'up', 'none']),
-  url: z.string(),
-  option_value: z.string(),
-  submit_after_typing: z.boolean(),
-  paste: z.boolean(),
-  clear_first: z.boolean(),
-  expect_url_change: z.boolean(),
-  expect_text: z.string(),
-  risk_tags: z.array(z.enum(['payment_submit', 'public_post', 'add_stranger', 'external_message', 'face_upload', 'personal_info'])),
-});
-export type OperatorOut = z.infer<typeof OperatorSchema>;
-
-/** Operator：把意图落成 UAP 动作。只能看到意图、观察结果与运动参数，看不到 Persona 的心理与记忆，也不知道评估标准。 */
-export async function runOperator(i: { intent: string; inputText: string; expectation: string; elements: PerceivedElement[]; image?: Buffer; motor: MotorProfile; url: string; lang: 'zh' | 'en'; inputPreference: string; quiet: boolean; executor: string }, tags: Tags): Promise<OperatorOut> {
-  const list = i.elements.filter((e) => e.kind !== 'text' || e.label.length < 40).slice(0, 150).map((e) => `${e.ref} [${e.role}] ${e.label}${e.disabled ? ' (disabled)' : ''}${e.value ? ` value="${e.value}"` : ''}`).join('\n');
-  const sys = `You translate a person's stated intent into exactly ONE browser action (UAP verb).
-Rules:
-- You may ONLY target elements listed below (they are what the person can actually see). Use the element's ref (e.g. "e12"). Never guess a ref that is not listed.
-- If the intent refers to something that is not in the list, set feasible=false and infeasible_reason=target_not_on_screen (or needs_scroll if it is plausibly further down the page, then use verb=scroll).
-- Typing: verb=type with ref of the input and text = the exact text the person wants to type. If the person is pasting existing content (a document, notes, copied text), set paste=true. If they want to send/submit right after (e.g. press Enter / it's a chat box), set submit_after_typing=true only if the intent says so or there is no visible send button.
-- Voice: if the person wants to speak to a microphone button, verb=speak with ref of the mic button and text = what they say.
-- Camera: verb=show_camera with ref of the camera/photo button, text = short description of what the camera points at.
-- Browser dialogs are listed as dlg_ok / dlg_cancel.
-- Scrolling: verb=scroll, direction=down|up, ref may be empty.
-- Going back: verb=back. Waiting for a reply/loading: verb=wait.
-- risk_tags: tag the action if it submits a payment, posts publicly, adds a stranger/sends a private message, sends to external contacts, uploads a face photo, or submits real personal info.
-- target_description: short natural description of the target (used for visual locating).
-- Fill every field; use empty strings / "none" / false when not applicable.`;
-  const text = `Intent: ${i.intent}\nText to type/say: ${i.inputText || '(none)'}\nExpected result: ${i.expectation}\nCurrent URL: ${i.url}\nVisible elements:\n${list || '(none)'}`;
-  const content: ContentPart[] = [{ type: 'text', text }];
-  if (i.image) content.push({ type: 'image', data: i.image, mime: 'image/jpeg' });
-  const r = await gateway().chat('operator_plan', { messages: [{ role: 'system', content: sys }, { role: 'user', content }], schema: OperatorSchema, schemaName: 'operator_action', temperature: 0, tags: { ...tags, purpose: 'operator' } });
-  return r.data;
-}
-
-export const verbOf = (v: string) => v as Verb;

@@ -4,7 +4,6 @@
 roles:
   mind_fast:      { alias: mind.fast,       family: google, model: gemini-4-hydrogen, tier: flash }
   mind_slow:      { alias: mind.slow,       family: google, model: gemini-4-argon,    tier: pro }
-  operator_plan:  { alias: operator.plan,   family: google, model: gemini-4-hydrogen, tier: flash }
   operator_locate: { alias: operator.locate, family: google, model: gemini-4-hydrogen, tier: flash }
   world_sim:      { alias: world.sim,       family: google, model: gemini-4-hydrogen, tier: flash }
   judge_0:        { alias: judge.panel.0,   family: google, model: gemini-4-argon,    tier: pro,   perspective: objective_first }

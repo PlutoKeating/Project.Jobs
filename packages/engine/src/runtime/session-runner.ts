@@ -1,35 +1,35 @@
 // Simulation Runtime：World Simulator → Persona Mind ↔ Operator → UAP(+Policy Gate) → 真实产品（§4、§5）
 import { existsSync } from 'node:fs';
-import { cityCoords, dataPath, loadConfig, logger, makeError, newId, Rng, shortHash, langOf, type ActionRequest, type ActionResult, type Criterion, type DynamicState, type PersonaSpec, type StudyInput, type WorldTemplate, type Mode } from '@pux/core';
+import { cityCoords, dataPath, deviceFor, loadConfig, logger, makeError, newId, Rng, shortHash, langOf, type ActionRequest, type ActionResult, type Criterion, type DynamicState, type PersonaSpec, type StudyInput, type WorldTemplate, type Mode } from '@pux/core';
 import { and, appVersions, apps, eq, getDb, goals, humanTasks, observations, sessions, steps, studies, taskDefs, worldTemplates } from '@pux/db';
 import { BrowserSession, policyFor, putEvidence } from '@pux/executor';
 import { LlmError } from '@pux/llm';
 import { feelings, updateState } from '../human/state.ts';
 import { freezePersona, getPersona, initialState, motorProfile } from '../human/persona.ts';
-import { perceive, type PerceivedElement } from '../human/perception.ts';
+import { perceive, type Rect } from '../human/perception.ts';
 import { consolidate, lifeBetween, recall } from '../human/memory.ts';
 import { WorldSimulator } from '../world/simulator.ts';
 import { accountHint } from '../exploration/goals.ts';
 import { taskCompleted } from '../product/intelligence.ts';
-import { runMind, runOperator, type MindOut } from './roles.ts';
+import { normalizeKey, runMind, type MindOut } from './roles.ts';
 
 export type StepOutcome = { done: false; needsHuman?: { reason: string; takeover: string; task_id: string } } | { done: true; outcome: string; end_reason: string };
 
 interface Hist { intent: string; outcome: string; monologue: string }
 
+/** 上一步的结果在人物眼里是什么样：只说看得见的（屏幕变没变、弹没弹窗、有没有点中），不说任何技术原因 */
 const describeResult = (r: ActionResult | undefined, zh: boolean, child: boolean): string => {
   if (!r) return '';
   if (r.status === 'blocked_by_policy') return zh ? (child ? '你想起爸爸妈妈说过不能自己乱买东西/加陌生人，就没有真的点下去' : '你犹豫了一下，最后没有真的提交（这一步不会真的发生）') : (child ? 'you remembered your parents said not to buy things or add strangers on your own, so you stopped' : 'you hesitated and did not actually submit (this step will not really happen)');
-  if (r.status === 'needs_human') return zh ? '页面需要额外验证' : 'the page asked for extra verification';
-  if (r.error?.code === 'PRODUCT_HTTP_5XX' || r.error?.code === 'PRODUCT_JS_ERROR') return zh ? '页面好像出错了' : 'something seemed to break';
+  if (r.status === 'needs_human') return zh ? '屏幕上要求额外验证' : 'the screen asked for extra verification';
   if (r.error?.code === 'INJECTED_NETWORK' || r.error?.code === 'ENV_NETWORK') return zh ? '网络很卡，没加载出来' : 'the network was too slow, nothing loaded';
   if (r.error?.code === 'PRODUCT_SMALL_TARGET' || r.error?.code === 'SIM_MOTOR_MISS') return zh ? '手一滑好像没点准' : 'your finger slipped and you missed';
   if (r.error?.code === 'EXEC_INTERCEPTED') return zh ? '想点的东西被别的东西挡住了' : 'something was covering what you wanted to tap';
-  if (r.error?.code?.startsWith('EXEC_') || r.error?.code === 'SIM_INVALID_INTENT') return zh ? '没找到你想点的东西' : "couldn't find what you were looking for";
-  if (r.status === 'no_effect') return zh ? '好像没有任何反应' : 'nothing seemed to happen';
-  if (r.effects.url_changed) return zh ? '页面跳转了' : 'the page changed';
+  if (r.error?.code?.startsWith('EXEC_') || r.error?.code === 'SIM_INVALID_INTENT') return zh ? '在屏幕上没找到你想点的那个东西' : "you couldn't find the thing you meant on the screen";
+  if (r.status === 'no_effect') return zh ? '屏幕上看不出任何变化' : 'nothing on the screen seemed to change';
   if (r.effects.new_dialog) return zh ? '弹出了一个窗口' : 'a popup appeared';
-  return zh ? '页面有了变化' : 'the screen updated';
+  if (r.effects.url_changed) return zh ? '换了一个页面' : 'you landed on a different page';
+  return zh ? '屏幕有了变化' : 'the screen changed';
 };
 
 export class SessionRunner {
@@ -69,6 +69,10 @@ export class SessionRunner {
   private ended?: { outcome: string; end_reason: string };
   private worldTpl!: WorldTemplate;
   private screenOn = true;
+  private mobile = false;
+  /** 上一步「凑近看」的区域，只对下一眼有效 */
+  private focus?: Rect;
+  private refreshes = 0;
 
   static async start(sessionId: string, opts: { headed?: boolean } = {}): Promise<SessionRunner> {
     const r = new SessionRunner(); await r.init(sessionId, opts); SessionRunner.registry.set(sessionId, r); return r;
@@ -106,8 +110,9 @@ export class SessionRunner {
     const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.sess.revisit_day, undefined, this.memScope).catch(() => []);
     this.memories.push(...mem.map((m) => m.content));
     this.memories.push(accountHint(this.persona, this.appId));
-    const form = app.form;
-    this.browser = await BrowserSession.launch({ sessionId, studyId: st.id, personaId: this.persona.id, executor: this.sess.executor as 'stagehand' | 'midscene', headed: opts.headed ?? this.study.config.headed, mobile: form === 'h5', locale: this.persona.locale, policy: policyFor(this.persona), rng: this.rng, deviceStateFile: dataPath('runtime', 'devices', st.id, `${this.persona.id}.json`), geolocation: this.persona.psychology.privacy_sensitivity >= 0.75 ? null : (([lat, lng]) => ({ latitude: lat + this.rng.normal(0, 0.02), longitude: lng + this.rng.normal(0, 0.02) }))(cityCoords(this.persona.identity.region)) });
+    // 同一个网页产品，在路上用手机开，在办公桌前用电脑开：设备跟着人此时此地的处境走
+    this.mobile = app.form === 'h5' || deviceFor({ device: this.worldTpl.device, scenario_class: this.worldTpl.scenario_class, init: { ...this.worldTpl.init, place: this.world.state.place, motion: this.world.state.motion, channels: this.world.state.channels } }) === 'phone';
+    this.browser = await BrowserSession.launch({ sessionId, studyId: st.id, personaId: this.persona.id, executor: 'midscene', headed: opts.headed ?? this.study.config.headed, mobile: this.mobile, locale: this.persona.locale, policy: policyFor(this.persona), rng: this.rng, deviceStateFile: dataPath('runtime', 'devices', st.id, `${this.persona.id}.json`), geolocation: this.persona.psychology.privacy_sensitivity >= 0.75 ? null : (([lat, lng]) => ({ latitude: lat + this.rng.normal(0, 0.02), longitude: lng + this.rng.normal(0, 0.02) }))(cityCoords(this.persona.identity.region)) });
     await this.browser.page.goto(this.startUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch((e) => logger.warn({ e: String(e) }, '起始页打开失败'));
     const net = this.world.takeNetworkChange(); if (net !== undefined) await this.browser.setNetwork(net);
     await db.update(sessions).set({ status: 'running', started_at: new Date() }).where(eq(sessions.id, sessionId));
@@ -161,15 +166,16 @@ export class SessionRunner {
       return { done: false, needsHuman: { reason: 'ENV_CAPTCHA', takeover, task_id: tid } };
     }
 
-    // ---- 3. 感知过滤
+    // ---- 3. 感知滤镜：真实截图 → 这个人这一眼看到的画面
     const cons = this.world.constraints();
-    const perc = await perceive({ persona: this.persona, elements: obs.elements, screenshotEv: obs.screenshot_ev, eyes: cons.hard.glance ? 'glance' : 'full', attention: this.state.attention, viewportH: obs.viewport.h, ctx: { ...tags, persona_id: this.persona.id }, lang: this.lang });
+    const perc = await perceive({ persona: this.persona, elements: obs.elements, screenshotEv: obs.screenshot_ev, eyes: cons.hard.glance ? 'glance' : 'full', attention: this.state.attention, stress: this.state.stress, viewport: { w: obs.viewport.w, h: obs.viewport.h }, focus: this.focus, ctx: { ...tags, persona_id: this.persona.id } });
+    this.focus = undefined;
 
     // ---- 4. Persona Mind
     const modeHint = this.modeHint();
     let mind: MindOut;
     try {
-      mind = await runMind({ persona: this.persona, lang: this.lang, situation: this.world.situation, worldNow: this.world.describeForPersona(), lifeGoal: this.goalText, modeHint, feelings: feelings(this.state, this.lang), memories: this.memories.slice(-8), priorKnowledge: this.sess.revisit_day > 0 ? 'used_before' : this.persona.prior_knowledge, appName: this.appName, history: this.hist, screen: perc.summary + (obs.dialogs.length ? `\n${zh ? '【弹窗】' : '[popup] '}${obs.dialogs.join(' / ')}` : '') + (obs.notifications.length ? `\n${zh ? '【通知】' : '[notification] '}${obs.notifications.join(' / ')}` : ''), image: perc.image, events: events.filter((e) => e.perceived).map((e) => e.perceived_text ?? e.text), interruptionNote: this.interruptionNote, loopNote: this.loopNote, pageUrlHint: obs.url.replace(/^https?:\/\//, '').slice(0, 60), step: idx, maxSteps }, tags);
+      mind = await runMind({ persona: this.persona, lang: this.lang, device: this.mobile ? 'phone' : 'computer', situation: this.world.situation, worldNow: this.world.describeForPersona(), lifeGoal: this.goalText, modeHint, feelings: feelings(this.state, this.lang), memories: this.memories.slice(-8), priorKnowledge: this.sess.revisit_day > 0 ? 'used_before' : this.persona.prior_knowledge, appName: this.appName, history: this.hist, image: perc.image, zoom: perc.zoom, events: [...events.filter((e) => e.perceived).map((e) => e.perceived_text ?? e.text), ...obs.notifications.map((n) => (zh ? `屏幕上方弹出通知：${n}` : `a notification popped up: ${n}`))], interruptionNote: this.interruptionNote, loopNote: this.loopNote, pageUrlHint: obs.url.replace(/^https?:\/\//, '').replace(/[?#].*$/, '').slice(0, 60), step: idx, maxSteps }, tags);
       this.llmErrors = 0;
     } catch (e) {
       this.llmErrors++;
@@ -193,7 +199,7 @@ export class SessionRunner {
     this.lastWaitS = 0;
 
     const stepId = newId('step');
-    const baseStep = { id: stepId, session_id: this.sess.id, idx, world_state_id: wsId, observation_id: obs.obs_id, perceived_summary: perc.summary.slice(0, 4000), monologue: mind.monologue, expectation: mind.expectation, dynamic_state: { ...this.state, emotion: mind.emotion, perceived_hidden: perc.hidden_count, unreadable: perc.unreadable }, intent: mind.intent, decision: mind.decision, sim_clock: this.world.state.sim_clock, tokens: 0 };
+    const baseStep = { id: stepId, session_id: this.sess.id, idx, world_state_id: wsId, observation_id: obs.obs_id, perceived_summary: perc.note, monologue: mind.monologue, expectation: mind.expectation, dynamic_state: { ...this.state, emotion: mind.emotion, perceived_hidden: perc.hidden_count, unreadable: perc.unreadable }, intent: mind.intent, decision: mind.decision, sim_clock: this.world.state.sim_clock, tokens: 0 };
 
     // ---- 6. 结束条件
     const finishStep = async (extra: Partial<typeof baseStep> & { action_request?: unknown; action_result?: unknown } = {}) => {
@@ -221,41 +227,50 @@ export class SessionRunner {
       this.pendingSimSeconds = 5; return { done: false };
     }
 
-    // ---- 7. Operator：意图 → UAP 动作
+    // ---- 7. 想法 → 手上的一个动作（没有中间人：人自己知道要点、要滑还是要打字）
     const motor = motorProfile(this.persona, cons.list.concat(cons.hard.one_handed ? ['one_handed'] : []), this.state);
-    let req: ActionRequest; let opInfo: Record<string, unknown> = {};
+    let req: ActionRequest;
+    const soft = async (verb: string, ok: boolean, outcome: string, err?: ReturnType<typeof makeError>, simSeconds = 4): Promise<StepOutcome> => {
+      // 不碰屏幕的一步（凑近看、没刷成）：照常记一步，时间照常流逝
+      const fake: ActionResult = { action_id: newId('act'), status: ok ? 'success' : 'failed', matched_criteria: [], error: err, started_at: new Date().toISOString(), ended_at: new Date().toISOString(), duration_ms: 0, executor: { name: 'midscene', version: '-' }, before_obs: obs.obs_id, after_obs: obs.obs_id, effects: { url_changed: false, dom_changed: false, requests: 0, new_dialog: false, visible_change: ok }, evidence_ids: [monoEv] };
+      await finishStep({ action_request: { verb, intent_text: mind.intent, target: { by: 'visual', value: mind.target_look, text: mind.target_text } }, action_result: fake } as never);
+      this.prevExpectation = mind.expectation; this.prevResult = fake;
+      this.hist.push({ intent: mind.intent, outcome, monologue: mind.monologue });
+      this.pendingSimSeconds = this.readingSeconds(perc.read_chars) + simSeconds;
+      return this.guards(obs.state_id, `${verb}:${mind.target_text || mind.target_look}`.slice(0, 60), !!obs.is_new_state);
+    };
     if (mind.decision === 'wait') {
       const secs = Math.min(40, Math.max(3, this.persona.behavior_policy.wait_tolerance_s * 1.5));
       req = { action_id: newId('act'), session_id: this.sess.id, step_idx: idx, verb: 'wait', args: { seconds: secs }, intent_text: mind.intent, expectation: mind.expectation, success: { any_of: [{ kind: 'dom_changed' }], within_ms: 1000 }, motor, timeout_ms: secs * 1000 + 5000 };
     } else {
-      let op;
-      try { op = await runOperator({ intent: mind.intent, inputText: mind.input_text, expectation: mind.expectation, elements: perc.elements, image: perc.image, motor, url: obs.url, lang: this.lang, inputPreference: this.persona.behavior_policy.input_preference, quiet: cons.hard.quiet, executor: this.sess.executor }, tags); }
-      catch (e) { this.llmErrors++; await finishStep(); if (this.llmErrors >= 3) return this.end('sim_error', 'SIM_LLM_ERROR operator'); this.pendingSimSeconds = 5; return { done: false }; }
-      opInfo = op as never;
-      if (!op.feasible && op.infeasible_reason !== 'needs_scroll') {
-        const hiddenTarget = this.targetHiddenByPerception(mind.intent, obs.elements, perc.elements);
-        const err = hiddenTarget ? makeError('EXEC_TARGET_NOT_FOUND', `${zh ? '目标在页面上存在但 Persona 没有感知到（可能是可发现性问题）' : 'target exists but was not perceived (possible discoverability issue)'}：${hiddenTarget}`) : makeError('SIM_INVALID_INTENT', `${zh ? '意图引用了屏幕上不存在的目标' : 'intent references a target not on screen'}：${op.infeasible_reason}`);
-        const fake: ActionResult = { action_id: newId('act'), status: 'failed', matched_criteria: [], error: err, started_at: new Date().toISOString(), ended_at: new Date().toISOString(), duration_ms: 0, executor: { name: this.sess.executor, version: '-' }, before_obs: obs.obs_id, after_obs: obs.obs_id, effects: { url_changed: false, dom_changed: false, requests: 0, new_dialog: false }, evidence_ids: [monoEv] };
-        await finishStep({ action_request: { operator: op }, action_result: fake } as never);
-        this.prevExpectation = mind.expectation; this.prevResult = fake;
-        this.hist.push({ intent: mind.intent, outcome: describeResult(fake, zh, this.persona.kind === 'child'), monologue: mind.monologue });
-        this.pendingSimSeconds = this.readingSeconds(perc.summary) + 4;
-        return this.guards(obs.state_id, `infeasible:${mind.intent.slice(0, 20)}`, !!obs.is_new_state);
+      if (mind.action === 'look_closer') {
+        // 凑近看：把注意力放到屏幕的一块上。下一眼那一块是清楚的，其余照旧
+        try {
+          const loc = await this.browser.resolveTarget({ by: 'visual', value: mind.target_look, text: mind.target_text }, mind.intent);
+          const b = loc.el?.bbox;
+          this.focus = b && b[2] < obs.viewport.w * 0.9 && b[3] < obs.viewport.h * 0.6 ? { x: b[0], y: b[1], w: b[2], h: b[3] } : { x: loc.point[0] - 170, y: loc.point[1] - 100, w: 340, h: 200 };
+          return soft('look_closer', true, zh ? '你凑近仔细看了看那一块' : 'you looked closely at that part', undefined, 5 + 4 * (1 - this.persona.capability.body.vision));
+        } catch (e) { return soft('look_closer', false, zh ? '在屏幕上没找到你想细看的那个东西' : "you couldn't find the thing you wanted to look at", makeError('EXEC_TARGET_NOT_FOUND', String((e as Error).message).slice(0, 160))); }
       }
-      req = this.buildRequest(op, mind, motor, idx, perc.elements);
+      if (mind.action === 'refresh') {
+        // 普通人最多刷一次：刷过没用就不会再刷（禁止技术自救式的反复重试）
+        if (this.refreshes >= 1) return soft('reload', false, zh ? '你已经刷新过一次了，还是老样子' : 'you already refreshed once and nothing changed', makeError('SIM_INVALID_INTENT', 'repeat refresh suppressed'), 2);
+        this.refreshes++;
+      }
+      req = this.buildRequest(mind, motor, idx, obs.viewport.h);
     }
 
     // ---- 8. 执行（UAP + Policy Gate）
     const res = await this.browser.act(req, this.rng);
     if (req.verb === 'wait') this.lastWaitS = res.duration_ms / 1000;
-    await finishStep({ action_request: { ...req, operator: opInfo } as never, action_result: res as never });
+    await finishStep({ action_request: req as never, action_result: res as never });
     this.prevExpectation = mind.expectation; this.prevResult = res;
     this.hist.push({ intent: mind.intent, outcome: describeResult(res, zh, this.persona.kind === 'child'), monologue: mind.monologue });
     if (res.error?.code === 'ENV_BROWSER_CRASH') return this.end('sim_error', 'ENV_BROWSER_CRASH');
     // 模拟耗时：阅读 + 思考 + 动作 + 打字
     const typed = String(req.args?.text ?? '').length;
-    this.pendingSimSeconds = this.readingSeconds(perc.summary) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? (req.args?.paste ? 2 : typed / motor.typing_cps) : 0) + (req.verb === 'speak' ? typed / 4 : 0);
-    const target = req.target?.resolved?.a11y_name ?? req.target?.value ?? '';
+    this.pendingSimSeconds = this.readingSeconds(perc.read_chars) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? (req.args?.paste ? 2 : typed / motor.typing_cps) : 0) + (req.verb === 'speak' ? typed / 4 : 0);
+    const target = req.target?.text || res.resolved_target?.resolved?.a11y_name || req.target?.value || '';
     return this.guards(obs.state_id, `${req.verb}:${target}:${String(req.args?.text ?? '').slice(0, 10)}`, !!obs.is_new_state);
   }
 
@@ -274,15 +289,9 @@ export class SessionRunner {
     return { done: false };
   }
 
-  private readingSeconds(summary: string) {
-    const chars = summary.length * (this.persona.behavior_policy.reading === 'scan' ? 0.35 : 1);
+  /** 读屏幕花的时间：按这一眼实际读到的字数和这个人的阅读速度结算 */
+  private readingSeconds(chars: number) {
     return Math.min(120, (chars / this.persona.capability.cognition.reading_speed_cpm) * 60);
-  }
-
-  private targetHiddenByPerception(intent: string, raw: { ref: string; name: string; kind: string; in_viewport: boolean }[], perceived: PerceivedElement[]) {
-    const seen = new Set(perceived.map((p) => p.ref));
-    const hit = raw.find((e) => e.kind === 'interactive' && e.name && e.name.length >= 2 && intent.includes(e.name.slice(0, 12)) && !seen.has(e.ref));
-    return hit?.name;
   }
 
   private modeHint(): string {
@@ -293,27 +302,20 @@ export class SessionRunner {
     return '';
   }
 
-  private buildRequest(op: Awaited<ReturnType<typeof runOperator>>, mind: MindOut, motor: ReturnType<typeof motorProfile>, idx: number, perceived: PerceivedElement[]): ActionRequest {
-    const verb = op.feasible ? op.verb : 'scroll';
-    const ref = op.ref && perceived.some((p) => p.ref === op.ref) ? op.ref : '';
-    const needsTarget = ['click', 'type', 'select', 'hover', 'long_press', 'upload', 'speak', 'show_camera', 'drag'].includes(verb);
-    const target = needsTarget ? (ref ? { by: 'ref' as const, value: ref } : { by: 'visual' as const, value: op.target_description || mind.intent }) : undefined;
-    const any_of: Criterion[] = [];
-    if (op.expect_url_change) any_of.push({ kind: 'url_changed' });
-    if (op.expect_text) any_of.push({ kind: 'content_appeared', text: op.expect_text.slice(0, 40) });
+  private buildRequest(mind: MindOut, motor: ReturnType<typeof motorProfile>, idx: number, viewportH: number): ActionRequest {
+    const map = { tap: 'click', type: 'type', scroll: 'scroll', go_back: 'back', press_key: 'key', long_press: 'long_press', hover: this.mobile ? 'click' : 'hover', drag: 'drag', speak: 'speak', show_camera: 'show_camera', refresh: 'reload', none: 'click', look_closer: 'click' } as const;
+    const verb = map[mind.action];
+    const described = !!(mind.target_text.trim() || mind.target_look.trim());
+    const mustTarget = ['click', 'long_press', 'hover', 'drag'].includes(verb);
+    const mayTarget = ['type', 'speak', 'show_camera', 'scroll'].includes(verb) && described;
+    const target = mustTarget || mayTarget ? { by: 'visual' as const, value: mind.target_look.trim() || (mind.target_text.trim() ? '' : mind.intent), text: mind.target_text.trim() || undefined } : undefined;
     const args: Record<string, unknown> = {};
-    if (verb === 'type' || verb === 'speak') { const full = (mind.input_text || '').length > (op.text || '').length ? mind.input_text : op.text; args.text = full || op.text || mind.input_text; args.submit = op.submit_after_typing; args.clear = op.clear_first; args.paste = op.paste || /粘贴|paste/i.test(mind.intent); }
-    if (verb === 'show_camera') args.prompt = op.text || mind.input_text || mind.intent;
-    if (verb === 'key') args.key = op.key || 'Enter';
-    if (verb === 'scroll') { args.direction = op.direction === 'up' ? 'up' : 'down'; args.amount = 600; }
-    if (verb === 'navigate') args.url = op.url;
-    if (verb === 'select') args.value = op.option_value || op.text;
-    if (verb === 'wait') args.seconds = 8;
-    if (verb === 'upload') args.file = op.text;
-    const base: ActionRequest = { action_id: newId('act'), session_id: this.sess.id, step_idx: idx, verb, target, args, intent_text: mind.intent, expectation: mind.expectation, success: { any_of: [], within_ms: 3000 }, motor, timeout_ms: 20000, risk_tags: op.risk_tags };
-    if (any_of.length) base.success = { any_of: [...any_of, { kind: 'dom_changed' }], within_ms: verb === 'type' ? 2000 : 4000 };
-    if (verb === 'type' && !op.submit_after_typing) base.success = { any_of: [], within_ms: 2000 };
-    return base;
+    if (verb === 'type' || verb === 'speak') { args.text = mind.input_text; args.submit = mind.submit_with_enter; args.clear = mind.replace_existing; args.paste = mind.paste || /粘贴|paste/i.test(mind.intent); }
+    if (verb === 'show_camera') args.prompt = mind.input_text || mind.intent;
+    if (verb === 'key') args.key = normalizeKey(mind.key) ?? 'Enter';
+    if (verb === 'scroll') { args.direction = mind.scroll_direction === 'up' ? 'up' : 'down'; args.amount = Math.round(viewportH * (this.persona.behavior_policy.reading === 'scan' ? 0.8 : 0.6)); }
+    if (verb === 'drag') args.dy = mind.scroll_direction === 'up' ? -200 : 200;
+    return { action_id: newId('act'), session_id: this.sess.id, step_idx: idx, verb, target, args, intent_text: mind.intent, expectation: mind.expectation, success: { any_of: [], within_ms: verb === 'type' ? 2000 : 3000 }, motor, timeout_ms: 20000 };
   }
 
   /** Session 结束：证据入库、记忆写回、结局与路径签名 */

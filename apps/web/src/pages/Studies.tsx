@@ -7,10 +7,10 @@ import { Button, ErrorState, PageHead, Seg, Skeleton } from '../components/ui.ts
 
 function RunStudy({ onDone }: { onDone: (id: string) => void }) {
   const { t } = useT(); const av = useAppVersions().data ?? [];
-  const [v, setV] = useState(''); const [n, setN] = useState(6); const [steps, setSteps] = useState(30); const [exec, setExec] = useState<'stagehand' | 'midscene'>('stagehand'); const [locale, setLocale] = useState<'zh-CN' | 'en-US' | 'mixed'>('zh-CN'); const [temporal, setTemporal] = useState(false);
+  const [v, setV] = useState(''); const [n, setN] = useState(6); const [steps, setSteps] = useState(30); const [locale, setLocale] = useState<'zh-CN' | 'en-US' | 'mixed'>('zh-CN'); const [temporal, setTemporal] = useState(false);
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   return (
-    <form className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_repeat(2,6rem)]" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(null); try { const r = await post<{ id: string }>('/studies', { app_version_id: v, sessions: n, steps, executor: exec, locale, temporal }, { 'Idempotency-Key': `web-${v}-${Date.now()}` }); onDone(r.id); } catch (x) { setErr(String((x as Error).message)); } finally { setBusy(false); } }}>
+    <form className="grid gap-4 sm:grid-cols-[minmax(0,2fr)_repeat(2,6rem)]" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(null); try { const r = await post<{ id: string }>('/studies', { app_version_id: v, sessions: n, steps, locale, temporal }, { 'Idempotency-Key': `web-${v}-${Date.now()}` }); onDone(r.id); } catch (x) { setErr(String((x as Error).message)); } finally { setBusy(false); } }}>
       <select className="field" value={v} onChange={(e) => setV(e.target.value)} required aria-label={t('app')}>
         <option value="" disabled>{t('app')} · {t('version')}</option>
         {av.map((a) => <option key={a.id} value={a.id}>{a.app} · {a.version}{a.spec ? '' : ' ·'}</option>)}
@@ -18,7 +18,6 @@ function RunStudy({ onDone }: { onDone: (id: string) => void }) {
       <input className="field tabular" type="number" min={1} max={40} value={n} onChange={(e) => setN(Number(e.target.value))} aria-label={t('sessions_n')} title={t('sessions_n')} />
       <input className="field tabular" type="number" min={5} max={80} value={steps} onChange={(e) => setSteps(Number(e.target.value))} aria-label={t('steps_n')} title={t('steps_n')} />
       <div className="flex flex-wrap items-center gap-3 sm:col-span-3">
-        <Seg size="sm" value={exec} onChange={setExec} options={[{ value: 'stagehand', label: 'Stagehand' }, { value: 'midscene', label: 'Midscene' }]} />
         <Seg size="sm" value={locale} onChange={setLocale} options={[{ value: 'zh-CN', label: '中' }, { value: 'en-US', label: 'EN' }, { value: 'mixed', label: '中/EN' }]} />
         <label className="inline-flex items-center gap-2 text-xs text-fg-muted"><input type="checkbox" checked={temporal} onChange={(e) => setTemporal(e.target.checked)} className="accent-[var(--color-accent)]" />Temporal</label>
         <Button variant="primary" className="ml-auto" disabled={!v || busy}><Play size={14} />{t('start')}</Button>

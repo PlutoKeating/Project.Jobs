@@ -151,7 +151,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   app.post('/api/v1/projects', async (q, r) => {
     if (!requireAdmin(q, r)) return;
     const b = q.body as Record<string, string | number | boolean>;
-    const id = await autoProject({ name: String(b.name), url: String(b.url), version: String(b.version || 'v1'), form: (b.form as 'web') || 'web', prd: (b.prd as string) || undefined, sessions: Number(b.sessions || 6), steps: Number(b.steps || 30), user: (b.user as string) || undefined, password: (b.password as string) || undefined, temporal: !!b.temporal, executor: (b.executor as 'stagehand') || 'stagehand' });
+    const id = await autoProject({ name: String(b.name), url: String(b.url), version: String(b.version || 'v1'), form: (b.form as 'web') || 'web', prd: (b.prd as string) || undefined, sessions: Number(b.sessions || 6), steps: Number(b.steps || 30), user: (b.user as string) || undefined, password: (b.password as string) || undefined, temporal: !!b.temporal});
     return { study_id: id };
   });
 

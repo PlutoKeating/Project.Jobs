@@ -8,11 +8,13 @@ export type Verb =
 
 export const VERBS: Verb[] = ['navigate', 'back', 'reload', 'click', 'long_press', 'hover', 'type', 'key', 'scroll', 'select', 'upload', 'drag', 'wait', 'speak', 'show_camera', 'set_location', 'switch_away', 'return', 'close_tab', 'lock'];
 /** Persona/Operator 可以主动发起的动词；打断类只能由 World Simulator 触发 */
-export const PERSONA_VERBS: Verb[] = ['navigate', 'back', 'reload', 'click', 'long_press', 'hover', 'type', 'key', 'scroll', 'select', 'upload', 'drag', 'wait', 'speak', 'show_camera'];
+/** navigate 只由系统在会话开始时使用：人物不会自己改网址（禁止技术自救） */
+export const PERSONA_VERBS: Verb[] = ['back', 'reload', 'click', 'long_press', 'hover', 'type', 'key', 'scroll', 'select', 'upload', 'drag', 'wait', 'speak', 'show_camera'];
 
 export interface TargetRef {
   by: 'a11y' | 'text' | 'selector' | 'visual' | 'coords' | 'ref';
-  value: string;                                         // 例如 role=button[name=发送]；ref 模式为元素编号 e12
+  value: string;                                         // visual：人物对目标的描述（样子与位置）；selector/coords 仅用于重放
+  text?: string;                                         // visual：人物在屏幕上看到的、写在目标上的字（照抄）
   resolved?: {
     selector?: string; bbox?: [number, number, number, number];
     a11y_role?: string; a11y_name?: string; in_perceived_view: boolean;
@@ -58,17 +60,20 @@ export interface Observation {
   network: NetworkSummary;
   dialogs: string[]; notifications: string[];
   page_visibility: 'visible' | 'hidden';
-  elements?: UIElement[];       // 可交互元素（Operator 使用；Persona 只看到感知过滤后的子集）
+  elements?: UIElement[];       // 元素几何（执行层仪器；人物看不到）
   scroll?: { y: number; max_y: number };
   is_new_state?: boolean;
 }
 
-/** Operator 可定位的元素（ref 在单个 Observation 内有效） */
+/**
+ * 页面元素的几何与属性。只作为执行层的仪器使用（落点换算、感知滤镜的区域、工程附录），
+ * 其中任何文字都不会进入人物的想法；vis_text 是屏幕上实际渲染出来的字（不含 aria / alt / title）。
+ */
 export interface UIElement {
   ref: string; role: string; name: string; tag: string;
   bbox: [number, number, number, number]; in_viewport: boolean; occluded: boolean;
   selector: string; value?: string; placeholder?: string; disabled?: boolean; checked?: boolean;
-  href?: string; text_len?: number; font_px?: number; contrast?: number; aria_label?: string; kind: 'interactive' | 'text' | 'heading' | 'image' | 'media';
+  href?: string; vis_text?: string; text_len?: number; font_px?: number; contrast?: number; aria_label?: string; kind: 'interactive' | 'text' | 'heading' | 'image' | 'media';
 }
 
 export type Layer = 'product' | 'environment' | 'executor' | 'simulator' | 'policy' | 'injected';
@@ -86,7 +91,7 @@ export interface ActionResult {
   executor: { name: 'playwright' | 'stagehand' | 'midscene' | string; version: string; model_alias?: string };
   resolved_target?: TargetRef;
   before_obs: string; after_obs: string;                 // Observation id
-  effects: { url_changed: boolean; dom_changed: boolean; requests: number; new_dialog: boolean };
+  effects: { url_changed: boolean; dom_changed: boolean; requests: number; new_dialog: boolean; visible_change?: boolean; visual_ratio?: number };
   evidence_ids: string[];
 }
 

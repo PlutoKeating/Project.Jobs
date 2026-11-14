@@ -10,8 +10,6 @@ model_list:
     litellm_params: { model: vertex_ai/gemini-4-hydrogen, <<: *vertex, reasoning_effort: low }
   - model_name: mind.slow
     litellm_params: { model: vertex_ai/gemini-4-argon, <<: *vertex }
-  - model_name: operator.plan
-    litellm_params: { model: vertex_ai/gemini-4-hydrogen, <<: *vertex, reasoning_effort: low }
   - model_name: operator.locate
     # Midscene 的 gemini family 会附带 google 扩展字段（Google OpenAI 兼容端点专用），经 LiteLLM 转 Vertex 时需丢弃
     litellm_params: { model: vertex_ai/gemini-4-hydrogen, <<: *vertex, reasoning_effort: low, additional_drop_params: ["google"] }

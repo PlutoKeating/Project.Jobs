@@ -154,6 +154,7 @@ export const WorldTemplateSchema = z.object({
   name: z.string(),
   name_en: z.string().optional(),
   scenario_class: z.string(),            // 例如 commute / idle_weekend / office / home_evening
+  device: z.enum(['phone', 'computer']).optional(),   // 此时此地手边的设备；不写时按场景推断（见 deviceFor）
   modes: z.array(z.enum(['goal', 'curiosity', 'stress', 'adversarial'])).default(['goal', 'curiosity']),
   start_clock: z.string().default('10:00'),
   init: z.object({
@@ -181,6 +182,13 @@ export const WorldTemplateSchema = z.object({
   matrix: z.boolean().default(false),    // true：初始状态由矩阵初始化器随机生成
 });
 export type WorldTemplate = z.infer<typeof WorldTemplateSchema>;
+
+/** 这个处境下人手边是手机还是电脑：坐在办公桌或书桌前用电脑，其余时候（路上、沙发、床上、抱着孩子）用手机 */
+export function deviceFor(w: Pick<WorldTemplate, 'device' | 'scenario_class' | 'init'>): 'phone' | 'computer' {
+  if (w.device) return w.device;
+  if (w.init.motion !== 'still' || w.init.channels.hands !== 'both') return 'phone';
+  return /office|work|desk|study|办公|工位|书桌|电脑/i.test(`${w.scenario_class} ${w.init.place}`) ? 'computer' : 'phone';
+}
 
 export interface Constraint { id: string; kind: 'hard' | 'soft'; rule: string; applies_to: 'operator' | 'perception' | 'session' | 'mind'; params: Record<string, unknown> }
 
@@ -240,7 +248,8 @@ export const StudyInputSchema = z.object({
     concurrency: z.number().int().min(1).max(16).default(3),
     round_size: z.number().int().min(1).default(4),
   }).default({ max_sessions: 8, max_steps_per_session: 40, max_tokens: 6_000_000, max_tokens_per_session: 800_000, concurrency: 3, round_size: 4 }),
-  executor: z.enum(['stagehand', 'midscene']).default('stagehand'),
+  // 只有 Midscene（看截图定位）。旧数据里的 stagehand 一律按 midscene 读取
+  executor: z.preprocess((v) => (v === 'stagehand' ? 'midscene' : v), z.enum(['midscene']).default('midscene')),
   persona_ids: z.array(z.string()).optional(),
   task_keys: z.array(z.string()).optional(),          // 只采样这些任务（ProductSpec 中的 task id，例如 t_export）
   world_ids: z.array(z.string()).optional(),

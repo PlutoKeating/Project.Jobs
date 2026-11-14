@@ -27,6 +27,41 @@ export const INIT_SCRIPT = String.raw`
     const origHasFocus = Document.prototype.hasFocus;
     Document.prototype.hasFocus = function () { return pux.hidden ? false : origHasFocus.call(this); };
   } catch (e) {}
+  // 下拉框：系统原生的选项列表不在页面里，无界面浏览器的截图拍不到它，人物也就看不见。
+  // 这里在页面里画一个样子相同的列表（点开 → 看见选项 → 点选），只替代系统控件的显示，不改变产品逻辑。
+  try {
+    let pop = null;
+    const close = () => { if (pop) { pop.remove(); pop = null; } };
+    const open = (sel) => {
+      close();
+      const r = sel.getBoundingClientRect(); const cs = getComputedStyle(sel);
+      pop = document.createElement('div');
+      pop.setAttribute('data-pux-select', '1'); pop.setAttribute('role', 'listbox');
+      const below = window.innerHeight - r.bottom; const maxH = Math.max(120, Math.min(320, (below > 160 ? below : r.top) - 8));
+      pop.style.cssText = 'position:fixed;z-index:2147483647;background:#fff;color:#111;border:1px solid #9aa0a6;border-radius:4px;box-shadow:0 4px 16px rgba(0,0,0,.25);overflow:auto;box-sizing:border-box;padding:4px 0;font-family:' + cs.fontFamily + ';font-size:' + cs.fontSize + ';left:' + Math.max(4, r.left) + 'px;min-width:' + Math.max(120, r.width) + 'px;max-height:' + maxH + 'px;' + (below > 160 ? 'top:' + (r.bottom + 2) + 'px;' : 'bottom:' + (window.innerHeight - r.top + 2) + 'px;');
+      Array.from(sel.options).forEach((o, i) => {
+        const it = document.createElement('div');
+        it.setAttribute('role', 'option'); it.textContent = o.text;
+        it.style.cssText = 'padding:7px 14px;cursor:pointer;white-space:nowrap;' + (o.disabled ? 'color:#9aa0a6;' : '') + (i === sel.selectedIndex ? 'background:#1a73e8;color:#fff;' : '');
+        if (!o.disabled) it.addEventListener('mousedown', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          if (sel.selectedIndex !== i) { sel.selectedIndex = i; sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true })); }
+          close();
+        }, true);
+        pop.appendChild(it);
+      });
+      document.documentElement.appendChild(pop);
+    };
+    document.addEventListener('mousedown', (e) => {
+      const t = e.target;
+      if (pop && pop.contains(t)) return;
+      const sel = t && t.closest ? t.closest('select') : null;
+      if (sel && !sel.multiple && !sel.disabled && !(sel.size > 1)) { e.preventDefault(); if (pop) close(); else { sel.focus(); open(sel); } return; }
+      close();
+    }, true);
+    window.addEventListener('scroll', (e) => { if (pop && e.target === pop) return; close(); }, true); window.addEventListener('blur', close);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); }, true);
+  } catch (e) {}
   pux.setHidden = (h) => {
     pux.hidden = !!h;
     document.dispatchEvent(new Event('visibilitychange'));
@@ -52,8 +87,9 @@ export const EXTRACT_SCRIPT = String.raw`
     return '/' + parts.join('/');
   };
   const visible = (el, r) => {
-    if (r.width < 1 || r.height < 1) return false;
+    if (r.width <= 1.5 || r.height <= 1.5) return false;        // 含「只给读屏软件看」的 1px 隐藏文字
     const cs = getComputedStyle(el);
+    if (cs.clipPath && /inset\(\s*(50|100)%/.test(cs.clipPath)) return false;
     return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05;
   };
   const lum = (c) => { const m = c.match(/[\d.]+/g); if (!m) return null; const [r, g, b, a] = m.map(Number); if (a === 0) return null; const f = (x) => { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
@@ -107,7 +143,13 @@ export const EXTRACT_SCRIPT = String.raw`
     if (!name) name = txt.slice(0, 120);
     if (!name && el.placeholder) name = el.placeholder;
     const cs = getComputedStyle(el);
-    out.push({ ref: 'e' + (++n), role: roleOf(el), name, tag: t, bbox: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], in_viewport: inVp, occluded,
+    // 屏幕上实际渲染出来的字：不含 aria-label / alt / title 这些肉眼看不到的属性
+    let vis = '';
+    if (t === 'input' || t === 'textarea') vis = el.type === 'password' ? '' : (el.value || el.placeholder || (['button', 'submit', 'reset'].includes(el.type) ? el.value : '') || '');
+    else if (t === 'select') vis = (el.selectedOptions && el.selectedOptions[0] ? el.selectedOptions[0].text : '') || '';
+    else if (t !== 'img') vis = txt;
+    vis = String(vis).replace(/\s+/g, ' ').trim().slice(0, 120);
+    out.push({ ref: 'e' + (++n), role: roleOf(el), name, vis_text: vis || undefined, tag: t, bbox: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)], in_viewport: inVp, occluded,
       selector: 'xpath=' + xpath(el), value: ('value' in el && t !== 'button') ? String(el.value).slice(0, 200) : undefined, placeholder: el.placeholder || undefined,
       disabled: !!el.disabled || el.getAttribute('aria-disabled') === 'true', checked: el.checked === true ? true : undefined, href: el.getAttribute && el.getAttribute('href') || undefined,
       text_len: txt.length, font_px: parseFloat(cs.fontSize) || undefined, contrast: kind !== 'image' ? contrast(el) : undefined, kind,

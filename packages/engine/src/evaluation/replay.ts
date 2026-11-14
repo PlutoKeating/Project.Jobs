@@ -15,10 +15,11 @@ export async function buildReproPath(sessionId: string, upToStep: number): Promi
   const out: ReproStep[] = [];
   for (const x of st) {
     const q = x.action_request as ActionRequest | null; const r = x.action_result as ActionResult | null;
-    if (!q?.verb || q.injected || ['switch_away', 'return', 'close_tab', 'lock'].includes(q.verb)) continue;
+    if (!q?.verb || q.injected || ['switch_away', 'return', 'close_tab', 'lock', 'look_closer'].includes(q.verb as string)) continue;
     if (r && (r.status === 'blocked_by_policy' || (r.error?.layer === 'simulator' && x.idx !== upToStep))) continue;
     const sel = r?.resolved_target?.resolved?.selector ?? q.target?.resolved?.selector;
-    out.push({ verb: q.verb, selector: sel, target_name: r?.resolved_target?.resolved?.a11y_name, args: q.args, url: x.observation_id ? obs.get(x.observation_id)?.url : undefined, orig_status: r?.status, orig_error: r?.error?.code, orig_effects: r?.effects });
+    if (!sel && ['click', 'long_press', 'hover', 'drag', 'select', 'upload'].includes(q.verb)) continue;   // 当时就没找到目标：重放时无从点起
+    out.push({ verb: q.verb, selector: sel, target_name: q.target?.text || r?.resolved_target?.resolved?.a11y_name, args: q.args, url: x.observation_id ? obs.get(x.observation_id)?.url : undefined, orig_status: r?.status, orig_error: r?.error?.code, orig_effects: r?.effects });
   }
   return { start_url: av.env_url, steps: out };
 }

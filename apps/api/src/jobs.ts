@@ -22,7 +22,7 @@ export async function startStudyJob(studyId: string, temporal: boolean) {
 export async function createAndRun(body: Record<string, unknown>, key?: string) {
   const input = {
     app_version_id: String(body.app_version_id), trigger: (body.trigger as 'api') ?? 'api', idempotency_key: key ?? (body.idempotency_key as string | undefined),
-    executor: (body.executor as 'stagehand') ?? 'stagehand', locale: (body.locale as 'zh-CN') ?? 'zh-CN',
+    executor: 'midscene', locale: (body.locale as 'zh-CN') ?? 'zh-CN',
     budget: { max_sessions: Number(body.sessions ?? 6), max_steps_per_session: Number(body.steps ?? 30), max_tokens: 6_000_000, max_tokens_per_session: 800_000, concurrency: Number(body.concurrency ?? 3), round_size: Number(body.round ?? 4) },
     ...(typeof body.config === 'object' && body.config ? body.config as Partial<StudyInput> : {}),
   };
@@ -32,10 +32,10 @@ export async function createAndRun(body: Record<string, unknown>, key?: string) 
 }
 
 /** 全自动：注册 → 爬取 → 归纳 → 自动确认 → 建 Study → 运行 */
-export async function autoProject(o: { name: string; url: string; version: string; form: 'web' | 'h5'; prd?: string; sessions: number; steps: number; user?: string; password?: string; temporal: boolean; executor: 'stagehand' | 'midscene' }) {
+export async function autoProject(o: { name: string; url: string; version: string; form: 'web' | 'h5'; prd?: string; sessions: number; steps: number; user?: string; password?: string; temporal: boolean }) {
   const appId = await E.addApp({ name: o.name, form: o.form });
   const avId = await E.addVersion({ appId, version: o.version, url: o.url, prd: o.prd });
-  const st = await E.createStudy({ app_version_id: avId, trigger: 'console', executor: o.executor, budget: { max_sessions: o.sessions, max_steps_per_session: o.steps, max_tokens: 6_000_000, max_tokens_per_session: 800_000, concurrency: 3, round_size: 4 } } as never);
+  const st = await E.createStudy({ app_version_id: avId, trigger: 'console', executor: 'midscene', budget: { max_sessions: o.sessions, max_steps_per_session: o.steps, max_tokens: 6_000_000, max_tokens_per_session: 800_000, concurrency: 3, round_size: 4 } } as never);
   const log = newJob(st.id);
   const job = running.get(st.id)!;
   (async () => {

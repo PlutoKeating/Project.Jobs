@@ -1,83 +1,117 @@
-import sharp from 'sharp';
-import { loadConfig, type PersonaSpec, type UIElement } from '@pux/core';
+import sharp, { type OverlayOptions } from 'sharp';
+import { type PersonaSpec, type UIElement } from '@pux/core';
 import { blobs } from '@pux/storage';
 import { getDb, evidence, eq } from '@pux/db';
 import { putEvidence } from '@pux/executor';
 import { filterByLiteracy } from './literacy.ts';
 
-export interface PerceivedElement { ref: string; role: string; label: string; kind: UIElement['kind']; disabled?: boolean; value?: string }
+export interface Rect { x: number; y: number; w: number; h: number }
+
 export interface Perception {
-  elements: PerceivedElement[];         // Operator 可定位的子集（Persona 看见了的）
-  summary: string;                      // 给 Persona Mind 的画面文字描述（无 ref）
-  image?: Buffer;                       // 感知过滤后的截图（给 Mind）
+  image?: Buffer;           // 人物这一眼看到的画面（唯一的输入）
+  zoom?: Buffer;            // 凑近看时的局部放大
   perceived_ev?: string;
-  hidden_count: number;                 // 被感知过滤掉的元素数
-  unreadable: number;                   // 看不懂/看不清的文本数
+  hidden_count: number;     // 这一眼没细看的区域数
+  unreadable: number;       // 看不清或看不懂的区域数
+  read_chars: number;       // 这一眼读到的字数（用于结算阅读时间）
+  note: string;             // 仪器记录（不给人物）
 }
 
-const roleZh: Record<string, string> = { button: '按钮', link: '链接', textbox: '输入框', searchbox: '搜索框', checkbox: '复选框', radio: '单选', combobox: '下拉框', heading: '标题', img: '图片', tab: '标签页', switch: '开关', slider: '滑块', canvas: '画布', file: '文件选择', menuitem: '菜单项', option: '选项', video: '视频' };
+export interface PerceiveOpts {
+  persona: PersonaSpec; elements: UIElement[]; screenshotEv?: string;
+  eyes: 'full' | 'glance' | 'none'; attention: number; stress?: number;
+  viewport: { w: number; h: number };
+  focus?: Rect;             // 上一步「凑近看」的区域（CSS 像素）
+  ctx: { study_id?: string; session_id?: string; step_idx?: number; persona_id?: string };
+}
+
+const inter = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+
+/** 这一眼能读多少字：扫读的人少，认真读的人多；走神、着急、只能瞥一眼时更少 */
+export function readingBudget(p: PersonaSpec, o: { eyes: PerceiveOpts['eyes']; attention: number; stress?: number }): number {
+  const base = p.behavior_policy.reading === 'scan' ? 160 : 700;
+  const speed = Math.max(0.5, Math.min(1.6, p.capability.cognition.reading_speed_cpm / 300));
+  return Math.round(base * speed * (0.45 + Math.max(0, Math.min(1, o.attention))) * (o.eyes === 'glance' ? 0.35 : 1) * ((o.stress ?? 0) > 0.7 ? 0.7 : 1));
+}
+
+/** 视觉显著度：弹层 > 标题 > 按钮和输入框 > 正文；字大、靠上的先被看到 */
+export const salience = (e: UIElement, vh: number) => (e.kind === 'heading' ? 3 : e.kind === 'interactive' ? 2 : 1) + (e.font_px ?? 14) / 14 - (e.bbox[1] / Math.max(1, vh)) * 1.2
+  + (e.selector.startsWith('dialog:') || e.role === 'option' || e.role === 'alert' ? 10 : 0) - (e.contrast !== undefined && e.contrast !== null && e.contrast < 3 ? 1 : 0);
 
 /**
- * 感知过滤（§7.1）：只作用于 Persona Mind；Operator 仍用清晰画面定位，但只能执行 Persona「看到」的目标。
- * - 扫读：长段文字只看到开头；小字被忽略
- * - 只能瞥一眼（eyes=glance）：只看到最醒目的少数元素
- * - 视力差：低对比度/小字号看不清
- * - 儿童：超出识字量的字显示为 □
+ * 决定这一眼哪些区域「没细看」或「看不清」（纯计算，便于单测）。
+ * 元素几何只用来决定滤镜落在哪里；任何文字都不会交给人物。
  */
-export async function perceive(opts: { persona: PersonaSpec; elements: UIElement[]; screenshotEv?: string; eyes: 'full' | 'glance' | 'none'; attention: number; viewportH?: number; ctx: { study_id?: string; session_id?: string; step_idx?: number; persona_id?: string }; lang: 'zh' | 'en' }): Promise<Perception> {
-  const { persona: p, eyes, lang } = opts;
-  const cfg = loadConfig().perception;
+export function planPerception(o: Omit<PerceiveOpts, 'screenshotEv' | 'ctx'>): { blur: { rect: Rect; why: 'skipped' | 'too_small' | 'cannot_read' }[]; read_chars: number; hidden: number; unreadable: number } {
+  const p = o.persona; const vh = o.viewport.h;
+  const vision = p.capability.body.vision; const lit = p.capability.cognition.literacy_chars;
   const scan = p.behavior_policy.reading === 'scan';
-  const vision = p.capability.body.vision;
-  const lit = p.capability.cognition.literacy_chars;
-  let hidden = 0; let unreadable = 0;
-  let els = opts.elements.filter((e) => e.in_viewport || e.selector.startsWith('dialog:'));
-  // 视觉显著度：标题/按钮/大字/靠上 优先
-  const salience = (e: UIElement) => (e.kind === 'heading' ? 3 : e.kind === 'interactive' ? 2 : 1) + (e.font_px ?? 14) / 14 - e.bbox[1] / 1200 + (e.selector.startsWith('dialog:') ? 10 : 0);
-  if (eyes === 'glance' || opts.attention < 0.25) {
-    // 与感知截图保持一致：瞥一眼时只看到屏幕上方 60% 区域，并且只记住其中最显眼的若干元素
-    const vh = opts.viewportH ?? 800;
-    if (eyes === 'glance') { const before = els.length; els = els.filter((e) => e.selector.startsWith('dialog:') || e.bbox[1] < vh * 0.6); hidden += before - els.length; }
-    const keep = Math.max(6, Math.round(cfg.glance_max_elements * 1.5));
-    const sorted = [...els].sort((a, b) => salience(b) - salience(a));
-    hidden += Math.max(0, sorted.length - keep);
-    els = sorted.slice(0, keep).sort((a, b) => a.bbox[1] - b.bbox[1] || a.bbox[0] - b.bbox[0]);
-  }
-  const out: PerceivedElement[] = [];
+  let budget = readingBudget(p, o);
+  const els = o.elements.filter((e) => e.in_viewport && (e.vis_text ?? '').length > 0 && e.bbox[2] > 3 && e.bbox[3] > 3)
+    .sort((a, b) => salience(b, vh) - salience(a, vh));
+  const blur: { rect: Rect; why: 'skipped' | 'too_small' | 'cannot_read' }[] = [];
+  let read = 0; let hidden = 0; let unreadable = 0;
+  const kept: Rect[] = [];
   for (const e of els) {
-    let label = (e.name || e.placeholder || '').replace(/\s+/g, ' ').trim();
-    const small = (e.font_px ?? 15) < 13;
-    const lowContrast = e.contrast !== undefined && e.contrast !== null && e.contrast < 3;
-    if (vision < 0.6 && (small || lowContrast)) { unreadable++; label = lang === 'zh' ? '（一行看不清的小字）' : '(some text too small to read)'; if (e.kind === 'text') { hidden++; continue; } }
-    if (scan && e.kind === 'text') {
-      if ((e.text_len ?? label.length) > cfg.scan_max_text_len) label = label.slice(0, 18) + (lang === 'zh' ? '…（大段文字，没细看）' : '… (long text, skimmed)');
-      if ((e.font_px ?? 15) < cfg.scan_min_font_px - 2) { hidden++; continue; }
-    } else if (e.kind === 'text') label = label.slice(0, 220);
-    if (lit) { const f = filterByLiteracy(label, lit); if (f.unknownRatio > 0.3) unreadable++; label = f.text; }
-    if (!label && e.kind === 'interactive') label = lang === 'zh' ? `（一个没有文字的${roleZh[e.role] ?? '图标'}）` : `(an unlabeled ${e.role} icon)`;
-    if (!label) continue;
-    out.push({ ref: e.ref, role: e.role, label: label.slice(0, 160), kind: e.kind, disabled: e.disabled, value: e.value ? e.value.slice(0, 80) : undefined });
+    const rect = { x: e.bbox[0], y: e.bbox[1], w: e.bbox[2], h: e.bbox[3] };
+    if (kept.some((k) => k.x <= rect.x && k.y <= rect.y && k.x + k.w >= rect.x + rect.w && k.y + k.h >= rect.y + rect.h)) continue;   // 已经随父区域读过
+    const len = (e.vis_text ?? '').length;
+    const focused = !!o.focus && inter(rect, o.focus);
+    const small = (e.font_px ?? 15) < 13; const low = e.contrast !== undefined && e.contrast !== null && e.contrast < 3;
+    if (!focused && vision < 0.6 && (small || low)) { blur.push({ rect, why: 'too_small' }); unreadable++; continue; }
+    if (lit && filterByLiteracy(e.vis_text ?? '', lit).unknownRatio > 0.3) { blur.push({ rect, why: 'cannot_read' }); unreadable++; continue; }
+    // 长段文字：扫读的人只看开头；按实际读到的量计费
+    const cost = e.kind === 'text' ? Math.min(len, scan ? 40 : 240) : Math.min(len, 30);
+    if (focused) { read += len; kept.push(rect); continue; }
+    if (scan && e.kind === 'text' && (small || len > 120) && budget < cost * 2) { blur.push({ rect, why: 'skipped' }); hidden++; continue; }
+    if (budget >= cost) { budget -= cost; read += cost; if (e.kind !== 'text' || len <= (scan ? 40 : 240)) kept.push(rect); }
+    else { blur.push({ rect, why: 'skipped' }); hidden++; }
   }
-  const summary = out.slice(0, 120).map((e) => {
-    const r = e.kind === 'heading' ? (lang === 'zh' ? '【标题】' : '[heading] ') : e.kind === 'text' ? '' : e.kind === 'image' ? (lang === 'zh' ? '[图片] ' : '[image] ') : `[${lang === 'zh' ? (roleZh[e.role] ?? e.role) : e.role}] `;
-    return `${r}${e.label}${e.disabled ? (lang === 'zh' ? '（灰色不可点）' : ' (greyed out)') : ''}${e.value ? (lang === 'zh' ? ` 当前内容：「${e.value}」` : ` currently: "${e.value}"`) : ''}`;
-  }).join('\n');
+  return { blur, read_chars: read, hidden, unreadable };
+}
 
-  // 感知过滤后的截图
-  let image: Buffer | undefined; let perceived_ev: string | undefined;
-  if (opts.screenshotEv) {
-    try {
-      const row = (await getDb().select().from(evidence).where(eq(evidence.id, opts.screenshotEv)))[0];
-      if (row?.storage_ref) {
-        const raw = await blobs().get(row.storage_ref);
-        let img = sharp(raw).resize({ width: 900, withoutEnlargement: true });
-        const blur = (vision < 0.6 ? (0.6 - vision) * 6 : 0) + (eyes === 'glance' ? 1.2 : 0);
-        if (eyes === 'glance') { const m = await sharp(raw).metadata(); img = sharp(raw).extract({ left: 0, top: 0, width: m.width ?? 900, height: Math.round((m.height ?? 600) * 0.6) }).resize({ width: 900, withoutEnlargement: true }); }
-        if (blur > 0.3) img = img.blur(Math.min(4, blur));
-        image = await img.jpeg({ quality: 60 }).toBuffer();
-        if (blur > 0.3 || eyes === 'glance') perceived_ev = await putEvidence('perceived_screenshot', opts.ctx, { data: image, mime: 'image/jpeg' });
+/**
+ * 感知滤镜：把真实截图变成「这个人这一眼看到的画面」。
+ * - 注意力与阅读预算：超出预算的区域是模糊的（看到那里有东西，但没读）；想看清要专门凑近看
+ * - 只能瞥一眼：屏幕下半部分是余光
+ * - 视力差：小字、低对比度的字看不清；整体略糊
+ * - 识字量：认不全的字读不懂
+ */
+export async function perceive(opts: PerceiveOpts): Promise<Perception> {
+  const { persona: p, eyes } = opts;
+  const plan = planPerception(opts);
+  const out: Perception = { hidden_count: plan.hidden, unreadable: plan.unreadable, read_chars: plan.read_chars, note: `read≈${plan.read_chars} chars; skipped ${plan.hidden}; unreadable ${plan.unreadable}${opts.focus ? '; looked closer' : ''}${eyes === 'glance' ? '; glance' : ''}` };
+  if (!opts.screenshotEv || eyes === 'none') return out;
+  try {
+    const row = (await getDb().select().from(evidence).where(eq(evidence.id, opts.screenshotEv)))[0];
+    if (!row?.storage_ref) return out;
+    const raw = await blobs().get(row.storage_ref);
+    const meta = await sharp(raw).metadata();
+    const W = meta.width ?? opts.viewport.w; const H = meta.height ?? opts.viewport.h; const k = W / opts.viewport.w;
+    const vision = p.capability.body.vision;
+    const px = (r: Rect, pad = 2) => { const left = Math.max(0, Math.round((r.x - pad) * k)); const top = Math.max(0, Math.round((r.y - pad) * k)); return { left, top, width: Math.min(W - left, Math.round((r.w + pad * 2) * k)), height: Math.min(H - top, Math.round((r.h + pad * 2) * k)) }; };
+    const layers: OverlayOptions[] = [];
+    for (const b of plan.blur.slice(0, 90)) {
+      const r = px(b.rect); if (r.width < 6 || r.height < 6) continue;
+      layers.push({ input: await sharp(raw).extract(r).blur(Math.max(1.2, (b.why === 'skipped' ? 2.4 : 1.8) * k)).toBuffer(), left: r.left, top: r.top });
+    }
+    if (eyes === 'glance') {
+      const top = Math.round(H * 0.55);
+      layers.push({ input: await sharp(raw).extract({ left: 0, top, width: W, height: H - top }).blur(5 * k).modulate({ brightness: 0.9 }).toBuffer(), left: 0, top });
+    }
+    let img = layers.length ? sharp(await sharp(raw).composite(layers).toBuffer()) : sharp(raw);
+    const haze = (vision < 0.6 ? (0.6 - vision) * 2.4 * k : 0);
+    if (haze > 0.3) img = img.blur(haze);
+    out.image = await img.resize({ width: 1100, withoutEnlargement: true }).jpeg({ quality: 72 }).toBuffer();
+    if (opts.focus) {
+      const f = opts.focus; const r = px({ x: f.x - 40, y: f.y - 30, w: f.w + 80, h: f.h + 60 }, 0);
+      if (r.width > 20 && r.height > 20) {
+        let z = sharp(raw).extract(r).resize({ width: Math.min(1000, Math.round(r.width * 2)) });
+        if (haze > 0.6) z = z.blur(haze / 2);       // 凑近了，但眼神不好的人仍然略糊
+        out.zoom = await z.jpeg({ quality: 78 }).toBuffer();
       }
-    } catch { /* 截图不可用时只用文字 */ }
-  }
-  return { elements: out, summary, image, perceived_ev, hidden_count: hidden, unreadable };
+    }
+    out.perceived_ev = await putEvidence('perceived_screenshot', opts.ctx, { data: out.image, mime: 'image/jpeg' });
+  } catch { /* 截图不可用：这一眼什么也没看到 */ }
+  return out;
 }

@@ -5,7 +5,7 @@ import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { env, logger, REPO_ROOT, dataPath, type StudyInput } from '@pux/core';
-import { closeDb, desc, eq, getDb, humanTasks, issues, runMigrations, sessions, studies, apps, appVersions, personas, calibrationResults, executorComparisons } from '@pux/db';
+import { closeDb, desc, eq, getDb, humanTasks, issues, runMigrations, sessions, studies, apps, appVersions, personas, calibrationResults } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { blobs } from '@pux/storage';
 import * as E from '@pux/engine';
@@ -80,10 +80,10 @@ const world = program.command('world').description('世界模板');
 world.command('import').action(wrap(async () => out(await E.importWorldTemplates())));
 
 // ---------------------------------------------------------------- Study
-const studyOpts = (c: Command) => c.option('--sessions <n>', '最多 Session 数').option('--steps <n>', '每个 Session 最多步数').option('--concurrency <n>', '并发').option('--round <n>', '每轮 Session 数').option('--executor <e>', 'stagehand | midscene', 'stagehand').option('--locale <l>', 'zh-CN | en-US | mixed', 'zh-CN').option('--personas <ids>', '逗号分隔的 Persona id').option('--tasks <keys>', '只采样这些任务（ProductSpec 中的 task id，逗号分隔）').option('--worlds <ids>', '逗号分隔的世界模板 id').option('--mix <g,c,s,a>', '模式配比 goal,curiosity,stress,adversarial').option('--revisits <days>', '留存回访天数，例如 1,7,30').option('--children', '包含儿童 Persona（需配置开启）').option('--no-replay', '不做干净重放').option('--no-interview', '不做事后访谈').option('--judges <n>', '评审数 1–3').option('--headed', '有头浏览器（可实时观察）').option('--key <k>', '幂等键').option('--study-name <name>', 'Study 名称').option('--lang <l>', '报告语言 zh | en | both');
+const studyOpts = (c: Command) => c.option('--sessions <n>', '最多 Session 数').option('--steps <n>', '每个 Session 最多步数').option('--concurrency <n>', '并发').option('--round <n>', '每轮 Session 数').option('--locale <l>', 'zh-CN | en-US | mixed', 'zh-CN').option('--personas <ids>', '逗号分隔的 Persona id').option('--tasks <keys>', '只采样这些任务（ProductSpec 中的 task id，逗号分隔）').option('--worlds <ids>', '逗号分隔的世界模板 id').option('--mix <g,c,s,a>', '模式配比 goal,curiosity,stress,adversarial').option('--revisits <days>', '留存回访天数，例如 1,7,30').option('--children', '包含儿童 Persona（需配置开启）').option('--no-replay', '不做干净重放').option('--no-interview', '不做事后访谈').option('--judges <n>', '评审数 1–3').option('--headed', '有头浏览器（可实时观察）').option('--key <k>', '幂等键').option('--study-name <name>', 'Study 名称').option('--lang <l>', '报告语言 zh | en | both');
 function toInput(av: string, o: Record<string, string | boolean | undefined>): Partial<StudyInput> & { app_version_id: string } {
   const mix = typeof o.mix === 'string' ? o.mix.split(',').map(Number) : undefined;
-  return { app_version_id: av, name: o.studyName as string, trigger: 'cli', idempotency_key: o.key as string, executor: (o.executor as 'stagehand') ?? 'stagehand', locale: (o.locale as 'zh-CN') ?? 'zh-CN',
+  return { app_version_id: av, name: o.studyName as string, trigger: 'cli', idempotency_key: o.key as string, executor: 'midscene', locale: (o.locale as 'zh-CN') ?? 'zh-CN',
     budget: { max_sessions: Number(o.sessions ?? 8), max_steps_per_session: Number(o.steps ?? 40), max_tokens: 6_000_000, max_tokens_per_session: 800_000, concurrency: Number(o.concurrency ?? 3), round_size: Number(o.round ?? 4) },
     persona_ids: typeof o.personas === 'string' ? o.personas.split(',') : undefined, task_keys: typeof o.tasks === 'string' ? o.tasks.split(',') : undefined, world_ids: typeof o.worlds === 'string' ? o.worlds.split(',') : undefined,
     mode_mix: mix ? { goal: mix[0], curiosity: mix[1], stress: mix[2], adversarial: mix[3] } : undefined as never,
@@ -162,13 +162,8 @@ const human = program.command('human').description('人工接管（验证码等 
 human.command('list').action(wrap(async () => console.table(await getDb().select().from(humanTasks).orderBy(desc(humanTasks.created_at)))));
 human.command('resolve').argument('<taskId>').option('--note <n>').action(wrap(async (id: string, o: { note?: string }) => { await E.resolveHumanTask(id, 'resolved', o.note); try { const { signalHuman } = await import('@pux/worker/client'); await signalHuman(id); } catch { /* inline 模式无需信号 */ } console.log('✅ 已标记处理完成'); }));
 
-// ---------------------------------------------------------------- M0：执行器对比
-program.command('m0').description('M0 执行器对比：在同一被测 App 上用同一组动作对比 Stagehand 与 Midscene').requiredOption('--app <name@version>').action(wrap(async (o: { app: string }) => {
-  const { runM0 } = await import('./m0.ts'); const r = await runM0(o.app); out(r);
-}));
-
 program.command('console').description('启动 JobsWorld API 与网页工作台（http://127.0.0.1:5320/）').action(async () => { await import('@pux/api/server'); });
 program.command('worker').description('启动 Temporal worker').action(async () => { await import('@pux/worker'); });
 
 program.parseAsync().catch((e) => { logger.error(e); process.exit(1); });
-export { dataPath, join, calibrationResults, executorComparisons };
+export { dataPath, join, calibrationResults };
