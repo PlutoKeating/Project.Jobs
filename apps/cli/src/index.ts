@@ -11,7 +11,7 @@ import { blobs } from '@pux/storage';
 import * as E from '@pux/engine';
 
 const program = new Command();
-program.name('pux').description('AI 产品体验官：让模拟用户在模拟世界里使用真实产品，发现体验问题并给出可信度').version('0.1.0');
+program.name('pux').description('AI 产品体验官：让模拟用户在模拟世界里使用真实产品，发现体验问题并给出可信度').version('0.1.0', '-V, --pux-version', '显示 pux 版本（--version 留给子命令的应用版本号）');
 
 const out = (x: unknown) => console.log(typeof x === 'string' ? x : JSON.stringify(x, null, 2));
 const progress = (m: string) => console.log(m);
