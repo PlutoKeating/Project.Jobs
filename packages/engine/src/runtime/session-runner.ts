@@ -59,6 +59,7 @@ export class SessionRunner {
   private appName = '';
   private appId = '';
   private startUrl = '';
+  private memScope?: Set<string>;
   private goalText = '';
   private signals: { kind: string; value: string }[] = [];
   private cfg = loadConfig();
@@ -101,7 +102,8 @@ export class SessionRunner {
       const life = await lifeBetween(this.persona, this.appName, 0, this.sess.revisit_day, { study_id: st.id, session_id: sessionId }).catch(() => '');
       if (life) this.memories.push(life);
     }
-    const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.sess.revisit_day).catch(() => []);
+    if (av.reset_url) this.memScope = new Set((await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.study_id, st.id))).map((x) => x.id));
+    const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.sess.revisit_day, undefined, this.memScope).catch(() => []);
     this.memories.push(...mem.map((m) => m.content));
     this.memories.push(accountHint(this.persona, this.appId));
     const form = app.form;
@@ -141,7 +143,7 @@ export class SessionRunner {
       await putEvidence('world_event', { ...tags, persona_id: this.persona.id }, { inline: { interrupt: it, injected: true } });
     }
     const net = this.world.takeNetworkChange(); if (net !== undefined) await this.browser.setNetwork(net);
-    for (const cue of this.world.takeMemoryCues()) { const m = await recall(this.persona.id, this.appId, cue, this.sess.revisit_day, 2).catch(() => []); this.memories.push(cue, ...m.map((x) => x.content)); }
+    for (const cue of this.world.takeMemoryCues()) { const m = await recall(this.persona.id, this.appId, cue, this.sess.revisit_day, 2, this.memScope).catch(() => []); this.memories.push(cue, ...m.map((x) => x.content)); }
     const wsId = await this.world.persist(this.sess.id, idx, events);
     for (const e of events) await putEvidence('world_event', { ...tags, persona_id: this.persona.id }, { inline: e });
     const stop = this.world.hardStop();

@@ -6,9 +6,10 @@ import { personaBio } from './persona.ts';
 export interface RecalledMemory { id: string; kind: string; content: string; valence: number; importance: number; score: number }
 
 /** Generative Agents 式检索：相关性 × 时效性 × 重要性加权（§6.2）。记忆按 persona × app 隔离，app_id 为空的是全局记忆。 */
-export async function recall(personaId: string, appId: string, query: string, simDay: number, k?: number): Promise<RecalledMemory[]> {
+export async function recall(personaId: string, appId: string, query: string, simDay: number, k?: number, onlySessions?: Set<string>): Promise<RecalledMemory[]> {
   const cfg = loadConfig().memory;
-  const rows = await getDb().select().from(personaMemories).where(and(eq(personaMemories.persona_id, personaId), or(eq(personaMemories.app_id, appId), isNull(personaMemories.app_id))));
+  // onlySessions：测试环境被重置时，只回忆本 Study 内关于该产品的经历（全局记忆照常保留）
+  const rows = (await getDb().select().from(personaMemories).where(and(eq(personaMemories.persona_id, personaId), or(eq(personaMemories.app_id, appId), isNull(personaMemories.app_id))))).filter((m) => !onlySessions || m.app_id === null || (m.source_session_id !== null && onlySessions.has(m.source_session_id)));
   if (!rows.length) return [];
   const q = await gateway().embed(query);
   const scored = rows.map((m) => {
