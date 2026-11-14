@@ -23,7 +23,7 @@ npx playwright install chromium
 ```bash
 docker compose up -d
 pnpm pux doctor        # 全部 ✅ 再继续
-pnpm pux init          # 数据库迁移 + 导入 14 个精品 Persona + 9 个世界模板 + 注册 11 个 Demo
+pnpm pux init          # 数据库迁移 + 导入 22 个手写 Persona（含 8 个职业人群：程序员、测试/DevOps、架构师、前端、后端、市场宣发、OPC 创业者、上市公司董事长） + 9 个世界模板 + 注册 11 个 Demo
 pnpm demos             # 另开终端，启动全部 Demo（22 个实例）
 ```
 

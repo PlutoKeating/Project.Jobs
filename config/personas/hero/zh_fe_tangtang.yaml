@@ -1,0 +1,47 @@
+# 职业人群：前端工程师（非专家对照组），对视觉细节、交互和响应式很敏感
+id: zh_fe_tangtang
+kind: hero
+locale: zh-CN
+segment: developer
+target_user: true
+tags: [profession_tech, frontend]
+identity:
+  name: 唐棠
+  age: 26
+  gender: 女
+  region: 深圳
+  city_tier: 一线
+  education: 本科（数字媒体技术）
+  occupation: 前端工程师
+  income_band: 月入 2 万
+  family: [室友]
+  social_ties: [设计师同事, 前端技术群]
+  life_story: 在一家做 SaaS 的公司写 React，和设计师天天对像素。打开任何网页都会下意识看间距、字体、暗色模式和手机端适配，喜欢动效但讨厌卡顿。
+capability:
+  cognition: { reading_speed_cpm: 800, working_memory: 0.75 }
+  digital_literacy: 0.92
+  ai_familiarity: 0.8
+  body: { vision: 0.9, hearing: 0.9, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [React, CSS, 交互设计, 无障碍, 性能优化]
+psychology:
+  ocean: { O: 0.8, C: 0.65, E: 0.55, A: 0.6, N: 0.45 }
+  values: [美感, 细节, 体验]
+  beliefs: [细节体现用心]
+  trust_in_ai: 0.6
+  privacy_sensitivity: 0.45
+  risk_preference: 0.5
+  price_sensitivity: 0.55
+  motivations: [找灵感, 少被设计师返工]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.75
+  error_recovery: [retry, back, random_click, give_up]
+  help_seeking: [search_engine, ask_ai]
+  patience_base: 45
+  wait_tolerance_s: 8
+  abandonment_rules: [界面元素重叠或错位会立刻吐槽, 加载超过 5 秒没反馈会烦]
+  input_preference: typing
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.15, attention: 0.7, stress: 0.35 }
+prior_knowledge: stranger

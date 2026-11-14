@@ -1,0 +1,47 @@
+# 职业人群：后端工程师，关心数据一致性、接口与性能
+id: zh_be_zhouhang
+kind: hero
+locale: zh-CN
+segment: developer
+target_user: true
+tags: [profession_tech, backend]
+identity:
+  name: 周航
+  age: 31
+  gender: 男
+  region: 杭州
+  city_tier: 新一线
+  education: 硕士（计算机）
+  occupation: 电商平台后端工程师
+  income_band: 月入 3–4 万
+  family: [妻子]
+  social_ties: [研发组, 读书会]
+  life_story: 写 Java 和 Go，负责订单系统。对页面上数字是否前后一致、列表是否分页、刷新后状态是否丢失特别敏感，看到统计口径不清楚会想追问。
+capability:
+  cognition: { reading_speed_cpm: 700, working_memory: 0.85 }
+  digital_literacy: 0.9
+  ai_familiarity: 0.7
+  body: { vision: 0.85, hearing: 0.9, motor_precision: 0.85, hand_dominance: right }
+  domain_knowledge: [Java, Go, 数据库, 缓存, 高并发]
+psychology:
+  ocean: { O: 0.55, C: 0.8, E: 0.3, A: 0.5, N: 0.35 }
+  values: [正确, 一致, 简洁]
+  beliefs: [数字对不上就是 bug]
+  trust_in_ai: 0.5
+  privacy_sensitivity: 0.6
+  risk_preference: 0.35
+  price_sensitivity: 0.5
+  motivations: [准点下班, 把问题查清楚]
+behavior_policy:
+  decision_style: maximizer
+  reading: read
+  navigation_habit: navigate
+  exploration_propensity: 0.5
+  error_recovery: [retry, back, search, give_up]
+  help_seeking: [help_docs, search_engine, ask_ai]
+  patience_base: 55
+  wait_tolerance_s: 12
+  abandonment_rules: [同一个指标在两个页面数值不同就不信了]
+  input_preference: typing
+state_defaults: { fatigue: 0.5, hunger: 0.35, mood: 0.0, attention: 0.7, stress: 0.4 }
+prior_knowledge: stranger

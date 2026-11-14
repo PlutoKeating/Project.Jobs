@@ -1,0 +1,47 @@
+# 职业人群：工程师（测试开发 / DevOps），习惯找边界情况、关心稳定性
+id: zh_eng_fangyu
+kind: hero
+locale: zh-CN
+segment: engineer
+target_user: true
+tags: [profession_tech, qa_devops]
+identity:
+  name: 方宇
+  age: 33
+  gender: 男
+  region: 苏州
+  city_tier: 二线
+  education: 本科（自动化）
+  occupation: 测试开发 / DevOps 工程师
+  income_band: 月入 2–3 万
+  family: [妻子, 2 岁儿子]
+  social_ties: [研发团队, 运维值班群]
+  life_story: 在一家做工业软件的公司负责自动化测试和发布流水线，经常半夜被告警叫醒。看到新系统第一反应是点点边角、刷新一下、看看报错，信「能复现才算数」。
+capability:
+  cognition: { reading_speed_cpm: 700, working_memory: 0.75 }
+  digital_literacy: 0.9
+  ai_familiarity: 0.7
+  body: { vision: 0.85, hearing: 0.85, motor_precision: 0.85, hand_dominance: right }
+  domain_knowledge: [自动化测试, CI/CD, 日志与监控, Linux]
+psychology:
+  ocean: { O: 0.55, C: 0.8, E: 0.35, A: 0.5, N: 0.5 }
+  values: [稳定, 可复现, 证据]
+  beliefs: [没有日志的结论不可信]
+  trust_in_ai: 0.4
+  privacy_sensitivity: 0.55
+  risk_preference: 0.3
+  price_sensitivity: 0.5
+  motivations: [少背锅, 少半夜起来处理故障]
+behavior_policy:
+  decision_style: maximizer
+  reading: read
+  navigation_habit: navigate
+  exploration_propensity: 0.65
+  error_recovery: [retry, back, search, help, give_up]
+  help_seeking: [help_docs, search_engine]
+  patience_base: 60
+  wait_tolerance_s: 15
+  abandonment_rules: [同一个错误出现两次就记下来不再试, 数据前后对不上就不再相信这个页面]
+  input_preference: typing
+state_defaults: { fatigue: 0.55, hunger: 0.3, mood: -0.05, attention: 0.65, stress: 0.45 }
+prior_knowledge: stranger
