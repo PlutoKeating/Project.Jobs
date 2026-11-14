@@ -201,7 +201,7 @@ export function WorldPage() {
                   const pos = toScreen(v, pl.x + pl.w / 2, pl.top - 6);
                   return <span key={e.id} className="absolute -translate-x-1/2 -translate-y-full rounded-full bg-warning p-1.5 text-bg shadow-md live-dot" style={pos} title={e.kind}><Icon size={14} /></span>;
                 })}
-                {v.s >= 3 && town.places.map((p) => { const pos = toScreen(v, p.x + p.w / 2, p.top - 1.5); return <span key={p.id} className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-xs font-medium text-fg-display/80 [text-shadow:0_1px_6px_rgb(0_0_0/0.6)]" style={pos}>{lang === 'zh' ? p.name.zh : p.name.en}</span>; })}
+                {v.s >= 3 && town.places.map((p) => { const pos = toScreen(v, p.x + p.w / 2, p.top - 1.5); return <span key={p.id} className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-xs font-medium [text-shadow:0_1px_6px_rgb(0_0_0/0.7)]" style={{ ...pos, color: 'rgb(232 228 221 / 0.85)' }}>{lang === 'zh' ? p.name.zh : p.name.en}</span>; })}
                 {people.map((p) => {
                   const pos = toScreen(v, p.x, p.y - 3.8);
                   const bubble = p.say && now - p.say.at < 10_000 ? p.say : null;

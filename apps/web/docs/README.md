@@ -22,8 +22,8 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 | 路径 | 说明 |
 |---|---|
 | `src/components/city/` | 侧视像素城市（PixiJS）：`draw.ts` 把 `TownLayout` 图元与人物外观画成像素，`palette.ts` 天空随模拟时钟变化，`CityCanvas.tsx` 负责拖拽、缩放、聚焦与 HTML 叠加层（气泡、名牌、地名）。`mode="horizon"` 是其他页面页脚的街道 |
-| `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、世界时钟、游戏地址、语言、明暗主题、「发布」）、登录页、页脚街道（跟在内容后面，不盖住内容） |
-| `src/components/Publish.tsx` | 发布对话框：网址、名字、一句话（`openPublish()` 可从任意页面打开） |
+| `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、世界时钟、Terraria 浮层：地址与两个游戏服的开关、飞书浮层：扫码接入、语言、明暗主题、模型入口、「发布」）、登录页、页脚街道（跟在内容后面，不盖住内容） |
+| `src/components/Publish.tsx` | 发布对话框：网址、名字、一句话（`openPublish()` 可从任意页面打开）；有随包示例产品在跑时，左下角的「示例」可以一键填好 |
 | `src/pages/` | `World`、`Products`（含 `useLiveFunnel`：接口人数 + 实时帧）、`Launch`、`People`、`Person`、`Session`、`Human`、`Models` |
 | `src/lib/` | API 客户端与查询（`useLaunches`、`useLaunch`、`useLaunchReport`、`useEngineering` …）、WebSocket 实时 store（`snapshot`、`live`、`say`、`launches`）、中英双语文案与标签 |
 | `src/design-system/tokens.css` | PlutoKeating design system token 副本（整体替换更新） |

@@ -1,7 +1,8 @@
 // 发布：粘贴网址、名字、一句话。发布之后的事交给城里的人。
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from '@tanstack/react-router';
-import { ApiError, post, queryClient } from '../lib/api.ts';
+import { useQuery } from '@tanstack/react-query';
+import { ApiError, get, post, queryClient } from '../lib/api.ts';
 import { useT } from '../lib/i18n.ts';
 import type { Launch } from '../lib/types.ts';
 import { Button } from './ui.tsx';
@@ -17,7 +18,9 @@ export const normalizeUrl = (raw: string) => { const s = raw.trim(); return !s |
 export function PublishDialog() {
   const isOpen = useSyncExternalStore((f) => { subs.add(f); return () => subs.delete(f); }, () => open);
   const ref = useRef<HTMLDialogElement>(null);
-  const { t } = useT(); const nav = useNavigate();
+  const { t, lang } = useT(); const nav = useNavigate();
+  // 随包的示例产品（带着真实的小毛病）：没有自己的产品时先拿它们试
+  const demos = useQuery({ queryKey: ['demos'], queryFn: () => get<{ id: string; name: string; name_en: string; tagline: string; flawed_url: string }[]>('/demos'), enabled: isOpen, staleTime: 60_000, retry: false });
   const [url, setUrl] = useState(''); const [name, setName] = useState(''); const [tagline, setTagline] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { const d = ref.current; if (!d) return; if (isOpen && !d.open) d.showModal(); else if (!isOpen && d.open) d.close(); }, [isOpen]);
@@ -44,7 +47,14 @@ export function PublishDialog() {
         <label className="mt-4 block text-xs text-fg-muted" htmlFor="pub-tagline">{t('f_tagline')}</label>
         <input id="pub-tagline" className="field mt-1.5" maxLength={80} autoComplete="off" value={tagline} onChange={(e) => setTagline(e.target.value)} required />
         {err && <p role="alert" className="mt-3 break-words text-xs text-danger">{err}</p>}
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex items-center justify-end gap-2">
+          {(demos.data?.length ?? 0) > 0 && (
+            <select aria-label={t('examples')} value="" disabled={busy} onChange={(e) => { const d = demos.data!.find((x) => x.id === e.target.value); if (d) { setUrl(d.flawed_url); setName(lang === 'zh' ? d.name : d.name_en); setTagline(d.tagline); } }}
+              className="mr-auto h-9 max-w-[9rem] rounded-md border border-border bg-transparent px-2 text-sm text-fg-muted hover:border-border-strong hover:text-fg">
+              <option value="">{t('examples')}</option>
+              {demos.data!.map((d) => <option key={d.id} value={d.id}>{lang === 'zh' ? d.name : d.name_en}</option>)}
+            </select>
+          )}
           <Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>{t('cancel')}</Button>
           <Button type="submit" variant="primary" disabled={!ready || busy}>{busy ? t('publishing') : t('publish')}</Button>
         </div>

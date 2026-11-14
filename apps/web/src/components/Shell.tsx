@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Gamepad2, LogOut, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
-import { post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
+import { Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
+import { ApiError, get, post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
 import { setLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
 import { CityCanvas } from './city/CityCanvas.tsx';
@@ -28,15 +29,79 @@ function Clock() {
   );
 }
 
-function JoinGame({ port }: { port: number }) {
+interface GameState { tshock: { up: boolean; pending: boolean }; tml: { up: boolean; pending: boolean }; can_toggle: boolean; port: number; password: boolean }
+
+/** 用 Terraria 走进同一座城：地址（点一下复制），以及两个游戏服的开关。游戏服默认不装，管理员在这里一键开启 */
+function JoinGame({ port, admin }: { port: number; admin: boolean }) {
   const { t } = useT();
-  const [done, setDone] = useState(false);
+  const [open, setOpen] = useState(false); const [done, setDone] = useState(false); const [cmd, setCmd] = useState<string | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const q = useQuery({ queryKey: ['game'], queryFn: () => get<GameState>('/game'), enabled: open, refetchInterval: open ? 3000 : false });
+  useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
   const addr = `${location.hostname}:${port}`;
+  const copy = (text: string) => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1600); };
+  const toggle = async (kind: 'tshock' | 'tml', on: boolean) => { setCmd(null); try { await post('/game', { kind, on }); } catch (e) { if (e instanceof ApiError && e.status === 409) setCmd(String(e.body?.command ?? `jobs game ${on ? 'on' : 'off'} ${kind}`)); } void q.refetch(); };
   return (
-    <Button variant="ghost" size="sm" className="hidden sm:inline-flex" title={`${t('game')} · ${addr}`} aria-label={t('game')}
-      onClick={() => { void navigator.clipboard?.writeText(addr); setDone(true); setTimeout(() => setDone(false), 1600); }}>
-      <Gamepad2 size={16} /><span className="hidden tabular lg:inline">{done ? t('copied') : addr}</span>
-    </Button>
+    <div ref={box} className="relative hidden sm:block">
+      <Button variant="ghost" size="sm" aria-expanded={open} aria-label={t('game')} title={t('game')} onClick={() => setOpen(!open)}><Gamepad2 size={16} /><span className="hidden tabular lg:inline">{addr}</span></Button>
+      {open && (
+        <div role="dialog" aria-label={t('game')} className="animate-reveal absolute right-0 top-9 z-40 w-72 rounded-lg border border-border-strong bg-bg-elevated p-4 shadow-md">
+          <button type="button" onClick={() => copy(addr)} className="tabular block w-full rounded-md border border-border px-3 py-2 text-left font-mono text-sm text-fg-display transition-colors hover:border-fg-subtle">{done ? t('copied') : addr}</button>
+          <ul className="mt-3 space-y-2.5">
+            {(['tshock', 'tml'] as const).map((k) => { const g = q.data?.[k]; return (
+              <li key={k} className="flex items-center justify-between gap-3 text-sm">
+                <span className="flex items-center gap-2"><span className={`h-1.5 w-1.5 rounded-full ${g?.up ? 'bg-success' : g?.pending ? 'bg-accent live-dot' : 'bg-border-strong'}`} />{t(k === 'tshock' ? 'g_tshock' : 'g_tml')}</span>
+                {admin && g && <button type="button" role="switch" aria-checked={g.up} aria-label={t(k === 'tshock' ? 'g_tshock' : 'g_tml')} disabled={g.pending} onClick={() => void toggle(k, !g.up)} className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${g.up ? 'bg-fg-display' : 'bg-border-strong'}`}><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-bg transition-[left] ${g.up ? 'left-[18px]' : 'left-0.5'}`} /></button>}
+              </li>
+            ); })}
+          </ul>
+          {cmd && <button type="button" onClick={() => copy(cmd)} title={t('g_run')} className="mt-3 block w-full rounded-md bg-code-bg px-3 py-2 text-left font-mono text-xs text-code-fg">{cmd}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface FeishuState { connected: boolean; app_id: string | null; brand: string | null; connected_at: string | null; pending: { url: string; qr_svg: string; expires_at: number } | null; error: string | null }
+
+/** 飞书：扫码接入之后，进展、结论、需要介入的事会发到飞书，也可以直接在飞书里发布和追问 */
+function FeishuLink() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false); const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  const q = useQuery({ queryKey: ['feishu'], queryFn: () => get<FeishuState>('/feishu'), enabled: open, refetchInterval: (x) => (open && x.state.data?.pending ? 2500 : false), retry: false });
+  useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
+  const act = async (path: string) => { setBusy(true); try { const s = await post<FeishuState>(path); if ('connected' in s) queryClient.setQueryData(['feishu'], s); } catch { /* 状态里会带出错误 */ } finally { setBusy(false); void q.refetch(); } };
+  const s = q.data;
+  return (
+    <div ref={box} className="relative hidden sm:block">
+      <Button variant="ghost" size="sm" className="w-9" aria-expanded={open} aria-label={t('feishu')} title={t('feishu')} onClick={() => setOpen(!open)}><MessageCircle size={15} /></Button>
+      {open && (
+        <div role="dialog" aria-label={t('feishu')} className="animate-reveal absolute right-0 top-9 z-40 w-72 rounded-lg border border-border-strong bg-bg-elevated p-4 shadow-md">
+          <h2 className="text-sm font-semibold">{t('feishu')}</h2>
+          {!s ? <div className="mt-3 h-9 animate-pulse rounded-md bg-surface-hover" />
+            : s.connected ? (
+              <>
+                <p className="mt-2 flex items-center gap-2 text-sm text-fg"><span className="h-1.5 w-1.5 rounded-full bg-success" />{t('fs_connected')}</p>
+                <div className="mt-3 flex gap-2">
+                  <Button size="sm" disabled={busy} onClick={async () => { await act('/feishu/test'); setSent(true); setTimeout(() => setSent(false), 1600); }}>{sent ? t('fs_sent') : t('fs_test')}</Button>
+                  <Button size="sm" variant="ghost" disabled={busy} onClick={() => void act('/feishu/disconnect')}>{t('fs_disconnect')}</Button>
+                </div>
+              </>
+            ) : s.pending ? (
+              <>
+                <a href={s.pending.url} target="_blank" rel="noreferrer" aria-label={t('fs_scan')} className="mt-3 block rounded-md bg-white p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: s.pending.qr_svg }} />
+                <p className="mt-2 flex items-center gap-2 text-xs text-fg-muted"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('fs_scan')}</p>
+              </>
+            ) : (
+              <>
+                {s.error && <p role="alert" className="mt-2 break-words text-xs text-danger">{s.error}</p>}
+                <Button className="mt-3 w-full" disabled={busy} onClick={() => void act('/feishu/connect')}>{busy ? '…' : t('fs_connect')}</Button>
+              </>
+            )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -83,7 +148,8 @@ function Horizon() {
 export function Shell() {
   const me = useMe(); const { t, lang } = useT(); const [theme, toggle] = useTheme();
   const path = useRouterState({ select: (s) => s.location.pathname });
-  const pending = useOverview(!!me.data?.viewer).data?.human_pending ?? 0;
+  const ov = useOverview(!!me.data?.viewer).data;
+  const pending = ov?.human_pending ?? 0;
   const nav = useNavigate();
   // 还没接入模型的管理员，第一次打开时直接带到模型页（只带一次，之后由他自己决定去哪）
   const needModels = !!me.data?.admin && me.data.models_ready === false;
@@ -105,8 +171,10 @@ export function Shell() {
             {(pending > 0 || path === '/human') && <NavLink to="/human">{t('nav.human')}{pending > 0 && <span className="tabular ml-1.5 rounded-xs bg-accent px-1 text-xs text-accent-fg">{pending}</span>}</NavLink>}
           </nav>
           <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
+            {ov && ov.spend_usd > 0 && <span className="tabular hidden px-1.5 text-xs text-fg-muted md:inline" title={t('spent')}>${ov.spend_usd.toFixed(2)}</span>}
             <Clock />
-            {me.data && <JoinGame port={me.data.game_port} />}
+            {me.data && <JoinGame port={me.data.game_port} admin={me.data.admin} />}
+            {me.data?.admin && <FeishuLink />}
             <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} aria-label="language" className="w-8 tabular sm:w-9">{lang === 'zh' ? 'EN' : '中'}</Button>
             <Button variant="ghost" size="sm" onClick={toggle} aria-label="theme" className="w-8 sm:w-9">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</Button>
             {me.data?.auth_required && <Button variant="ghost" size="sm" aria-label={t('logout')} onClick={async () => { await post('/auth/logout'); await queryClient.invalidateQueries(); }}><LogOut size={15} /></Button>}

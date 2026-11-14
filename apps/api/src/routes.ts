@@ -3,7 +3,7 @@ import type { FastifyInstance } from 'fastify';
 import { existsSync } from 'node:fs';
 import { dataPath } from '@pux/core';
 import { memoryCounts } from '@pux/memory';
-import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, launches, observations, sessions, steps, studies, worldStates } from '@pux/db';
+import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, launches, llmTraces, observations, sessions, steps, studies, worldStates, sql } from '@pux/db';
 import { blobs } from '@pux/storage';
 import * as E from '@pux/engine';
 import { computeLayout, kvGetJson, latestPersonas, liveContextFor, loadAgenda, personaById, personaMemoryList, personaSessions, personaTrust, residentOf, tiesOf, SUBJ, type Snapshot } from '@pux/jobsworld';
@@ -12,6 +12,8 @@ import { avatarFor } from './avatars.ts';
 import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
 import { modelRoutes, modelsReady } from './models.ts';
+import { gameRoutes } from './game.ts';
+import { feishuRoutes } from './feishu.ts';
 
 type P = { id: string };
 const layout = computeLayout();
@@ -19,6 +21,8 @@ const layout = computeLayout();
 export function routes(app: FastifyInstance, bus: Bus | undefined) {
   launchRoutes(app, bus);
   modelRoutes(app);
+  gameRoutes(app);
+  feishuRoutes(app, bus);
   const snapshot = async () => (bus ? await kvGetJson<Snapshot>(bus.kv, 'snapshot').catch(() => undefined) : undefined);
   const request = async (subject: string, data: unknown, timeout = 120_000) => {
     if (!bus) throw new Error('nats_unavailable');
@@ -38,8 +42,10 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     const [ic] = await db.select({ n: count() }).from(issues);
     const live = await db.select({ id: sessions.id }).from(sessions).where(inArray(sessions.status, ['running', 'waiting_human']));
     const [lc] = await db.select({ n: count() }).from(launches);
+    // 到目前为止模型调用一共花了多少（估算；价格未知的模型按 0 计）。不设上限，所以界面上一直显示
+    const [sp] = await db.select({ usd: sql<number>`coalesce(sum(${llmTraces.cost_usd}), 0)` }).from(llmTraces);
     const pending = await db.select({ id: humanTasks.id }).from(humanTasks).where(eq(humanTasks.status, 'pending'));
-    return { personas: (await latestPersonas()).length, sessions: sc.n, issues: ic.n, live: live.length, launches: lc.n, human_pending: pending.length, snapshot: await snapshot() };
+    return { personas: (await latestPersonas()).length, sessions: sc.n, issues: ic.n, live: live.length, launches: lc.n, spend_usd: Math.round(Number(sp?.usd ?? 0) * 100) / 100, human_pending: pending.length, snapshot: await snapshot() };
   });
 
   // ---- 人物 ----

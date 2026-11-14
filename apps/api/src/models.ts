@@ -87,6 +87,7 @@ export function modelRoutes(app: FastifyInstance) {
 
   // OpenAI 兼容入口：POST /api/v1/llm/<step|think|locate>/v1/chat/completions（示例产品与外部脚本用）
   app.post('/api/v1/llm/*', async (q, r) => {
+    if (!requireAdmin(q, r)) return;                       // 这个入口花的是真钱：只给管理员（命令行与示例产品带的就是管理员口令）
     const res = await L.handleProxy(`/${(q.params as { '*': string })['*']}`, JSON.stringify(q.body ?? {}), { purpose: 'proxy' });
     r.code(res.status).header('content-type', res.headers.get('content-type') ?? 'application/json');
     return r.send(res.body ? Readable.fromWeb(res.body as never) : '');

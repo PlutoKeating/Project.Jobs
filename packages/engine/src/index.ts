@@ -25,6 +25,7 @@ export * from './control/apps.ts';
 export * from './control/study.ts';
 export * from './launch/launch.ts';
 export * from './launch/exposure.ts';
+export { funnelLine, reportText, type EngineeringView, type FunnelView, type LaunchView, type ReportView } from './launch/text.ts';
 export * from './launch/usage.ts';
 export * from './launch/identity.ts';
 export * from './launch/engine.ts';

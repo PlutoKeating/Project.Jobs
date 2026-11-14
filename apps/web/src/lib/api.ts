@@ -1,15 +1,15 @@
 import { QueryClient, keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Engineering, HumanTask, Launch, LaunchDetail, LaunchReport, Me, PersonaDetail, PersonaListItem, SessionDetail, Snapshot, TownLayout } from './types.ts';
 
-export class ApiError extends Error { constructor(public status: number, public code: string) { super(code); } }
+export class ApiError extends Error { constructor(public status: number, public code: string, public body?: Record<string, unknown>) { super(code); } }
 
 async function req<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const r = await fetch(path, { ...init, credentials: 'same-origin', headers: { ...(init?.json !== undefined ? { 'content-type': 'application/json' } : {}), ...init?.headers }, body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body });
   if (!r.ok) {
-    let code = String(r.status);
-    try { const b = await r.json(); code = b.error ?? code; } catch { /* 非 JSON */ }
+    let code = String(r.status); let body: Record<string, unknown> | undefined;
+    try { const b = await r.json(); code = b.error ?? code; body = b; } catch { /* 非 JSON */ }
     if (r.status === 401 && !path.endsWith('/me')) window.dispatchEvent(new CustomEvent('jw:auth'));
-    throw new ApiError(r.status, code);
+    throw new ApiError(r.status, code, body);
   }
   return r.json() as Promise<T>;
 }
@@ -20,7 +20,7 @@ export const queryClient = new QueryClient({ defaultOptions: { queries: { staleT
 
 export const useMe = () => useQuery({ queryKey: ['me'], queryFn: () => get<Me>('/me'), staleTime: 60_000 });
 export const useTown = () => useQuery({ queryKey: ['town'], queryFn: () => get<TownLayout>('/world/town'), staleTime: Infinity });
-export const useOverview = (enabled = true) => useQuery({ enabled, queryKey: ['overview'], queryFn: () => get<{ personas: number; sessions: number; issues: number; live: number; launches: number; human_pending: number; snapshot: Snapshot | null }>('/overview'), refetchInterval: 20_000 });
+export const useOverview = (enabled = true) => useQuery({ enabled, queryKey: ['overview'], queryFn: () => get<{ personas: number; sessions: number; issues: number; live: number; launches: number; spend_usd: number; human_pending: number; snapshot: Snapshot | null }>('/overview'), refetchInterval: 20_000 });
 export const usePersonas = () => useQuery({ queryKey: ['personas'], queryFn: () => get<PersonaListItem[]>('/personas'), refetchInterval: 30_000 });
 export const usePersona = (id: string) => useQuery({ queryKey: ['persona', id], queryFn: () => get<PersonaDetail>(`/personas/${id}`), refetchInterval: 20_000 });
 export const useLaunches = () => useQuery({ queryKey: ['launches'], queryFn: () => get<Launch[]>('/launches'), refetchInterval: 30_000 });

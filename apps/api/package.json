@@ -8,16 +8,22 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
-    "@pux/core": "workspace:*",
-    "@pux/db": "workspace:*",
-    "@pux/llm": "workspace:*",
-    "@pux/storage": "workspace:*",
-    "@pux/engine": "workspace:*",
-    "@pux/jobsworld": "workspace:*",
-    "fastify": "^5.12.8",
     "@fastify/static": "^10.1.11",
     "@fastify/websocket": "^11.3.7",
+    "@larksuiteoapi/node-sdk": "1.76.0",
+    "@pux/core": "workspace:*",
+    "@pux/db": "workspace:*",
+    "@pux/demos": "workspace:*",
+    "@pux/engine": "workspace:*",
+    "@pux/jobsworld": "workspace:*",
+    "@pux/llm": "workspace:*",
+    "@pux/memory": "workspace:*",
+    "@pux/storage": "workspace:*",
     "drizzle-orm": "^0.45.4",
-    "@pux/memory": "workspace:*"
+    "fastify": "^5.12.8",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "^1.5.6"
   }
 }
