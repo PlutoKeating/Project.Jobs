@@ -15,6 +15,13 @@
       "when": 1794615488417,
       "tag": "0001_reset_url",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794655390906,
+      "tag": "0002_jobsworld",
+      "breakpoints": true
     }
   ]
 }

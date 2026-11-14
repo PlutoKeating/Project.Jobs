@@ -18,7 +18,8 @@
     "console": "tsx apps/console/src/server.ts",
     "demos": "tsx demos/kit/src/launch.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "world": "tsx apps/world/src/index.ts"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

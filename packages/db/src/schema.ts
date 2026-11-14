@@ -465,3 +465,37 @@ export const executorComparisons = pgTable('executor_comparisons', {
   failure_layers: jsonb('failure_layers'),
   created_at: createdAt(),
 });
+
+// ---- JobsWorld（可视化世界，docs/JOBSWORLD.md）----
+export interface AgendaItemRow { from: string; to: string; place_id: string; place_kind: string; activity: string; intent?: string; with?: string }
+
+/** 人物每个模拟日的日程（模板骨架 + mind.slow 补全） */
+export const personaAgendas = pgTable('persona_agendas', {
+  persona_id: text('persona_id').notNull(),
+  sim_date: text('sim_date').notNull(),                  // YYYY-MM-DD
+  home_place_id: text('home_place_id').notNull(),
+  home_unit: integer('home_unit').notNull(),
+  role: text('role').notNull(),
+  items: jsonb('items').$type<AgendaItemRow[]>().notNull(),
+  source: text('source').notNull(),                      // skeleton|llm
+  created_at: createdAt(),
+}, (t) => [primaryKey({ columns: [t.persona_id, t.sim_date] })]);
+
+/** 人物头像（image.gen 生成，存 MinIO） */
+export const personaAvatars = pgTable('persona_avatars', {
+  persona_id: text('persona_id').primaryKey(),
+  storage_ref: text('storage_ref').notNull(),
+  mime: text('mime').notNull(),
+  source: text('source').notNull(),                      // image_gen
+  created_at: createdAt(),
+});
+
+/** 软件「一句话总评」缓存（judge.meta 生成） */
+export const appVerdicts = pgTable('app_verdicts', {
+  id: text('id').primaryKey(),
+  app_id: text('app_id').notNull(),
+  lang: text('lang').notNull(),
+  basis: text('basis').notNull(),                        // 生成时依据的数据指纹（Session 数等），变化后重新生成
+  verdict: jsonb('verdict').notNull(),
+  created_at: createdAt(),
+}, (t) => [index('verdict_app').on(t.app_id)]);
