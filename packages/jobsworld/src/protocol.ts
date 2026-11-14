@@ -12,6 +12,8 @@ export const SUBJ = {
   cmdEvent: 'jw.cmd.event',
   cmdReplay: 'jw.cmd.replay',
   launches: 'jw.launches',      // world → *：已发布的产品与各自的漏斗人数
+  launchesGet: 'jw.launches.get', // 请求/应答：此刻的产品与人数（游戏里 /jw launches 用）
+  cmdPublish: 'jw.cmd.publish', // 发布一个产品（游戏里 /jw publish 用；网页与命令行走 HTTP）
   cmdPromote: 'jw.cmd.promote', // 调宣发强度 / 暂停 / 结束
   cmdInvite: 'jw.cmd.invite',   // 把手机递给一批人
   detail: 'jw.detail',          // 请求/应答：人物详情（游戏面板用）
@@ -80,5 +82,7 @@ export interface Appearance {
 /** 已发布的产品在城里的现状（漏斗按人去重；数字是这座城里实际发生的人数） */
 export interface LaunchLive { id: string; name: string; tagline: string; intensity: number; status: string; reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; rating: number | null; reviews: number; queued?: number }
 export interface LaunchesMsg { launches: LaunchLive[]; ts: number }
+/** launch_id 可以是发布 id，也可以是产品名 */
 export interface PromoteCmd { launch_id: string; intensity?: number; status?: 'live' | 'paused' | 'ended' }
+export interface PublishCmd { url: string; name: string; tagline: string }
 export interface InviteCmd { launch_id: string; persona_ids?: string[]; n?: number; segment?: string; locale?: string; want?: string }

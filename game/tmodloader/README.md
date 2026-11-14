@@ -68,7 +68,7 @@ tModLoader v2026.9.3.1!2026.9.3
 
 | 所有人 | 管理员（先 `/jw login <口令>`，口令为 `JW_ADMIN_PASSCODE`；服务器控制台视为管理员） |
 |---|---|
-| `/jw who`、`/jw goto <地点\|人名>`、`/jw follow <人名>\|off`、`/jw info <人名>`、`/jw ask <人名> <问题>`、`/jw lang en\|zh`、`/jw status` | `/jw clock pause\|resume\|speed <n>\|jump HH:MM`、`/jw event <地点> <weak_network\|crowd\|rain\|power_cut\|noise> [分钟]`、`/jw replay <session_id>`、`/jw rebuild`、`/jw paste <蓝图>` |
+| `/jw who`、`/jw goto <地点\|人名>`、`/jw follow <人名>\|off`、`/jw info <人名>`、`/jw ask <人名> <问题>`、`/jw launches`、`/jw lang en\|zh`、`/jw status` | `/jw publish <网址> <名字> <一句话>`、`/jw promote <产品> <0-100\|pause\|resume\|end>`、`/jw invite <产品> [人数]`、`/jw clock pause\|resume\|speed <n>\|jump HH:MM`、`/jw event <地点> <weak_network\|crowd\|rain\|power_cut\|noise> [分钟]`、`/jw replay <session_id>`、`/jw rebuild`、`/jw paste <蓝图>` |
 
 旁观者保护：玩家无敌（`FreeDodge`/`ImmuneTo`/`PreKill`）、不刷敌怪（`EditSpawnRate`，每 10 秒清一次残留敌怪）、无血月/日食；非管理员的改图消息（挖/放/刷漆/液体/告示牌/电线/物件）在服务端 `HijackGetData` 丢弃并回发该处图格，客户端也禁止使用挖掘/放置类物品。
 

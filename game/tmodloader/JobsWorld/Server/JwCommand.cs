@@ -17,7 +17,7 @@ namespace JobsWorld.Server
         public override CommandType Type => CommandType.World | CommandType.Console;
         public override string Command => "jw";
         public override string Usage => "/jw help";
-        public override string Description => "JobsWorld：/jw who | goto | follow | info | ask | login | clock | event | replay";
+        public override string Description => "JobsWorld：/jw who | goto | follow | info | ask | launches | publish | promote | invite | login | clock | event | replay";
 
         public override void Action(CommandCaller caller, string input, string[] args)
         {
@@ -139,7 +139,8 @@ namespace JobsWorld.Server
                     return;
                 }
                 default:
-                    Help(t, Say);
+                    // 发布主线（两个游戏端共用一份逻辑）：/jw launches | publish | promote | invite
+                    if (!LaunchCommands.Handle(sub, args, t, () => RequireAdmin(sys, who, t, Say), sys.Request, (msg, tone) => JwServerSystem.Reply(who, msg, tone == Tone.Err ? Err : tone == Tone.Ok ? Ok : Info))) Help(t, Say);
                     return;
             }
         }
@@ -159,9 +160,11 @@ namespace JobsWorld.Server
             say(t.T("/jw follow <人名>|off — 跟随 / 取消", "/jw follow <person>|off — follow / stop"), Info);
             say(t.T("/jw info <人名> — 人物详情", "/jw info <person> — details"), Info);
             say(t.T("/jw ask <人名> <问题> — Session 结束后追问", "/jw ask <person> <question> — follow-up interview"), Info);
+            say(t.T(LaunchCommands.HelpZh[0], LaunchCommands.HelpEn[0]), Info);
             say(t.T("/jw lang en|zh — 切换语言；/jw status — 状态", "/jw lang en|zh — language; /jw status — status"), Info);
             say(t.T("管理员：/jw login <口令>；/jw clock pause|resume|speed <n>|jump HH:MM；/jw event <地点> <weak_network|crowd|rain|power_cut|noise> [分钟]；/jw replay <session_id>；/jw rebuild；/jw paste <蓝图>",
                 "Admin: /jw login <passcode>; /jw clock pause|resume|speed <n>|jump HH:MM; /jw event <place> <weak_network|crowd|rain|power_cut|noise> [minutes]; /jw replay <session_id>; /jw rebuild; /jw paste <schematic>"), Info);
+            say(t.T(LaunchCommands.HelpZh[1], LaunchCommands.HelpEn[1]), Info);
         }
 
         private static void Clock(JwServerSystem sys, int who, WorldText t, string[] a, Action<string, Color> say)

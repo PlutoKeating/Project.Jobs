@@ -17,6 +17,10 @@ namespace JobsWorld.Shared.Protocol
         public const string CmdClock = "jw.cmd.clock";
         public const string CmdEvent = "jw.cmd.event";
         public const string CmdReplay = "jw.cmd.replay";
+        public const string LaunchesGet = "jw.launches.get";
+        public const string CmdPublish = "jw.cmd.publish";
+        public const string CmdPromote = "jw.cmd.promote";
+        public const string CmdInvite = "jw.cmd.invite";
         public const string Detail = "jw.detail";
         public const string Ask = "jw.ask";
     }
@@ -178,6 +182,61 @@ namespace JobsWorld.Shared.Protocol
     {
         [JsonPropertyName("session_id")] public string SessionId { get; set; } = "";
         [JsonPropertyName("speed")] public double? Speed { get; set; }
+    }
+
+    /// <summary>已发布的产品在城里的现状（漏斗按人去重）</summary>
+    public sealed class LaunchLive
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = "";
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("tagline")] public string Tagline { get; set; } = "";
+        [JsonPropertyName("intensity")] public double Intensity { get; set; }
+        [JsonPropertyName("status")] public string Status { get; set; } = "live";
+        [JsonPropertyName("reached")] public int Reached { get; set; }
+        [JsonPropertyName("noticed")] public int Noticed { get; set; }
+        [JsonPropertyName("interested")] public int Interested { get; set; }
+        [JsonPropertyName("opened")] public int Opened { get; set; }
+        [JsonPropertyName("came_back")] public int CameBack { get; set; }
+        [JsonPropertyName("using_now")] public int UsingNow { get; set; }
+        [JsonPropertyName("rating")] public double? Rating { get; set; }
+        [JsonPropertyName("reviews")] public int Reviews { get; set; }
+    }
+
+    public sealed class LaunchesReply
+    {
+        [JsonPropertyName("launches")] public List<LaunchLive> Launches { get; set; } = new List<LaunchLive>();
+        [JsonPropertyName("error")] public string? Error { get; set; }
+    }
+
+    public sealed class PublishCmd
+    {
+        [JsonPropertyName("url")] public string Url { get; set; } = "";
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("tagline")] public string Tagline { get; set; } = "";
+    }
+
+    public sealed class PromoteCmd
+    {
+        [JsonPropertyName("launch_id")] public string LaunchId { get; set; } = "";
+        [JsonPropertyName("intensity")] public double? Intensity { get; set; }
+        [JsonPropertyName("status")] public string? Status { get; set; }
+    }
+
+    public sealed class InviteCmd
+    {
+        [JsonPropertyName("launch_id")] public string LaunchId { get; set; } = "";
+        [JsonPropertyName("n")] public int? N { get; set; }
+    }
+
+    /// <summary>发布、调宣发、递手机的应答（字段按需出现）</summary>
+    public sealed class LaunchAck
+    {
+        [JsonPropertyName("id")] public string? Id { get; set; }
+        [JsonPropertyName("name")] public string? Name { get; set; }
+        [JsonPropertyName("intensity")] public double? Intensity { get; set; }
+        [JsonPropertyName("status")] public string? Status { get; set; }
+        [JsonPropertyName("invited")] public int? Invited { get; set; }
+        [JsonPropertyName("error")] public string? Error { get; set; }
     }
 
     public sealed class DetailReply

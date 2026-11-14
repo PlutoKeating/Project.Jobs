@@ -14,7 +14,7 @@ game/
 │   ├── Town/TileIds.cs           # 原版图格/背景墙 ID、建筑风格材质、家具映射
 │   ├── Town/TownBuilder.cs       # 图元 → 程序化积木（平整、地表、建筑、窗、门、家具、树、路灯、水池、地铁…）
 │   ├── Schematics/TEditSchematic.cs  # .TEditSch V4/V5 读取与粘贴（移植自 TEdit，MS-PL，许可证见 TEdit-LICENSE.txt）
-│   └── Personas/                 # 假玩家调度（槽位、插值、气泡限流）、/jw 文本与时钟换算
+│   └── Personas/                 # 假玩家调度（槽位、插值、气泡限流）、/jw 文本与时钟换算、发布相关命令（`LaunchCommands.cs`，两个游戏端共用）
 ├── tshock/                     # TShock 6.2.1 插件（见 tshock/README.md）
 └── schematics/                 # 可入库的自制 .TEditSch 地标（构建镜像时复制进容器）
 ```
@@ -28,7 +28,7 @@ apps/world ──NATS──▶ jw.town（请求/应答，~84KB）  ──▶ Tow
            ──NATS──▶ jw.snapshot（1Hz）            ──▶ FakePlayerDirector ──IFakePlayerHost──▶ PlayerActive/PlayerInfo/PlayerUpdate
            ──NATS──▶ jw.persona.*.say              ──▶ 头顶气泡（以假玩家身份发聊天）
            ──NATS──▶ jw.clock（1Hz）               ──▶ Main.time / dayTime + SetTime
-游戏内 /jw ──NATS──▶ jw.detail / jw.ask / jw.cmd.clock / jw.cmd.event / jw.cmd.replay
+游戏内 /jw ──NATS──▶ jw.detail / jw.ask / jw.launches.get / jw.cmd.clock / jw.cmd.event / jw.cmd.replay / jw.cmd.publish / jw.cmd.promote / jw.cmd.invite
 ```
 
 - **坐标**：城镇坐标 x 从城镇左端起，地面图格行 y=0，向上为负。世界坐标 = 原点 + 城镇坐标；原点首次建镇时以出生点为中心、地表取中位数，写进世界目录的 `<世界名>.jobsworld.json`，之后固定（可复现）。人物 `y` 为脚下那一行，玩家左上角像素 = `((ox+x)*16+8-10, (oy+y)*16-42)`。
@@ -89,6 +89,7 @@ docker logs -f pux-tshock-1          # 首次会生成小世界并建镇，看�
 | `/jw info <人名>` | 详情：职业、当前活动、打算、身心状态（很饿、很累、心情不好…，手机是否在手边）、上一段/下一段日程；在用软件时显示软件、步数、独白、动作。tModLoader 的人物面板另显示熟人 |
 | `/jw ask <人名> <问题>` | Session 结束后的追问访谈（走 `jw.ask`；正在用软件时提示忙，没有完成过 Session 时提示无） |
 | `/jw lang en\|zh` | 切换输出语言（默认中文；子命令也接受中文别名，如 `/jw 谁`） |
+| `/jw launches` | 已发布的产品和各自的人数：看到 → 注意到 → 有兴趣 → 打开过 → 回来再用，此刻几人在用，宣发强度，评分（`jw.launches.get`） |
 | `/jw status` | NATS、城镇版本与原点、假玩家数量、世界时钟 |
 
 管理员（TShock 权限 `jobsworld.admin`，或 `/jw login <口令>` 获得本次连接的权限，同时允许建造）：
@@ -98,6 +99,9 @@ docker logs -f pux-tshock-1          # 首次会生成小世界并建镇，看�
 | `/jw clock pause\|resume\|speed <n>\|jump HH:MM` | `jw.cmd.clock` |
 | `/jw event <地点> <weak_network\|crowd\|rain\|power_cut\|noise> [分钟]` | `jw.cmd.event` |
 | `/jw replay <session_id>` | `jw.cmd.replay` |
+| `/jw publish <网址> <名字> <一句话>` | 发布一个产品（`jw.cmd.publish`）；之后居民会自己遇到它 |
+| `/jw promote <产品> <0-100\|pause\|resume\|end>` | 调宣发强度、暂停、继续、结束（`jw.cmd.promote`；产品可写名字或发布 id） |
+| `/jw invite <产品> [人数]` | 把手机递给几个人，请他们现在就试（`jw.cmd.invite`，默认 3 人） |
 | `/jw rebuild` | 按当前布局在原位置重建城镇 |
 | `/jw paste <蓝图>` | 把 `/server/schematics/` 里的 `.TEditSch` 以自己脚下为左下角粘贴（调试用，不写入布局） |
 

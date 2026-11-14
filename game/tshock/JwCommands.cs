@@ -42,7 +42,10 @@ namespace JobsWorld.TShock
                 case "rebuild": case "重建": if (RequireAdmin(p, t)) Rebuild(p, t); break;
                 case "paste": case "粘贴": if (RequireAdmin(p, t)) Paste(p, t, rest); break;
                 case "status": case "状态": Status(p, t); break;
-                default: Help(p, t); break;
+                default:
+                    // 发布主线（两个游戏端共用一份逻辑）：/jw launches | publish | promote | invite
+                    if (!LaunchCommands.Handle(sub, a, t, () => RequireAdmin(p, t), Request, (msg, tone) => { if (tone == Tone.Err) p.SendErrorMessage(msg); else if (tone == Tone.Ok) p.SendSuccessMessage(msg); else p.SendInfoMessage(msg); })) Help(p, t);
+                    break;
             }
         }
 
@@ -54,9 +57,11 @@ namespace JobsWorld.TShock
             p.SendInfoMessage(t.T("/jw follow <人名> — 跟随（再次输入或 /jw follow off 取消）", "/jw follow <person> — follow (again or 'off' to stop)"));
             p.SendInfoMessage(t.T("/jw info <人名> — 人物详情", "/jw info <person> — details"));
             p.SendInfoMessage(t.T("/jw ask <人名> <问题> — Session 结束后追问", "/jw ask <person> <question> — follow-up interview"));
+            p.SendInfoMessage(t.T(LaunchCommands.HelpZh[0], LaunchCommands.HelpEn[0]));
             p.SendInfoMessage(t.T("/jw lang en|zh — 切换语言；/jw status — 状态", "/jw lang en|zh — language; /jw status — status"));
             p.SendInfoMessage(t.T("管理员：/jw login <口令>；/jw clock pause|resume|speed <n>|jump HH:MM；/jw event <地点> <weak_network|crowd|rain|power_cut|noise> [分钟]；/jw replay <session_id>；/jw rebuild；/jw paste <蓝图>",
                 "Admin: /jw login <passcode>; /jw clock pause|resume|speed <n>|jump HH:MM; /jw event <place> <weak_network|crowd|rain|power_cut|noise> [minutes]; /jw replay <session_id>; /jw rebuild; /jw paste <schematic>"));
+            p.SendInfoMessage(t.T(LaunchCommands.HelpZh[1], LaunchCommands.HelpEn[1]));
         }
 
         private void Status(TSPlayer p, WorldText t)
