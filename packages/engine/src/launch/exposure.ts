@@ -68,6 +68,34 @@ export function whatTheySee(l: LaunchRow, channel: Channel, lang: 'zh' | 'en', o
 }
 
 /**
+ * 不同渠道里「现实的常态」不一样：广告是硬塞到眼前的，绝大多数人划走；商店是人自己去逛的，本来就想找点东西；熟人的话最容易当回事。
+ * 这里的比例是行业里常说的粗略量级（信息流广告点开约百分之一二，商店里看到一个对路的应用约三四成会点进去），只用来告诉模型常态在哪，不是校准结果。
+ */
+export function normFor(channel: Channel, lang: 'zh' | 'en'): string {
+  const zh = lang === 'zh';
+  switch (channel) {
+    case 'store': return zh
+      ? '现实里的常态：应用商店是你自己打开来逛的，本来就想看看有没有用得上的新东西。划到一个正好对得上你手头某件事或某个念头的应用，三四个人里会有一个点进去看看；对不上的、看不懂的、看着不放心的，就划走。'
+      : 'How it really goes: you opened the app store yourself, half looking for something useful. When an app happens to match something on your plate or on your mind, about one person in three or four taps in for a look; if it doesn\'t match, you can\'t read it, or it looks untrustworthy, you scroll on.';
+    case 'feed': return zh
+      ? '现实里的常态：动态里是普通人说的话，比广告可信。说的事跟你有关、说得又实在，你会想看看；说它不好，你就更不会碰；跟你无关的，划过去。'
+      : 'How it really goes: posts are ordinary people talking, more believable than ads. If it concerns you and sounds honest, you may want a look; if they say it\'s bad, you stay away; if it has nothing to do with you, you scroll on.';
+    case 'word_of_mouth': return zh
+      ? '现实里的常态：熟人当面提起的东西，你多半会当回事。信得过的人说好用、又碰上你用得着，你会想看看；他说不好，你就不会碰。'
+      : 'How it really goes: when someone you know brings it up, you tend to take it seriously. If someone you trust says it\'s good and you could use it, you\'ll want a look; if they say it\'s bad, you won\'t touch it.';
+    case 'recall': return zh
+      ? '现实里的常态：自己想起来的东西，只有手头正好有那件事要办时才会真的去打开。'
+      : 'How it really goes: something that crosses your mind only gets opened when you actually have that thing to do right now.';
+    case 'invite': return zh
+      ? '现实里的常态：有人当面把手机递过来，多数人会接过来看看。'
+      : 'How it really goes: when someone hands you their phone, most people take a look.';
+    default: return zh
+      ? '现实里的常态：广告是硬塞到眼前的。一百个人看到，真点开的只有一两个，其余的想都不想就划过去了。只有它正好碰上你此刻真有的一件事、一个念头，你才会想点开。'
+      : 'How it really goes: an ad is pushed in front of you. Of a hundred people who see it, one or two tap; the rest scroll past without a thought. You only want to open it when it happens to meet something you actually need or have been thinking about.';
+  }
+}
+
+/**
  * 决定点：这个人注意到了它，接下来怎么做由他自己说。
  * 提示词里写明现实里的常态：大多数人对大多数广告直接划过去；忙、累、不相干的时候更不会点。
  */
@@ -77,13 +105,13 @@ export async function decide(p: PersonaSpec, ctx: LiveContext, l: LaunchRow, see
   const memText = mem.filter((m) => m.kind !== 'core' || mem.length <= 3).slice(0, 3).map((m) => m.content);
   const sit = zh ? ctx.template.situation : (ctx.template.situation_en ?? ctx.template.situation);
   const rules = zh ? `你就是这个人，正在过自己的生活。下面是你此刻的处境，以及你刚刚注意到的一样东西。按你的性格、此刻的状态和你手头的事，说出你真实的反应。
-现实里的常态：十个人看到一条广告，八九个人直接划过去；看到商店里的新应用，多数人看一眼就走。只有它正好碰上你此刻真有的一件事、一个念头，或者是你信得过的人说的，你才会想点开。你现在忙、累、赶时间、没心情的时候，更不会点。不要因为礼貌或好奇心泛滥而点开。
+${normFor(seen.channel, 'zh')}你现在忙、累、赶时间、没心情的时候，更不会点。不要因为礼貌或好奇心泛滥而点开。
 - scroll_past：没多想，划过去了
 - not_for_me：看了一眼，觉得跟自己没关系或者不喜欢（以后再看到也不会点）
 - curious_later：有点兴趣，但现在没空或不方便，想着以后有空再看
 - open_now：现在就点开看看
 thought 写你当时心里闪过的一句话（口语，符合你的身份）。只有 open_now 或 curious_later 时，want 写你想用它来做的那件具体的事（用你自己的话，一句；不要出现「测试」「体验」「评估」这类词）；否则留空。` : `You ARE this person, living your own life. Below is your situation right now and something you just noticed. React honestly, according to your personality, your state, and what you have on your plate.
-How it really goes: of ten people who see an ad, eight or nine scroll past; most people glance at a new app in the store and move on. You only want to open it when it happens to meet something you actually need or have been thinking about, or when someone you trust said so. When you're busy, tired, rushed or not in the mood, you're even less likely. Don't open out of politeness or generic curiosity.
+${normFor(seen.channel, 'en')} When you're busy, tired, rushed or not in the mood, you're even less likely. Don't open out of politeness or generic curiosity.
 - scroll_past: didn't think twice
 - not_for_me: looked, decided it's not for you or you don't like it (won't tap next time either)
 - curious_later: somewhat interested but not now; maybe later

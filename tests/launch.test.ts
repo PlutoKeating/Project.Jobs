@@ -1,7 +1,7 @@
 // 阶段③「发布主线」：曝光与注意、看到的东西、虚拟身份、命令行输出
 import { describe, expect, it } from 'vitest';
 import { PersonaSpecSchema, Rng, StudyInputSchema, configPath, readYaml } from '@pux/core';
-import { NOTICE, RATE_PER_HOUR, amountIn, audienceMatch, exposureChance, notices, whatTheySee, type LaunchRow } from '@pux/engine';
+import { NOTICE, RATE_PER_HOUR, amountIn, audienceMatch, exposureChance, normFor, notices, whatTheySee, type LaunchRow } from '@pux/engine';
 import { funnelLine, reportText } from '../apps/cli/src/client.ts';
 
 const linwei = PersonaSpecSchema.parse(readYaml(configPath('personas/hero/zh_linwei.yaml')));
@@ -34,6 +34,11 @@ describe('发布：谁会遇到它', () => {
   it('出现在眼前不等于注意到：广告多数被忽略，熟人说的话几乎都会听到', () => {
     const rate = (ch: keyof typeof NOTICE) => { const r = new Rng(9); let n = 0; for (let i = 0; i < 2000; i++) if (notices(ch, r, { attention: 0.7 })) n++; return n / 2000; };
     expect(rate('ad')).toBeLessThan(0.3); expect(rate('billboard')).toBeLessThan(rate('ad')); expect(rate('store')).toBeGreaterThan(0.45); expect(rate('word_of_mouth')).toBeGreaterThan(0.85);
+  });
+  it('每个渠道有自己的常态：广告是硬塞的，商店是自己去逛的，熟人的话最当回事', () => {
+    expect(normFor('ad', 'zh')).toContain('硬塞'); expect(normFor('billboard', 'zh')).toBe(normFor('ad', 'zh'));
+    expect(normFor('store', 'zh')).toContain('自己打开来逛'); expect(normFor('store', 'en')).toMatch(/opened the app store yourself/);
+    expect(normFor('word_of_mouth', 'zh')).toContain('熟人'); expect(new Set(['store', 'ad', 'feed', 'word_of_mouth', 'recall', 'invite'].map((c) => normFor(c as 'ad', 'zh'))).size).toBe(6);
   });
   it('他看到的就是那个渠道里的样子：商店卡片带评分和评论，熟人的话带名字和关系', () => {
     const store = whatTheySee(launch, 'store', 'zh', { rating: 4.2, reviews: [{ rating: 5, body: '挺顺手' }] });

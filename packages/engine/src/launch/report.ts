@@ -57,9 +57,10 @@ export async function launchReport(l: LaunchRow, lang: 'zh' | 'en' = 'zh', opts:
   const funnel = await launchFunnel(l.id);
   const { moments, passersby, sessions: nSess, people } = await gatherMoments(l);
   const used = new Set(moments.filter((m) => m.session_id).map((m) => m.persona_id)).size;
-  const basis = `${nSess}:${funnel.reached}:${funnel.reviews}:${moments.length}:${passersby.length}`;
+  // 什么时候重新归纳：有人用完了、有了新评论，或者路过没点开的人明显变多了。只是多几个人刷到广告不重算（那只改人数，人数每次都取最新）
+  const basis = `${nSess}:${funnel.reviews}:${moments.length}:${Math.floor(passersby.length / 10)}:${funnel.reached > 0 ? 1 : 0}`;
   const [cached] = await db.select().from(launchReports).where(and(eq(launchReports.launch_id, l.id), eq(launchReports.lang, lang)));
-  if (cached && cached.basis === basis && !opts.force) return cached.data as LaunchReport;
+  if (cached && cached.basis === basis && !opts.force) return { ...(cached.data as LaunchReport), funnel, people_used: used };
   const base = { launch_id: l.id, lang, generated_at: new Date().toISOString(), basis, funnel, people_used: used, simulated: true as const };
   if (nSess === 0) {
     // 还没有人打开过：只说「为什么没点开」
@@ -79,7 +80,8 @@ export async function launchReport(l: LaunchRow, lang: 'zh' | 'en' = 'zh', opts:
 - headline：一句话结论，不超过 22 个字。verdict：works（多数人用得下去）、mixed（有人行有人不行）、not_yet（多数人用不下去）。
 - summary：两三句话说清现在的状况。next：如果只改一件事，改哪件（一句话，具体到哪个地方）。
 - 痕迹里如果有人说屏幕「模糊」「看不清某一块」，那是他当时没细看，不是产品的毛病，不要写进结论。
-样本很小时要老实说（例如「目前只有 3 个人用过」）。`
+样本很小时要老实说（例如「目前只有 3 个人用过」）。
+所有字段都用中文写，即使痕迹里有别的语言。`
     : `You're looking, on behalf of an indie developer, at what happened after their product "${l.name}" (${l.tagline}) was released into a simulated town. Below are traces people actually left: thoughts while using it (m refs), thoughts of people who saw it and didn't open it (x refs), merged issues, funnel counts. Write the one page they should read.
 Rules:
 - Plain words, like a friend telling them face to face. No technical terms (API, DOM, routing, status codes, usability, heuristics, conversion rate, SUS…), no pleasantries, no filler like "keep iterating".
@@ -91,7 +93,8 @@ Rules:
 - headline: one sentence, at most 12 words. verdict: works / mixed / not_yet.
 - summary: two or three sentences on where things stand. next: if only one thing gets fixed, which (one concrete sentence).
 - If a trace mentions the screen being blurry or an area hard to make out, that person simply wasn't looking closely; it is not a product flaw, leave it out.
-Say so plainly when the sample is tiny.`;
+Say so plainly when the sample is tiny.
+Write every field in English, even when the traces are in another language.`;
   const kindZh: Record<string, string> = { first_look: '第一眼', stuck: '卡住', left: '走了', done: '办成了', said_after: '用完后说', review: '商店评论', post: '公开动态' };
   const user = `${zh ? '漏斗（人数）' : 'Funnel (people)'}：${JSON.stringify({ saw: funnel.reached, noticed: funnel.noticed, interested: funnel.interested, opened: funnel.opened, came_back: funnel.came_back, rating: funnel.rating, reviews: funnel.reviews })}
 ${zh ? '用过的人数' : 'People who used it'}：${used}（${nSess} ${zh ? '次使用' : 'sessions'}）
