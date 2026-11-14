@@ -169,8 +169,10 @@ echo "  打开：        http://127.0.0.1:$PORT/${IP:+    （局域网：http://
 echo "  管理员口令：  $(envv JW_ADMIN_PASSCODE)"
 echo "  访客口令：    $(envv JW_PASSCODE)"
 echo
-echo "  第一次打开，用管理员口令进去，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存）。"
-echo "  然后点右上角「发布」，或者：jobsworld publish <网址> --name <名字> --tagline <一句话>"
+if [ -n "$FIRST" ]; then
+  echo "  第一次打开，用管理员口令进去，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存）。"
+  echo "  然后点右上角「发布」，或者：jobsworld publish <网址> --name <名字> --tagline <一句话>"
+fi
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "  （命令装在 $BIN，它不在你的 PATH 里：把它加进去，或直接用 $LAUNCH）";; esac
 if [ -n "$HOOKED" ]; then echo "  jobs 是 shell 的内建命令，所以往你的 shell 启动文件里加了一个小函数来分流；开一个新终端后生效。脚本里请用 jobsworld。"
 else echo "  jobs 是 shell 的内建命令：在终端里请用 jobsworld（两个名字是同一个东西）。"; fi
