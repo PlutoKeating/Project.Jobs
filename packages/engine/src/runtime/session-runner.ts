@@ -1,6 +1,6 @@
 // Simulation Runtime：World Simulator → Persona Mind ↔ Operator → UAP(+Policy Gate) → 真实产品（§4、§5）
 import { existsSync } from 'node:fs';
-import { cityCoords, loadConfig, logger, makeError, newId, Rng, shortHash, langOf, type ActionRequest, type ActionResult, type Criterion, type DynamicState, type PersonaSpec, type StudyInput, type WorldTemplate, type Mode } from '@pux/core';
+import { cityCoords, dataPath, loadConfig, logger, makeError, newId, Rng, shortHash, langOf, type ActionRequest, type ActionResult, type Criterion, type DynamicState, type PersonaSpec, type StudyInput, type WorldTemplate, type Mode } from '@pux/core';
 import { and, appVersions, apps, eq, getDb, goals, humanTasks, observations, sessions, steps, studies, taskDefs, worldTemplates } from '@pux/db';
 import { BrowserSession, policyFor, putEvidence } from '@pux/executor';
 import { LlmError } from '@pux/llm';
@@ -107,7 +107,7 @@ export class SessionRunner {
     this.memories.push(...mem.map((m) => m.content));
     this.memories.push(accountHint(this.persona, this.appId));
     const form = app.form;
-    this.browser = await BrowserSession.launch({ sessionId, studyId: st.id, personaId: this.persona.id, executor: this.sess.executor as 'stagehand' | 'midscene', headed: opts.headed ?? this.study.config.headed, mobile: form === 'h5', locale: this.persona.locale, policy: policyFor(this.persona), rng: this.rng, geolocation: this.persona.psychology.privacy_sensitivity >= 0.75 ? null : (([lat, lng]) => ({ latitude: lat + this.rng.normal(0, 0.02), longitude: lng + this.rng.normal(0, 0.02) }))(cityCoords(this.persona.identity.region)) });
+    this.browser = await BrowserSession.launch({ sessionId, studyId: st.id, personaId: this.persona.id, executor: this.sess.executor as 'stagehand' | 'midscene', headed: opts.headed ?? this.study.config.headed, mobile: form === 'h5', locale: this.persona.locale, policy: policyFor(this.persona), rng: this.rng, deviceStateFile: dataPath('runtime', 'devices', st.id, `${this.persona.id}.json`), geolocation: this.persona.psychology.privacy_sensitivity >= 0.75 ? null : (([lat, lng]) => ({ latitude: lat + this.rng.normal(0, 0.02), longitude: lng + this.rng.normal(0, 0.02) }))(cityCoords(this.persona.identity.region)) });
     await this.browser.page.goto(this.startUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch((e) => logger.warn({ e: String(e) }, '起始页打开失败'));
     const net = this.world.takeNetworkChange(); if (net !== undefined) await this.browser.setNetwork(net);
     await db.update(sessions).set({ status: 'running', started_at: new Date() }).where(eq(sessions.id, sessionId));

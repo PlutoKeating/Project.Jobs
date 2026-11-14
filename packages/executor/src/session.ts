@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium, type Browser, type BrowserContext, type CDPSession, type Dialog, type Page, type Request } from 'playwright';
@@ -32,6 +32,7 @@ export interface SessionOptions {
   record?: { video?: boolean; rrweb?: boolean; axe?: boolean };
   rng: Rng;
   geolocation?: { latitude: number; longitude: number } | null;   // null：拒绝定位授权
+  deviceStateFile?: string;   // 同一 Persona 在同一 Study 内复用设备状态（Cookie），模拟同一台手机/电脑
 }
 
 interface NetState { inflight: Map<Request, number>; failed: { url: string; status: number; method?: string; at: number }[]; slowest: number; total: number; log: unknown[] }
@@ -132,6 +133,9 @@ export class BrowserSession implements Executor {
     await this.ctx.grantPermissions(perms).catch(() => {});
     if (o.geolocation) await this.ctx.setGeolocation({ ...o.geolocation, accuracy: 50 }).catch(() => {});
     try { const bs = await this.pw.newBrowserCDPSession(); await bs.send('Browser.setDownloadBehavior', { behavior: 'allowAndName', downloadPath: join(this.modality.dir, 'downloads'), eventsEnabled: true }); } catch { /* ignore */ }
+    if (o.deviceStateFile && existsSync(o.deviceStateFile)) {
+      try { const st = JSON.parse(readFileSync(o.deviceStateFile, 'utf8')) as { cookies: Parameters<BrowserContext['addCookies']>[0] }; await this.ctx.addCookies(st.cookies); } catch (e) { logger.debug({ e }, '设备状态恢复失败'); }
+    }
     this.page = this.ctx.pages().find((pg) => !pg.url().startsWith('chrome-extension://')) ?? await this.ctx.newPage();
     this.attachPage(this.page);
     if (o.executor === 'midscene') await this.initMidscene();
@@ -555,6 +559,7 @@ export class BrowserSession implements Executor {
     this.closed = true;
     const out: { video_ev?: string; har_ev?: string; rrweb_ev?: string } = {};
     await this.drainRrweb().catch(() => {});
+    if (this.opts.deviceStateFile) { try { mkdirSync(dirname(this.opts.deviceStateFile), { recursive: true }); writeFileSync(this.opts.deviceStateFile, JSON.stringify({ cookies: await this.ctx.cookies() })); } catch (e) { logger.debug({ e }, '设备状态保存失败'); } }
     await this.cdp?.send('Page.stopScreencast').catch(() => {});
     try { if (this.rrEvents.length) out.rrweb_ev = await putEvidence('rrweb', this.ev, { data: JSON.stringify(this.rrEvents), mime: 'application/json' }); } catch (e) { logger.warn({ e }, 'rrweb 入库失败'); }
     try { out.har_ev = await putEvidence('har', this.ev, { data: JSON.stringify({ log: { version: '1.2-lite', creator: { name: 'pux' }, entries: this.net.log } }), mime: 'application/json' }); } catch { /* ignore */ }
