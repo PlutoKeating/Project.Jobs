@@ -26,6 +26,7 @@ export const appVersions = pgTable('app_versions', {
   seeded_defects: jsonb('seeded_defects').$type<SeededDefect[]>(),
   prd: text('prd'),
   product_spec_path: text('product_spec_path'),
+  reset_url: text('reset_url'),                          // 可选：每次 Study 开始前调用以重置测试环境
   created_at: createdAt(),
 }, (t) => [uniqueIndex('app_versions_app_version').on(t.app_id, t.version)]);
 

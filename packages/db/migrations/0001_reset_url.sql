@@ -1,0 +1,1 @@
+ALTER TABLE "app_versions" ADD COLUMN "reset_url" text;

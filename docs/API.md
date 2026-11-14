@@ -80,5 +80,6 @@ interface Executor {
 - Persona：`config/personas/**/*.yaml`（`PersonaSpecSchema`）
 - 世界模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）
 - ProductSpec：`data/apps/<app>/<version>/product.yaml`（`ProductSpecSchema`）
+- 测试环境重置（`pux app add --reset-url`）：每次 Study 开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。注意：同一环境上并发运行多个 Study 会互相干扰。
 - 已知缺陷清单（`pux app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
 - 校准输入：见 [`CALIBRATION.md`](CALIBRATION.md)

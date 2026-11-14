@@ -42,11 +42,11 @@ db.command('migrate').action(wrap(async () => { await runMigrations(); console.l
 
 // ---------------------------------------------------------------- 被测应用
 const app = program.command('app').description('被测应用（灌入新项目）');
-app.command('add').description('注册一个被测应用及版本').requiredOption('--name <name>').requiredOption('--url <url>', '测试环境入口 URL').option('--version <v>', '版本号', 'v1').option('--form <form>', 'web | h5', 'web').option('--prd <file>', 'PRD/产品说明文件（Markdown/文本）').option('--desc <text>', '一句话描述').option('--seeded <file>', '已知缺陷清单 YAML/JSON（植入缺陷版本，用于校准）')
-  .action(wrap(async (o: { name: string; url: string; version: string; form: 'web' | 'h5'; prd?: string; desc?: string; seeded?: string }) => {
+app.command('add').description('注册一个被测应用及版本').requiredOption('--name <name>').requiredOption('--url <url>', '测试环境入口 URL').option('--version <v>', '版本号', 'v1').option('--form <form>', 'web | h5', 'web').option('--prd <file>', 'PRD/产品说明文件（Markdown/文本）').option('--desc <text>', '一句话描述').option('--seeded <file>', '已知缺陷清单 YAML/JSON（植入缺陷版本，用于校准）').option('--reset-url <url>', '每次 Study 开始前调用的测试环境重置地址（可选）')
+  .action(wrap(async (o: { name: string; url: string; version: string; form: 'web' | 'h5'; prd?: string; desc?: string; seeded?: string; resetUrl?: string }) => {
     const appId = await E.addApp({ name: o.name, form: o.form, description: o.desc });
     const seeded = o.seeded ? (o.seeded.endsWith('.json') ? JSON.parse(readFileSync(o.seeded, 'utf8')) : (await import('yaml')).parse(readFileSync(o.seeded, 'utf8'))) : undefined;
-    const av = await E.addVersion({ appId, version: o.version, url: o.url, prd: o.prd ? readFileSync(o.prd, 'utf8') : o.desc, seededDefects: seeded });
+    const av = await E.addVersion({ appId, version: o.version, url: o.url, prd: o.prd ? readFileSync(o.prd, 'utf8') : o.desc, seededDefects: seeded, resetUrl: o.resetUrl });
     console.log(`✅ ${o.name}@${o.version} → ${av}`);
   }));
 app.command('list').action(wrap(async () => {

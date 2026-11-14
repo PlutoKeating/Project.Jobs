@@ -60,6 +60,8 @@ export async function planRound(opts: {
           const unc = tFeatures.filter((f) => !usedFeatures.has(f)).length;
           if (tFeatures.length) { reason.uncovered_feature = w.uncovered_feature * (unc / tFeatures.length); pr += reason.uncovered_feature as number; }
           else if (mode === 'curiosity') { const ratio = 1 - (usedFeatures.size / Math.max(1, cov.filter((c) => c.dimension === 'feature').length || 1)); reason.uncovered_feature = w.uncovered_feature * 0.6 * ratio; pr += reason.uncovered_feature as number; }
+          const triedTasks = new Set(done.map((d) => (d.plan_reason as { task_id?: string } | null)?.task_id).filter(Boolean));
+          if (t && !triedTasks.has(t.id)) { reason.uncovered_task = w.uncovered_feature * 0.9; pr += reason.uncovered_task as number; }
           const hypIds = hyps.filter((h) => !(h.target_segments ?? []).length || (h.target_segments ?? []).includes(p.spec.segment)).map((h) => h.id);
           if (hypIds.length) { reason.open_hypothesis = w.open_hypothesis * Math.min(1, hypIds.length / 2); pr += reason.open_hypothesis as number; }
           const trust = calib.filter((c) => c.segment === p.spec.segment || c.segment === '*');
@@ -92,7 +94,7 @@ export async function planRound(opts: {
   const adj = (c: PlanItem) => {
     const m = picked.filter((x) => x.mode === c.mode).length; const wd = picked.filter((x) => x.world.id === c.world.id).length; const tk = c.task ? picked.filter((x) => x.task?.id === c.task!.id).length : 0;
     const target = (mix[c.mode] / mixTotal) * opts.size;
-    return c.priority - 1.2 * Math.max(0, m + 1 - target) - 1.0 * wd - 0.8 * tk;
+    return c.priority - 1.2 * Math.max(0, m + 1 - target) - 1.0 * wd - 2.5 * tk;
   };
   while (picked.length < opts.size) {
     const pool = cands.filter((c) => !picked.includes(c) && !c.is_expert_baseline && !usedP.has(c.persona.id));

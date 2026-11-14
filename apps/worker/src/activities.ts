@@ -17,6 +17,7 @@ export async function studyState(studyId: string) {
   const db = getDb();
   const s = (await db.select().from(studies).where(eq(studies.id, studyId)))[0];
   const n = (await db.select().from(sessions).where(eq(sessions.study_id, studyId))).length;
+  if (!s.started_at) await E.resetEnvironment(studyId);
   await db.update(studies).set({ status: 'running', started_at: s.started_at ?? new Date() }).where(eq(studies.id, studyId));
   return { config: s.config as import('@pux/core').StudyInput, sessions: n, tokens: s.tokens };
 }

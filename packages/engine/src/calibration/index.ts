@@ -45,7 +45,7 @@ export async function calibrateSeeded(studyId: string) {
       const d = defects.find((x) => x.id === m.defect_id); const i = productIssues.find((x) => x.id === m.issue_id);
       if (!d || !i) return false;
       // 类别不一致时要求更高置信度（例如对比度问题不应匹配到支付保护缺陷）
-      return m.confidence >= (d.category === i.category ? 0.5 : 0.75);
+      return m.confidence >= (d.category === i.category ? 0.65 : 0.8);
     });
   }
   for (const i of productIssues) if (!matches.some((m) => m.issue_id === i.id)) {

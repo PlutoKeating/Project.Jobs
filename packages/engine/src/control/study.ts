@@ -166,6 +166,7 @@ async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<unknown>) {
 export async function runStudyInline(studyId: string, progress: Progress = (m) => logger.info(m), opts: { headed?: boolean } = {}) {
   const db = getDb(); const { config, av } = await studyCtx(studyId);
   await db.update(studies).set({ status: 'running', started_at: new Date() }).where(eq(studies.id, studyId));
+  await resetEnvironment(studyId, progress);
   const b = config.budget;
   let round = 0; let total = (await db.select().from(sessions).where(eq(sessions.study_id, studyId))).length; let stop = '';
   try {
@@ -196,6 +197,13 @@ export async function runStudyInline(studyId: string, progress: Progress = (m) =
     await db.update(studies).set({ status: 'failed', status_detail: String((e as Error).message).slice(0, 500), finished_at: new Date() }).where(eq(studies.id, studyId));
     throw e;
   }
+}
+
+/** 测试环境重置：每次 Study 开始前让被测环境回到初始状态（新用户视角） */
+export async function resetEnvironment(studyId: string, progress: Progress = () => {}) {
+  const { av } = await studyCtx(studyId);
+  if (!av.reset_url) return false;
+  try { const r = await fetch(av.reset_url, { signal: AbortSignal.timeout(10000) }); progress(`♻️ 已重置测试环境（${r.status}）`); return r.ok; } catch (e) { progress(`⚠️ 测试环境重置失败：${String((e as Error).message)}`); return false; }
 }
 
 export async function finalizeStudy(studyId: string, progress: Progress = () => {}, stopReason = '') {
