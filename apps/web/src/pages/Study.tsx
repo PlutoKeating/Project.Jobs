@@ -1,5 +1,5 @@
 import { Link, useParams } from '@tanstack/react-router';
-import { FileText } from 'lucide-react';
+import { ArrowRight, FileText } from 'lucide-react';
 import { useMe, useStudy } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import { ErrorState, PersonLink, Section, Skeleton, Stat } from '../components/ui.tsx';
@@ -43,7 +43,7 @@ export function StudyPage() {
                   <td className={`py-2.5 text-xs ${x.outcome === 'success' ? 'text-success' : x.outcome ? 'text-danger' : x.status === 'running' ? 'text-accent' : 'text-fg-muted'}`}>{L(x.outcome ?? x.status)}</td>
                   <td className="tabular py-2.5 text-right text-xs text-fg-subtle">{x.steps_count}</td>
                   <td className="max-w-[18rem] truncate py-2.5 pl-4 text-xs text-fg-subtle">{x.end_reason ?? ''}</td>
-                  <td className="py-2.5 text-right"><Link to="/sessions/$id" params={{ id: x.id }} className="text-xs text-link hover:text-accent">{t('timeline')} →</Link></td>
+                  <td className="py-2.5 text-right"><Link to="/sessions/$id" params={{ id: x.id }} className="inline-flex items-center gap-1 text-xs text-link hover:text-accent">{t('timeline')}<ArrowRight size={12} /></Link></td>
                 </tr>
               ))}
             </tbody>

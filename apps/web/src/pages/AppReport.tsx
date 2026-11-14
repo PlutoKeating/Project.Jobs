@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
-import { Check, Frown, RotateCcw, Smile, Sparkles, X } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Check, Frown, RotateCcw, Smile, Sparkles, Target, X } from 'lucide-react';
 import { evidenceUrl, post, queryClient, useAppReport, useMe, usePersonas, useVerdict } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import type { AppReport, GroupStat, IssueRow, Quote } from '../lib/types.ts';
@@ -45,6 +45,7 @@ function VerdictBlock({ id, r }: { id: string; r: AppReport }) {
       <p className="mt-4 max-w-[70ch] leading-relaxed text-fg-muted">{v.summary}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <TrustLine r={r} />
+        <span className="tabular text-xs text-fg-subtle">{new Date(q.data!.created_at).toLocaleString()} · {t('n_sessions', { n: q.data!.basis.split(':')[0] })}</span>
         {me?.admin && <Button size="sm" variant="ghost" onClick={make}><RotateCcw size={13} />{q.data!.basis !== basis ? t('stale') : t('regen')}</Button>}
       </div>
       <dl className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2 xl:grid-cols-4">
@@ -63,7 +64,7 @@ function FitChart({ groups }: { groups: GroupStat[] }) {
   const { t } = useT(); const L = useLabel(); const mode = useThemeMode();
   const [dim, setDim] = useState('segment');
   const rows = groups.filter((g) => g.dim === dim && g.fit !== null).sort((a, b) => (b.fit ?? 0) - (a.fit ?? 0));
-  const [ca, cb] = SERIES[mode];
+  const ca = SERIES[mode][0]; const cb = 'var(--color-fg-subtle)';
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -74,7 +75,7 @@ function FitChart({ groups }: { groups: GroupStat[] }) {
         {rows.map((g) => (
           <li key={g.key} className="group grid grid-cols-[minmax(6rem,10rem)_1fr_7rem] items-center gap-4 rounded-md px-2 py-1.5 hover:bg-surface"
             title={`${t('completion')} ${pct(g.completion)} · SUS ${num(g.sus)} · ${t('again')} ${pct(g.again)} · ${t('satisfaction')} ${num(g.sat, 1)}/7`}>
-            <span className="truncate text-sm">{L(g.key)}{g.target && <span className="ml-1.5 text-[11px] text-fg-subtle">◆</span>}</span>
+            <span className="truncate text-sm">{L(g.key)}{g.target && <Target size={11} className="ml-1.5 inline text-fg-subtle" aria-label={t('target')} />}</span>
             <span className="relative h-3"><span className="absolute inset-y-0 left-0 rounded-r-[4px]" style={{ width: `${(g.fit ?? 0) * 100}%`, background: g.target ? ca : cb, opacity: g.n < 3 ? 0.5 : 1 }} /></span>
             <span className="tabular text-right text-xs"><span className="text-fg-display">{Math.round((g.fit ?? 0) * 100)}</span><span className="ml-2 text-fg-subtle">n={g.n}</span></span>
           </li>
@@ -100,7 +101,7 @@ function QuoteWall({ quotes, names }: { quotes: Quote[]; names: Map<string, stri
             <blockquote className="leading-relaxed"><span className={`mr-1 font-semibold ${tone(q)}`}>“</span>{q.text}</blockquote>
             <figcaption className="mt-2 flex items-center justify-between gap-2 text-xs text-fg-muted">
               <PersonLink id={q.persona_id} name={names.get(q.persona_id) ?? q.persona_id} size={20} />
-              <Link to="/sessions/$id" params={{ id: q.session_id }} hash={q.step_idx !== undefined ? `s${q.step_idx}` : undefined} className="tabular text-fg-subtle hover:text-accent">{q.sim_clock ?? ''}{q.sus != null ? ` SUS ${q.sus.toFixed(0)}` : ''} →</Link>
+              <Link to="/sessions/$id" params={{ id: q.session_id }} hash={q.step_idx !== undefined ? `s${q.step_idx}` : undefined} className="tabular text-fg-subtle hover:text-accent">{q.sim_clock ?? ''}{q.sus != null ? ` SUS ${q.sus.toFixed(0)}` : ''}<ArrowRight size={11} className="ml-1 inline" /></Link>
             </figcaption>
           </figure>
         ))}
@@ -191,7 +192,10 @@ export function AppReportPage() {
                 {r.used_by.slice(0, 12).map((u) => (
                   <li key={u.id} className="flex items-center justify-between gap-2 text-sm">
                     <PersonLink id={u.id} name={u.name} />
-                    <span className="tabular shrink-0 text-xs text-fg-subtle">{u.sessions}× · {pct(u.completion)}{u.sus !== null ? ` · ${u.sus.toFixed(0)}` : ''}</span>
+                    <span className="flex shrink-0 items-center gap-2" title={`${t('n_sessions', { n: u.sessions })} · ${t('completion')} ${pct(u.completion)}${u.sus !== null ? ` · SUS ${u.sus.toFixed(0)}` : ''}`}>
+                      <span className="tabular text-xs text-fg-subtle">{u.sessions}×</span>
+                      <span className="relative h-1.5 w-14 overflow-hidden rounded-full bg-border"><span className="absolute inset-y-0 left-0 rounded-full bg-fg-muted" style={{ width: pct(u.completion) }} /></span>
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -214,7 +218,7 @@ export function AppReportPage() {
               <ul className="mt-4 flex flex-wrap gap-2 text-xs">{r.trend.map((x, i) => <li key={x.study_id}><Link to="/studies/$id" params={{ id: x.study_id }} className="chip tabular hover:border-accent hover:text-fg">#{i + 1} {x.version} · {x.sessions}</Link></li>)}</ul>
             </Section>
           )}
-          <div className="mt-10 flex flex-wrap gap-2">{r.app.versions.map((v) => <a key={v.id} href={v.url} target="_blank" rel="noreferrer" className="chip hover:border-accent hover:text-fg">{v.version} ↗</a>)}</div>
+          <div className="mt-10 flex flex-wrap gap-2">{r.app.versions.map((v) => <a key={v.id} href={v.url} target="_blank" rel="noreferrer" className="chip hover:border-accent hover:text-fg">{v.version}<ArrowUpRight size={11} /></a>)}</div>
         </>
       )}
     </article>

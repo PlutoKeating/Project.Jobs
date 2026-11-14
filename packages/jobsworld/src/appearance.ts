@@ -48,30 +48,11 @@ export function appearanceFor(p: PersonaSpec): Appearance {
   };
 }
 
-const hex = (c: RGB) => `#${c.map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 
-/** 确定性像素头像（SVG，16×16 网格）。image.gen 不可用时的兜底 */
-export function pixelAvatarSvg(p: PersonaSpec, size = 128): string {
-  const a = appearanceFor(p);
-  const age = p.identity.age ?? 30;
-  const female = a.skinVariant === 4;
-  const G = 16; const px: string[] = [];
-  const put = (x: number, y: number, w: number, h: number, c: string) => px.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${c}"/>`);
-  const skin = hex(a.skinColor); const hair = hex(a.hairColor); const shirt = hex(a.shirtColor); const under = hex(a.underShirtColor);
-  put(0, 0, G, G, '#00000000');
-  // 肩与上衣
-  put(2, 13, 12, 3, shirt); put(6, 12, 4, 2, under);
-  // 脖子
-  put(7, 11, 2, 2, skin);
-  // 脸
-  put(4, 4, 8, 8, skin);
-  // 头发
-  put(4, 2, 8, 3, hair); put(3, 3, 1, 4, hair); put(12, 3, 1, 4, hair);
-  if (female) { put(3, 6, 1, 6, hair); put(12, 6, 1, 6, hair); }
-  if (age >= 60) put(5, 2, 6, 1, '#e8e4dd');
-  // 眼睛与嘴
-  put(6, 7, 1, 1, hex(a.eyeColor)); put(9, 7, 1, 1, hex(a.eyeColor));
-  put(7, 10, 2, 1, '#9c4b4b');
-  if (age < 13) { put(5, 9, 1, 1, '#f0a0a0'); put(10, 9, 1, 1, '#f0a0a0'); }
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${G} ${G}" width="${size}" height="${size}" shape-rendering="crispEdges">${px.join('')}</svg>`;
+/** 头像生成前的占位：中性像素剪影（不画五官，避免与生成的头像形成两套画风） */
+export function pixelAvatarSvg(_p: PersonaSpec, size = 128): string {
+  const G = 16; const c = '#3a3b40'; const bg = '#1d1e23';
+  const r = (x: number, y: number, w: number, h: number, f: string) => `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${f}"/>`;
+  const body = [r(0, 0, G, G, bg), r(5, 3, 6, 7, c), r(4, 4, 8, 5, c), r(7, 10, 2, 2, c), r(2, 12, 12, 4, c), r(3, 11, 10, 1, c)].join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${G} ${G}" width="${size}" height="${size}" shape-rendering="crispEdges">${body}</svg>`;
 }

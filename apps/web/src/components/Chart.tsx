@@ -8,7 +8,7 @@ import type { EChartsCoreOption } from 'echarts/core';
 
 echarts.use([BarChart, LineChart, GridComponent, LegendComponent, TooltipComponent, SVGRenderer]);
 
-export const SERIES = { dark: ['#c9792f', '#3d9cc4'], light: ['#b0602e', '#1f7fae'] };
+export const SERIES = { dark: ['#3d9cc4', '#c9792f'], light: ['#1f7fae', '#b0602e'] };
 
 export function useThemeMode(): 'dark' | 'light' {
   const read = () => (document.documentElement.dataset.theme === 'light' || (!document.documentElement.dataset.theme && matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark');

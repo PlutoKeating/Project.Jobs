@@ -5,7 +5,7 @@ import { useT } from '../lib/i18n.ts';
 
 export function Button({ variant = 'quiet', size = 'md', className = '', ...p }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'quiet' | 'ghost' | 'danger'; size?: 'sm' | 'md' }) {
   const v = {
-    primary: 'bg-accent text-accent-fg hover:bg-accent-hover',
+    primary: 'bg-fg-display text-bg hover:opacity-90',
     quiet: 'border border-border-strong text-fg hover:bg-surface-hover hover:border-fg-subtle',
     ghost: 'text-fg-muted hover:text-fg hover:bg-surface-hover',
     danger: 'border border-border-strong text-danger hover:bg-surface-hover',
@@ -85,7 +85,7 @@ export function Section({ title, aside, children, className = '' }: { title: Rea
 }
 
 export function PersonLink({ id, name, size = 24 }: { id: string; name: string; size?: number }) {
-  return <Link to="/people/$id" params={{ id }} className="inline-flex items-center gap-2 hover:text-accent"><Avatar id={id} size={size} /><span className="truncate">{name}</span></Link>;
+  return <Link to="/people/$id" params={{ id }} className="inline-flex min-w-0 items-center gap-2 hover:text-accent"><Avatar id={id} size={size} /><span className="truncate">{name}</span></Link>;
 }
 
 export function Stat({ label, value, sub }: { label: ReactNode; value: ReactNode; sub?: ReactNode }) {

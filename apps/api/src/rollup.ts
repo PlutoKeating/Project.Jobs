@@ -215,8 +215,8 @@ export async function generateVerdict(appId: string, lang: Lang) {
     trust: r.trust,
   };
   const sys = lang === 'zh'
-    ? '你是资深用户研究负责人。基于模拟用户评测的汇总数据，给出这个软件「到底怎么样」的结论。只能使用给定数据，不要编造；样本少或可信度低时要在 summary 里直说。headline 不超过 30 字。best_for/struggles_for 写具体人群。所有字段用中文。'
-    : 'You are a senior UX research lead. From aggregated simulated-user study data, state plainly how good this app really is. Use only the given data; say so in the summary when samples are small or trust is low. Headline ≤ 14 words. best_for/struggles_for name concrete user groups.';
+    ? '你是资深用户研究负责人。基于模拟用户评测的汇总数据，给出这个软件「到底怎么样」的结论。只能使用给定数据，不要编造；样本少或可信度低时要在 summary 里直说。注意：sessions 与各分组的 n 是「使用次数」（单位：次），不是人数；人数只看 overview.personas。headline 不超过 30 字。best_for/struggles_for 写具体人群。所有字段用中文。'
+    : 'You are a senior UX research lead. From aggregated simulated-user study data, state plainly how good this app really is. Use only the given data; say so in the summary when samples are small or trust is low. Note: sessions and each group n count usage runs, not people; the number of people is overview.personas only. Headline ≤ 14 words. best_for/struggles_for name concrete user groups.';
   const out = await gateway().chat('judge_meta', { messages: [{ role: 'system', content: sys }, { role: 'user', content: JSON.stringify(brief) }], schema: VerdictSchema, schemaName: 'verdict', temperature: 0.3, tags: { purpose: 'app_verdict' } });
   const row = { id: newId('vrd'), app_id: appId, lang, basis, verdict: out.data };
   await getDb().insert(appVerdicts).values(row);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { Check, Globe2, MapPin, Send, X, Zap } from 'lucide-react';
+import { ArrowRight, Check, Timer, Globe2, MapPin, Send, X, Zap } from 'lucide-react';
 import { evidenceUrl, post, useSession } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import type { StepRow } from '../lib/types.ts';
@@ -20,7 +20,7 @@ function MoodStrip({ steps }: { steps: StepRow[] }) {
 }
 
 function Step({ s, events }: { s: StepRow; events: { text: string; source: string }[] }) {
-  const { t } = useT();
+  const { t } = useT(); const L = useLabel();
   const err = s.result?.error;
   return (
     <li id={`s${s.idx}`} className="grid scroll-mt-24 gap-5 border-t border-border py-6 md:grid-cols-[minmax(0,22rem)_1fr]">
@@ -35,11 +35,11 @@ function Step({ s, events }: { s: StepRow; events: { text: string; source: strin
         {events.map((e, i) => <p key={i} className="mt-2 flex items-start gap-1.5 text-sm text-secondary-fg"><Globe2 size={14} className="mt-0.5 shrink-0" />{e.text}</p>)}
         {s.monologue && <p className={`mt-3 text-[15px] leading-relaxed ${s.expectation_violated ? 'text-danger' : 'text-fg-display'}`}>“{s.monologue}”</p>}
         {(s.intent || s.action?.verb) && (
-          <p className="mt-3 text-sm text-fg-muted">→ {s.intent || s.action?.operator?.target_description}{s.action?.operator?.text ? <span className="text-fg"> 「{s.action.operator.text}」</span> : null}</p>
+          <p className="mt-3 flex items-start gap-1.5 text-sm text-fg-muted"><ArrowRight size={14} className="mt-0.5 shrink-0" /><span>{s.intent || s.action?.operator?.target_description}{s.action?.operator?.text ? <span className="text-fg"> 「{s.action.operator.text}」</span> : null}</span></p>
         )}
         <p className="mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-subtle">
-          <span>{s.action?.verb ?? s.decision}</span>
-          {s.result?.status && <span>· {s.result.status}</span>}
+          <span>{L(s.action?.verb ?? s.decision)}</span>
+          {s.result?.status && <span className={s.result.status === 'success' ? 'text-success' : ''}>· {L(s.result.status)}</span>}
           {err && <span className="text-danger">· {err.code}</span>}
           {s.expectation_violated && <span className="inline-flex items-center gap-1 text-danger"><Zap size={11} />{t('expectation_broken')}</span>}
         </p>
@@ -76,17 +76,18 @@ export function SessionPage() {
         </div>
       </header>
 
-      <div className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 sm:grid-cols-4">
-        <Stat label={t('steps_n')} value={s.steps_count} />
-        <Stat label="SUS" value={post0?.questionnaire?.sus_score_simulated?.toFixed(0) ?? '—'} sub={t('simulated')} />
-        <Stat label="UMUX-Lite" value={post0?.questionnaire?.umux_lite_simulated?.toFixed(0) ?? '—'} />
-        <Stat label={t('again')} value={post0?.questionnaire?.would_use_again === undefined ? '—' : post0.questionnaire.would_use_again ? <Check size={20} className="text-success" /> : <X size={20} className="text-danger" />} />
+      <div className="mt-8 flex flex-wrap gap-x-12 gap-y-4 border-y border-border py-5">
+        <Stat label={t('steps')} value={s.steps_count} />
+        {post0?.questionnaire?.sus_score_simulated !== undefined && <Stat label="SUS" value={post0.questionnaire.sus_score_simulated.toFixed(0)} sub={t('simulated')} />}
+        {post0?.questionnaire?.umux_lite_simulated !== undefined && <Stat label="UMUX-Lite" value={post0.questionnaire.umux_lite_simulated.toFixed(0)} />}
+        {post0?.questionnaire?.would_use_again !== undefined && <Stat label={t('again')} value={post0.questionnaire.would_use_again ? <Check size={20} className="text-success" /> : <X size={20} className="text-danger" />} />}
+        {s.summary?.objective?.real_seconds !== undefined && <Stat label={<Timer size={13} aria-label="time" />} value={`${Math.round(s.summary.objective.real_seconds / 60)}′`} />}
       </div>
       {d.steps.length > 0 && <div className="mt-6"><MoodStrip steps={d.steps} /></div>}
 
       <div className="grid gap-x-12 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Section title={t('timeline')}>
-          {s.video_ev && <video controls preload="none" src={evidenceUrl(s.video_ev)} className="mb-6 max-h-[420px] w-full rounded-lg border border-border bg-bg-elevated" />}
+          {s.video_ev && <video controls preload="metadata" poster={d.steps.find((x) => x.screenshot_ev)?.screenshot_ev ? evidenceUrl(d.steps.find((x) => x.screenshot_ev)!.screenshot_ev!) : undefined} src={evidenceUrl(s.video_ev)} className="mb-6 max-h-[420px] w-full rounded-lg border border-border bg-bg-elevated object-contain" />}
           <ol>{d.steps.map((x) => <Step key={x.idx} s={x} events={d.events.filter((e) => e.step_idx === x.idx)} />)}</ol>
         </Section>
         <aside className="min-w-0">

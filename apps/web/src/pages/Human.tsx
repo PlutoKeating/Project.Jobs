@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router';
-import { Check, Hand, MonitorPlay } from 'lucide-react';
+import { ArrowRight, Check, Hand, MonitorPlay } from 'lucide-react';
 import { post, useHuman, useMe } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import { Button, Empty, ErrorState, PageHead, Skeleton } from '../components/ui.tsx';
@@ -21,7 +21,7 @@ export function HumanPage() {
                   <div className="min-w-0 flex-1"><p className="font-medium text-fg-display">{x.reason}</p><p className="truncate text-xs text-fg-muted">{x.url}</p></div>
                   {x.cdp_url && <a href={x.cdp_url} target="_blank" rel="noreferrer"><Button variant="primary"><MonitorPlay size={14} />{t('takeover')}</Button></a>}
                   {me?.admin && <Button onClick={async () => { await post(`/human/${x.id}/resolve`); await q.refetch(); }}><Check size={14} />{t('resolved')}</Button>}
-                  <Link to="/sessions/$id" params={{ id: x.session_id }} className="text-xs text-link hover:text-accent">Session →</Link>
+                  <Link to="/sessions/$id" params={{ id: x.session_id }} className="inline-flex items-center gap-1 text-xs text-link hover:text-accent">Session<ArrowRight size={12} /></Link>
                 </li>
               ))}
             </ul>
@@ -29,7 +29,7 @@ export function HumanPage() {
           {rest.length > 0 && (
             <table className="mt-10 w-full text-sm">
               <tbody className="divide-y divide-border border-y border-border">
-                {rest.map((x) => <tr key={x.id}><td className="tabular py-2.5 text-xs text-fg-subtle">{new Date(x.created_at).toLocaleString()}</td><td className="py-2.5">{x.reason}</td><td className="py-2.5 text-xs text-fg-muted">{L(x.status)}</td><td className="py-2.5 text-right"><Link to="/sessions/$id" params={{ id: x.session_id }} className="text-xs text-link hover:text-accent">Session →</Link></td></tr>)}
+                {rest.map((x) => <tr key={x.id}><td className="tabular py-2.5 text-xs text-fg-subtle">{new Date(x.created_at).toLocaleString()}</td><td className="py-2.5">{x.reason}</td><td className="py-2.5 text-xs text-fg-muted">{L(x.status)}</td><td className="py-2.5 text-right"><Link to="/sessions/$id" params={{ id: x.session_id }} className="inline-flex items-center gap-1 text-xs text-link hover:text-accent">Session<ArrowRight size={12} /></Link></td></tr>)}
               </tbody>
             </table>
           )}

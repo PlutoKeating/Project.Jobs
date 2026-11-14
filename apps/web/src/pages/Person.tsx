@@ -33,7 +33,7 @@ function DayLane({ items, minute, placeName }: { items: AgendaItem[]; minute: nu
       <div className="tabular mt-1.5 flex justify-between text-[11px] text-fg-subtle">{['00', '06', '12', '18', '24'].map((h) => <span key={h}>{h}:00</span>)}</div>
       {it && (
         <div className="mt-4 grid grid-cols-[6.5rem_1fr] gap-3">
-          <div className="tabular text-sm text-fg-muted">{it.from}–{it.to}{show === cur && <span className="mt-1 block text-xs text-accent">●</span>}</div>
+          <div className="tabular text-sm text-fg-muted">{it.from}–{it.to}{show === cur && <span className="mt-2 block h-1.5 w-1.5 rounded-full bg-accent" />}</div>
           <div className="min-w-0">
             <p className="text-fg-display">{it.activity}</p>
             <p className="mt-0.5 flex items-center gap-1 text-xs text-fg-subtle"><MapPin size={12} />{placeName(it.place_id) || L(it.place_kind)}{it.with && ` · ${it.with}`}</p>

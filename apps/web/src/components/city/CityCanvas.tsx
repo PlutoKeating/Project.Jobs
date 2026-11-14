@@ -47,10 +47,16 @@ export function CityCanvas({ layout, personas, minute, mode, selectedId, focusId
   };
   const initialFrame = () => {
     const v = viewRef.current;
-    const busy = personasRef.current.find((p) => p.session && p.visible);
-    const office = layout.places.find((p) => p.kind === 'office');
-    const x = busy?.x ?? (office ? office.x + office.w / 2 : layout.width / 2);
     const s = Math.max(v.h / ext.height, 7);
+    const span = v.w / s;
+    const people = personasRef.current.filter((p) => p.visible);
+    const busy = people.find((p) => p.session);
+    let x = busy?.x ?? layout.width / 2;
+    if (!busy && people.length) {
+      // 取人最多的一段街区（窗口宽 = 当前视野）
+      let best = -1;
+      for (let c = span / 2; c <= layout.width - span / 2; c += 8) { const n = people.filter((p) => Math.abs(p.x - c) < span / 2 - 4).length; if (n > best) { best = n; x = c; } }
+    }
     apply({ ...v, s, ox: v.w / 2 - x * s, oy: v.h - ext.bottom * s });
   };
   const centerOn = (x: number, y: number, s?: number) => {

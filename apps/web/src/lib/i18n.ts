@@ -15,7 +15,7 @@ const D = {
   'sessions': ['次使用', 'sessions'], 'memories': ['记忆', 'Memories'], 'history': ['用过的软件', 'Apps used'], 'today': ['今天的日程', 'Today'], 'profile': ['画像', 'Profile'],
   'family': ['家人', 'Family'], 'story': ['经历', 'Story'], 'values': ['在意', 'Values'], 'motivations': ['想要', 'Wants'], 'beliefs': ['相信', 'Believes'],
   'digital_literacy': ['数字素养', 'Digital literacy'], 'ai_familiarity': ['AI 熟悉度', 'AI familiarity'], 'trust_in_ai': ['信任 AI', 'Trusts AI'], 'privacy': ['隐私敏感', 'Privacy'], 'price': ['价格敏感', 'Price'], 'patience': ['耐心', 'Patience'],
-  'generate': ['生成新人物', 'Generate people'], 'search': ['搜索', 'Search'], 'target_user': ['目标用户', 'Target user'],
+  'generate': ['生成新人物', 'Generate people'], 'steps': ['步数', 'Steps'], 'search': ['搜索', 'Search'], 'target_user': ['目标用户', 'Target user'],
   'used_by': ['用过的人', 'Who used it'], 'target': ['原本的目标客户', 'Intended for'], 'fit': ['实际谁更适配', 'Who it actually fits'], 'voices': ['他们说', 'What they said'], 'issues': ['问题', 'Issues'], 'trend': ['走势', 'Trend'],
   'completion': ['完成率', 'Completion'], 'sus': ['SUS', 'SUS'], 'again': ['还会再用', 'Would return'], 'satisfaction': ['满意度', 'Satisfaction'],
   'verdict': ['结论', 'Verdict'], 'make_verdict': ['生成结论', 'Write verdict'], 'regen': ['重新生成', 'Regenerate'], 'stale': ['数据已更新', 'Data changed'],
@@ -57,6 +57,8 @@ const LABELS: Record<string, [string, string]> = {
   weak_network: ['信号变差', 'Weak signal'], crowd: ['人挤人', 'Crowded'], rain: ['下雨', 'Rain'], power_cut: ['停电', 'Power cut'], noise: ['很吵', 'Noisy'],
   home: ['家', 'Home'], school: ['学校', 'School'], park: ['公园', 'Park'], bus_stop: ['公交站', 'Bus stop'], subway: ['地铁', 'Subway'], office: ['写字楼', 'Office'], cafe: ['咖啡店', 'Café'], restaurant: ['餐馆', 'Restaurant'], shop: ['超市', 'Market'], library: ['图书馆', 'Library'], hospital: ['医院', 'Hospital'], factory: ['工厂', 'Factory'], road: ['马路', 'Road'], street: ['街上', 'Street'],
   episodic: ['经历', 'Episode'], belief: ['看法', 'Belief'], trust: ['信任', 'Trust'], habit: ['习惯', 'Habit'], commerce: ['消费', 'Spending'],
+  click: ['点击', 'Click'], type: ['输入', 'Type'], scroll: ['滚动', 'Scroll'], select: ['选择', 'Select'], hover: ['悬停', 'Hover'], navigate: ['打开页面', 'Navigate'], back: ['返回', 'Back'], wait: ['等待', 'Wait'], press: ['按键', 'Press'], upload: ['上传', 'Upload'], act: ['操作', 'Act'], give_up: ['放弃', 'Give up'], help: ['求助', 'Ask for help'], step_away: ['走开一下', 'Step away'],
+  timeout: ['超时', 'Timed out'], error: ['出错', 'Error'], no_effect: ['没反应', 'No effect'],
   office_deadline: ['赶方案的下午', 'Office deadline'], commute_late_boss: ['迟到的通勤早晨', 'Late commute'], en_workday: ['工作日', 'Workday'], evening_home_kid: ['带娃的晚上', 'Evening with kid'], kids_after_school: ['放学后', 'After school'], matrix_stress: ['随机压力处境', 'Random stress'], bedtime_scroll: ['睡前刷手机', 'Bedtime scroll'],
   office_home: ['上班族', 'Office'], commute: ['通勤', 'Commute'], idle_weekend: ['周末', 'Weekend'], home_evening: ['晚上在家', 'Evening at home'], bedtime: ['睡前', 'Bedtime'], lunch_break: ['午休', 'Lunch break'], matrix: ['随机处境', 'Random'], kids: ['放学后', 'After school'],
 };
