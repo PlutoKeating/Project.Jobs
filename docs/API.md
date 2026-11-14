@@ -1,12 +1,20 @@
 # API 与接口约定
 
-## 1. REST API（`apps/console`，默认 `http://127.0.0.1:5300`）
+## 1. REST API（`apps/api`，默认 `http://127.0.0.1:5320`，对外经网关 `:7777`）
 
-所有入口（CLI / 控制台 / API / CI）最终都调用同一个 `createStudy()`（`packages/engine/src/control/study.ts`），用**幂等键**防止重复运行。
+所有入口（CLI / 工作台 / API / CI）最终都调用同一个 `createStudy()`（`packages/engine/src/control/study.ts`），用**幂等键**防止重复运行。前缀统一为 `/api/v1`；带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员登录（否则 403）。设置 `JW_PASSCODE` 后，除 `/api/v1/me`、`/api/v1/auth/*`、`/healthz` 外都需要登录（否则 401）。
 
-### `POST /api/studies`
+### 身份
 
-创建并启动一个 Study。请求头 `Idempotency-Key: <key>`（可选）；同一键再次提交只会返回已有 Study，不会重复运行。
+| 方法 路径 | 说明 |
+|---|---|
+| `GET /me` | `{ viewer, admin, auth_required, game_port }` |
+| `POST /auth/login` `{ passcode }` | 共享口令或管理员口令；写入 HttpOnly Cookie |
+| `POST /auth/logout` | 清除登录 |
+
+### Study（管理员可写）
+
+`POST /studies`（管理员）：请求头 `Idempotency-Key: <key>`（可选）；同一键再次提交只会返回已有 Study。
 
 ```json
 {
@@ -14,33 +22,67 @@
   "sessions": 6, "steps": 30, "concurrency": 3, "round": 4,
   "executor": "stagehand",            // stagehand | midscene
   "locale": "zh-CN",                  // zh-CN | en-US | mixed
-  "temporal": false,                  // true：提交到 Temporal 工作流
+  "temporal": false,
   "config": { "revisits": [1, 7], "judges": 2, "mode_mix": { "goal": 0.4, "curiosity": 0.25, "stress": 0.2, "adversarial": 0.15 } }
 }
 ```
 
-响应：`{ "id": "std_xxx", "existing": false, "isolation_warning": "…" }`
+响应：`{ "id": "std_xxx", "existing": false, "isolation_warning": "…" }`。`config` 可覆盖 `StudyInputSchema` 的任意字段。
 
-`config` 可覆盖 `StudyInputSchema`（`packages/core/src/types/domain.ts`）的任意字段：`persona_ids`、`world_ids`、`include_children`、`expert_baseline`、`clean_replay`、`interview`、`saturation_m`、`report_lang`、`headed`、`budget.max_tokens` 等。
-
-### `GET /api/studies/:id`
-
-返回 Study、Session 列表、问题摘要和最近的运行日志（inline 模式）。
-
-### `POST /api/projects`（表单或 JSON）
-
-灌入新项目并全自动评测：`name`、`url`、`version`、`form`（web/h5）、`prd`、`user`/`password`（可选测试账号）、`sessions`、`steps`、`executor`、`temporal`。返回 `{ study_id }`（`Accept: application/json` 时）。
-
-### 其他
-
-| 路径 | 说明 |
+| 方法 路径 | 说明 |
 |---|---|
-| `GET /evidence/:id` | 证据原文件（截图/视频/rrweb 等，从 MinIO 读取）或内联 JSON |
+| `GET /studies` | 最近 200 个 Study（含应用、Session 数、是否有报告、是否在本进程运行） |
+| `GET /studies/:id` | Study、Session（含人物名）、问题、运行日志（inline 模式） |
+| `POST /projects`（管理员） | 灌入新项目并全自动评测：`name`、`url`、`version`、`form`、`prd`、`user`/`password`、`sessions`、`steps`、`executor`、`temporal` → `{ study_id }` |
+| `GET /app-versions` | 可发起评测的应用版本 |
+| `GET /sessions/:id` | Session、人物、软件、逐步时间线（截图证据、地点、资源、动作结果）、世界事件、访谈、评审 |
+| `POST /sessions/:id/ask` `{ q }` | 可追问访谈 → `{ answer }` |
+| `POST /issues/:id/triage`（管理员） `{ status }` | `confirmed` / `rejected` / `open` |
+| `GET /human`、`POST /human/:id/resolve`（管理员） | 人工接管队列；Temporal 模式下同时发送 Signal |
+| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON（旧路径 `/evidence/:id` 仍可用） |
 | `GET /reports/<study>/index.html` | 离线 HTML 报告 |
-| `POST /sessions/:id/ask` | 可追问访谈（表单字段 `q`） |
-| `POST /issues/:id/triage` | 问题分诊（表单字段 `status`：confirmed / rejected / open） |
-| `POST /human/:id/resolve` | 标记人工接管完成（Temporal 模式下同时发送 Signal） |
-| `GET /healthz` | 健康检查 |
+
+兼容旧控制台：`POST /api/studies`（同 `/api/v1/studies`）、`GET /api/studies/:id`（307 到 v1）。
+
+### 人物
+
+| 方法 路径 | 说明 |
+|---|---|
+| `GET /personas` | 每个人物的最新版本 + 使用统计（Session 数、用过的软件、记忆数）+ 此刻位置 |
+| `GET /personas/:id` | 六层画像、今天的日程、记忆（最近 120 条）、历史 Session、信任状态、实时状态与世界时钟 |
+| `GET /personas/:id/avatar` | 头像：`image.gen` 生成后缓存到 MinIO；生成前返回确定性像素头像 SVG |
+| `POST /personas/generate`（管理员） `{ n, locale }` | 调用生成流水线新增人物（1–12） |
+
+### 世界
+
+| 方法 路径 | 说明 |
+|---|---|
+| `GET /world/town` | 城镇布局（图元、地点、落脚点，`packages/jobsworld/src/town.ts`） |
+| `GET /world/snapshot` | 最近一次世界快照（时钟、人物位置/状态、世界事件） |
+| `POST /world/clock`（管理员） `{ paused?, speed?, jump_to? }` | 控制世界时钟 |
+| `POST /world/events`（管理员） `{ place_id, kind, minutes }` | 制造事件：`weak_network` `crowd` `rain` `power_cut` `noise` |
+| `POST /world/replay` `{ session_id, speed? }` | 在原地点回放一个 Session |
+| `POST /world/ask` `{ persona_id, question }` | 和人物聊聊（基于最近一次已结束的 Session；正在使用软件时返回 `busy`） |
+| `GET /stream`（WebSocket） | 实时推送：`{ type: "snapshot" \| "live" \| "say", data }` |
+
+### 软件
+
+| 方法 路径 | 说明 |
+|---|---|
+| `GET /apps` | 全部软件的简要汇总（用过的人数、Session 数、完成率、SUS 模拟估计、P0/P1） |
+| `GET /apps/:id/report` | 汇总报告：概览、原本的目标客户、按人群/年龄/数字素养/AI 熟悉度/场景/模式/目标与否分组的适配度、用过的人、典型反馈（吐槽/称赞/访谈，带截图与 Session 链接）、问题、走势、可信度 |
+| `GET /apps/:id/verdict?lang=zh\|en` | 最近一次一句话总评 |
+| `POST /apps/:id/verdict`（管理员） `{ lang }` | 用 `judge.meta` 基于汇总数据生成总评（缓存到 `app_verdicts`） |
+
+适配度 = 0.30×完成率 + 0.30×SUS/100 + 0.25×还会再用比例 + 0.15×(满意度−1)/6（缺项按剩余权重归一化）；专家基线 Session 不计入。所有主观指标均为模拟估计。
+
+### 单端口网关（`apps/gateway`，`JW_PORT`，默认 `0.0.0.0:7777`）
+
+按首包分流：HTTP/WebSocket → API；Terraria `ConnectRequest` 版本串以 `Terraria` 开头 → TShock（`TSHOCK_PORT`，默认 57777）；以 `tModLoader` 开头 → tML 服务端（`TML_PORT`，默认 57778）。不终止 TLS。
+
+### NATS（JobsWorld 事件总线）
+
+主题与消息格式见 `packages/jobsworld/src/protocol.ts` 与 [`JOBSWORLD.md`](JOBSWORLD.md) §3.2。
 
 ## 2. CLI
 

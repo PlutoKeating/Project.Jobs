@@ -145,6 +145,9 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     return { study: row.s, app: row.app, app_id: row.app_id, version: row.version, sessions: ss, issues: iss.map((i) => ({ id: i.id, title: i.title, severity: i.severity, category: i.category, attribution: i.attribution, trust: i.trust_level, status: i.status, segments: i.affected_segments ?? [], seeded_match: i.seeded_match, sessions: (i.session_ids ?? []).length, recommendation: i.recommendation })), job: job ? { log: job.log.slice(-200), done: !!job.done, error: job.error } : null, report: existsSync(dataPath('reports', id, 'index.html')) };
   });
   app.post('/api/v1/studies', async (q, r) => { if (!requireAdmin(q, r)) return; return createAndRun(q.body as Record<string, unknown>, q.headers['idempotency-key'] as string | undefined); });
+  // 兼容旧 console 的 CI 入口
+  app.post('/api/studies', async (q, r) => { if (!requireAdmin(q, r)) return; return createAndRun(q.body as Record<string, unknown>, q.headers['idempotency-key'] as string | undefined); });
+  app.get('/api/studies/:id', async (q, r) => r.redirect(`/api/v1/studies/${(q.params as P).id}`, 307));
   app.post('/api/v1/projects', async (q, r) => {
     if (!requireAdmin(q, r)) return;
     const b = q.body as Record<string, string | number | boolean>;

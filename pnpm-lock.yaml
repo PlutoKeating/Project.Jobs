@@ -239,9 +239,9 @@ importers:
 
   apps/cli:
     dependencies:
-      '@pux/console':
+      '@pux/api':
         specifier: workspace:*
-        version: link:../console
+        version: link:../api
       '@pux/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -278,36 +278,6 @@ importers:
       yaml:
         specifier: ^2.9.1
         version: 2.9.1
-
-  apps/console:
-    dependencies:
-      '@fastify/formbody':
-        specifier: ^9.0.1
-        version: 9.0.1
-      '@fastify/static':
-        specifier: ^10.1.11
-        version: 10.1.11
-      '@pux/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@pux/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@pux/engine':
-        specifier: workspace:*
-        version: link:../../packages/engine
-      '@pux/storage':
-        specifier: workspace:*
-        version: link:../../packages/storage
-      '@pux/worker':
-        specifier: workspace:*
-        version: link:../worker
-      drizzle-orm:
-        specifier: ^0.45.4
-        version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
-      fastify:
-        specifier: ^5.12.8
-        version: 5.12.8
 
   apps/gateway:
     dependencies:

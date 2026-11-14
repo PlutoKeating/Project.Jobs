@@ -8,8 +8,10 @@
 宿主机（pnpm / Node 24 原生运行）                     docker compose（只跑依赖）
 ┌──────────────────────────────────────────┐        ┌──────────────────────────────┐
 │ apps/cli      pux 命令行（主入口）          │        │ postgres  pgvector/pg17      │ 55432
-│ apps/console  本地 Web 控制台 + REST API    │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
+│ apps/api      REST + WebSocket + 网页       │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
 │ apps/worker   Temporal worker（可选编排）   │        │ litellm   模型网关（角色别名）│ 54000 ──▶ Vertex AI Gemini
+│ apps/world    JobsWorld 世界服务            │        │ nats      JobsWorld 事件总线  │ 54222/58222
+│ apps/gateway  单端口网关 0.0.0.0:7777       │        │ tshock/tml 游戏服（profile game）│ 57777/57778
 │ demos/kit     11 个被测 Demo（22 个实例）    │        │ temporal  dev server + UI    │ 57233/58233
 └──────────────────────────────────────────┘        └──────────────────────────────┘
 ```
@@ -22,7 +24,7 @@
 
 | 逻辑层（spec §3） | 代码位置 | 说明 |
 |---|---|---|
-| Experience Control Plane | `packages/engine/src/control/`、`apps/cli`、`apps/console`、`apps/worker` | Study 生命周期（幂等键）、规划、inline/Temporal 编排、人工接管 |
+| Experience Control Plane | `packages/engine/src/control/`、`apps/cli`、`apps/api`、`apps/worker` | Study 生命周期（幂等键）、规划、inline/Temporal 编排、人工接管 |
 | Product Intelligence | `packages/engine/src/product/intelligence.ts` | Playwright 爬取（遇登录墙自动注册测试账号）→ LLM 归纳 Feature/Task/Hypothesis → YAML 人工确认 → 入库；任务成功信号的客观判定 |
 | Scenario & Exploration | `packages/engine/src/exploration/` | 生活目标（禁用测试类词汇）、四种模式、覆盖率（state/feature/task path/segment/scenario/hypothesis/issue/mode）、自适应采样、饱和停止 |
 | Human Simulation | `packages/engine/src/human/` | 六层 Persona（YAML + zod 校验 + 版本哈希冻结）、MotorProfile、Dynamic State 规则引擎、感知过滤、识字量模型、Generative-Agents 式记忆（pgvector）、生成流水线 |
@@ -91,3 +93,13 @@ sequenceDiagram
 ## 7. 数据模型
 
 见 `packages/db/src/schema.ts`（完整实现 spec §16 的全部实体，另加 `issue_candidates`、`persona_global_state`、`human_tasks`、`llm_traces`、`executor_comparisons`）。迁移位于 `packages/db/migrations/`。
+
+## 8. JobsWorld（可视化世界与工作台）
+
+详见 [`JOBSWORLD.md`](JOBSWORLD.md)。要点：
+
+- **解耦**：引擎不知道世界的存在。`apps/world` 每 1.5 秒只读轮询 Postgres 中正在运行的 Session 的新步骤，转成 NATS 事件；无论 Study 由 CLI、API 还是 Temporal 运行都能被看到。
+- **同一份城镇**：`config/jobsworld/town.yaml` → `computeLayout()`（`packages/jobsworld/src/town.ts`）生成渲染无关的图元与落脚点；网页小地图、TShock 插件、tModLoader mod 都从它渲染。
+- **人物日程**：`persona_agendas` 表；规则骨架（`config/jobsworld/agenda.yaml`）+ `mind.slow` 补全意图与因果。
+- **新增表**：`persona_agendas`、`persona_avatars`、`app_verdicts`（迁移 `0002_jobsworld.sql`，只新增）。
+- **入口**：`apps/gateway` 在一个端口上按首包分流 HTTP / 原版 Terraria / tModLoader。

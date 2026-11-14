@@ -18,7 +18,7 @@
     "commander": "^15.1.0",
     "drizzle-orm": "^0.45.4",
     "@temporalio/client": "^1.25.0",
-    "@pux/console": "workspace:*",
+    "@pux/api": "workspace:*",
     "yaml": "^2.9.1",
     "playwright": "^1.65.0"
   },

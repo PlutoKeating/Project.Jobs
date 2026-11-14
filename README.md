@@ -2,7 +2,7 @@
 
 让**模拟真人**在**模拟世界**里使用**真实产品**，发现可用性问题、流程断点、「突然不对劲」时刻和 AI 回答质量问题；每条结论都有独立证据链、复现路径、受影响人群和**可信度标签**。
 
-> 设计文档：[`docs/SPEC_v0.2.md`](docs/SPEC_v0.2.md) · 实现架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · API：[`docs/API.md`](docs/API.md) · 校准：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+> 设计文档：[`docs/SPEC_v0.2.md`](docs/SPEC_v0.2.md) · JobsWorld：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 实现架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · API：[`docs/API.md`](docs/API.md) · 校准：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
 
 ## 它做什么
 
@@ -32,8 +32,8 @@ pnpm demos &                       # 启动 11 个 Demo × (干净版 + 植入�
 # 全自动评测任意 Web App（新项目一步到位）
 pnpm pux auto --url http://127.0.0.1:5501/ --name my-app --sessions 6 --steps 30
 
-# 或者打开控制台，在「灌入新项目」里填 URL
-pnpm console                       # http://127.0.0.1:5300/
+# 可视化工作台 JobsWorld（网页 + Terraria 共用一个端口，局域网可访问）
+pnpm jobsworld                     # http://<本机 IP>:7777/
 ```
 
 报告输出在 `data/reports/<study_id>/`（`report.zh.md`、`report.en.md`、`index.html`）。
@@ -43,7 +43,11 @@ pnpm console                       # http://127.0.0.1:5300/
 | 路径 | 说明 |
 |---|---|
 | `apps/cli` | `pux` 命令行（主入口） |
-| `apps/console` | 本地 Web 控制台 + REST API（`POST /studies`，支持 `Idempotency-Key`） |
+| `apps/api` | JobsWorld API：REST `/api/v1`（人物、世界、软件汇总、Study/Session/问题/人工接管，`POST /studies` 支持 `Idempotency-Key`）+ WebSocket 实时推送 + 托管网页 |
+| `apps/web` | 可视化工作台（React）：侧视像素城市实时观察、人物管理、软件汇总报告、评测与接管 |
+| `apps/world` | 世界服务：世界时钟、人物日程、位置模拟、只读跟踪正在运行的 Session、回放 → NATS |
+| `apps/gateway` | 单端口复用网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
+| `packages/jobsworld` | 世界契约：城镇布局、日程、NATS 主题与消息、外观映射、共用查询 |
 | `apps/worker` | Temporal worker（Study=工作流，Session=子工作流，Step=Activity，人工接管=Signal） |
 | `packages/core` | UAP v0.2 类型、领域 schema（六层 Persona、世界模板、ProductSpec、Study）、配置 |
 | `packages/db` | Drizzle schema（spec §16 全部实体）与迁移 |
@@ -52,7 +56,7 @@ pnpm console                       # http://127.0.0.1:5300/
 | `packages/executor` | UAP 执行层：浏览器沙箱、成功标准、错误分层、Policy Gate、模态注入、录像/rrweb/axe |
 | `packages/engine` | Human / World / Exploration / Product / Runtime / Evaluation / Calibration / Report / Control |
 | `demos/kit` | 11 个被测 Demo（AI 助手、记账、待办、外卖、游戏、资讯、健身、笔记、天气、菜谱、儿童识字），每个都有干净版与植入缺陷版 |
-| `config/` | 全局配置、Persona、世界模板、人口分布、规则 |
+| `config/` | 全局配置、Persona、世界模板、人口分布、规则、JobsWorld 城镇布局与日程骨架（`config/jobsworld/`） |
 | `infra/` | LiteLLM 角色别名配置、Postgres 初始化 |
 | `examples/calibration` | 真人基准 / 漏斗 / 评论的示例文件 |
 | `data/` | 运行时数据（不入库）：报告、产品理解草稿、生成的 Persona、学习参数 |
