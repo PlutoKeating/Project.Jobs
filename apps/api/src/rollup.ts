@@ -206,9 +206,10 @@ export async function generateVerdict(appId: string, lang: Lang) {
   const basis = `${r.overview.sessions}:${r.issues.length}:${r.overview.issues.confirmed}`;
   const top = r.groups.filter((g) => g.n >= 2 && g.fit !== null).sort((a, b) => (b.fit ?? 0) - (a.fit ?? 0));
   const brief = {
-    app: r.app.name, description: r.app.description, overview: r.overview, declared_targets: r.targets,
-    best_groups: top.slice(0, 6).map((g) => ({ dim: g.dim, key: g.key, n: g.n, fit: g.fit, completion: g.completion, sus: g.sus })),
-    worst_groups: top.slice(-4).map((g) => ({ dim: g.dim, key: g.key, n: g.n, fit: g.fit, completion: g.completion, sus: g.sus })),
+    app: r.app.name, description: r.app.description,
+    overview: { sessions: r.overview.sessions, personas: r.overview.personas, studies: r.overview.studies, completion_rate_0to1: r.overview.completion, sus_simulated_0to100: r.overview.sus, would_use_again_rate_0to1: r.overview.again, satisfaction_1to7: r.overview.sat, issues_by_severity: r.overview.issues }, declared_targets: r.targets,
+    best_groups: top.slice(0, 6).map((g) => ({ dim: g.dim, key: g.key, n: g.n, fit_0to1: g.fit, completion_0to1: g.completion, sus_0to100: g.sus })),
+    worst_groups: top.slice(-4).map((g) => ({ dim: g.dim, key: g.key, n: g.n, fit_0to1: g.fit, completion_0to1: g.completion, sus_0to100: g.sus })),
     issues: r.issues.slice(0, 12).map((i) => ({ severity: i.severity, title: i.title, segments: i.segments, trust: i.trust })),
     quotes: r.quotes.slice(0, 10).map((q) => ({ kind: q.kind, text: q.text.slice(0, 200) })),
     trust: r.trust,
