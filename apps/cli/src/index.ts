@@ -135,7 +135,7 @@ studyOpts(program.command('auto').description('全自动评测一个新项目：
 
 // ---------------------------------------------------------------- 报告、访谈、问题
 program.command('report').argument('<studyId>').description('重新生成报告（Markdown + HTML）').action(wrap(async (id: string) => { const r = await E.generateReport(id); out(r.paths); }));
-program.command('issues').argument('<studyId>').action(wrap(async (id: string) => { const rows = await getDb().select().from(issues).where(eq(issues.study_id, id)); console.table(rows.map((i) => ({ sev: i.severity, cat: i.category, attr: i.attribution, trust: i.trust_level, status: i.status, sessions: i.session_ids?.length, seeded: i.seeded_match, title: i.title.slice(0, 50) }))); }));
+program.command('issues').argument('<studyId>').action(wrap(async (id: string) => { const rows = await E.studyIssues(id); console.table(rows.map((i) => ({ sev: i.severity, cat: i.category, attr: i.attribution, trust: i.trust_level, status: i.status, sessions: i.session_ids?.length, seeded: i.seeded_match, title: i.title.slice(0, 50) }))); }));
 program.command('interview').argument('<sessionId>').argument('[question...]').description('可追问访谈（不带问题则进入交互模式）').action(wrap(async (sid: string, q: string[]) => {
   if (q.length) { console.log(await E.askPersona(sid, q.join(' '))); return; }
   const rl = (await import('node:readline/promises')).createInterface({ input: process.stdin, output: process.stdout });

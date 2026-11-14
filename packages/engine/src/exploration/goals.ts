@@ -48,7 +48,10 @@ export function personaAccount(p: PersonaSpec, appId: string) {
 
 export function accountHint(p: PersonaSpec, appId: string, given?: { username: string; password: string }) {
   const acc = given ?? personaAccount(p, appId);
-  return langOf(p.locale) === 'en'
-    ? `If the app asks you to sign up or log in: ${given ? `your account is "${acc.username}" with password "${acc.password}" (saved in your notes).` : `you'd make an account with your usual username "${acc.username}" and password "${acc.password}".`}`
-    : `如果需要注册或登录：${given ? `你的账号是「${acc.username}」，密码「${acc.password}」（记在手机备忘录里）。` : `你会用自己常用的用户名「${acc.username}」和密码「${acc.password}」注册。`}`;
+  const strong = `Pw${shortHash(`${p.id}:${appId}`, 6)}2026`;
+  const weak = acc.password !== strong && !given;
+  if (langOf(p.locale) === 'en') {
+    return `If the app asks you to sign up or log in: ${given ? `your account is "${acc.username}" with password "${acc.password}" (saved in your notes).` : `you'd make an account with your usual username "${acc.username}" and your usual password "${acc.password}".`}${weak ? ` If a site rejects that password you'd try a stronger one, e.g. "${strong}", and use that from then on.` : ''}`;
+  }
+  return `如果需要注册或登录：${given ? `你的账号是「${acc.username}」，密码「${acc.password}」（记在手机备忘录里）。` : `你会用自己常用的用户名「${acc.username}」和常用密码「${acc.password}」注册。`}${weak ? `如果网站不接受这个密码，你会换一个复杂点的，比如「${strong}」，之后就一直用它。` : ''}`;
 }

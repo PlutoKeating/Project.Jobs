@@ -34,7 +34,8 @@ export async function calibrateSeeded(studyId: string) {
   const av = (await db.select().from(appVersions).where(eq(appVersions.id, study.app_version_id)))[0];
   const defects = (av.seeded_defects ?? []) as SeededDefect[];
   if (!defects.length) return null;
-  const iss = (await db.select().from(issues).where(and(eq(issues.app_version_id, av.id), eq(issues.study_id, studyId))));
+  const { studyIssues } = await import('../evaluation/issues.ts');
+  const iss = await studyIssues(studyId);
   for (const i of iss) if (i.seeded_match) await db.update(issues).set({ seeded_match: null }).where(eq(issues.id, i.id));
   const productIssues = iss.filter((i) => i.attribution === 'product');
   // 匹配：LLM 语义匹配 + 关键词兜底

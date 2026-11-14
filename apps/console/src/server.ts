@@ -89,13 +89,13 @@ const createAndRun = async (body: Record<string, unknown>, key?: string) => {
 };
 app.post('/studies', async (q, r) => { const st = await createAndRun(q.body as Record<string, unknown>, q.headers['idempotency-key'] as string | undefined); return r.redirect(`/studies/${st.id}`); });
 app.post('/api/studies', async (q) => createAndRun(q.body as Record<string, unknown>, q.headers['idempotency-key'] as string | undefined));
-app.get('/api/studies/:id', async (q) => { const id = (q.params as { id: string }).id; const db = getDb(); return { study: (await db.select().from(studies).where(eq(studies.id, id)))[0], sessions: await db.select().from(sessions).where(eq(sessions.study_id, id)), issues: await db.select({ id: issues.id, title: issues.title, severity: issues.severity, category: issues.category, attribution: issues.attribution, trust: issues.trust_level, status: issues.status }).from(issues).where(eq(issues.study_id, id)), log: running.get(id)?.log.slice(-50) }; });
+app.get('/api/studies/:id', async (q) => { const id = (q.params as { id: string }).id; const db = getDb(); return { study: (await db.select().from(studies).where(eq(studies.id, id)))[0], sessions: await db.select().from(sessions).where(eq(sessions.study_id, id)), issues: (await E.studyIssues(id)).map((i) => ({ id: i.id, title: i.title, severity: i.severity, category: i.category, attribution: i.attribution, trust: i.trust_level, status: i.status })), log: running.get(id)?.log.slice(-50) }; });
 
 app.get('/studies/:id', async (q, r) => {
   const id = (q.params as { id: string }).id; const db = getDb();
   const s = (await db.select().from(studies).where(eq(studies.id, id)))[0]; if (!s) return r.code(404).send('not found');
   const ss = await db.select().from(sessions).where(eq(sessions.study_id, id));
-  const iss = (await db.select().from(issues).where(eq(issues.study_id, id))).sort((a, b) => a.severity.localeCompare(b.severity));
+  const iss = (await E.studyIssues(id)).sort((a, b) => a.severity.localeCompare(b.severity));
   const job = running.get(id);
   const live = ['running', 'evaluating', 'created'].includes(s.status) || (job && !job.done);
   html(r, page(id, `<div class="card"><h3>Study ${id} <span class="mut">${esc(s.status)}</span></h3><p>tokens ${s.tokens.toLocaleString()} · ≈$${s.cost_usd.toFixed(2)} · ${esc(s.stop_reason ?? '')} ${s.isolation_warning ? `<br>⚠️ ${esc(s.isolation_warning)}` : ''}</p>

@@ -154,7 +154,7 @@ export async function evaluateHypotheses(studyId: string) {
   const appId = await appIdOf(studyId);
   const hyps = await db.select().from(hypotheses).where(eq(hypotheses.app_id, appId));
   if (!hyps.length) return [];
-  const iss = await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.study_id, studyId)));
+  const iss = await studyIssues(studyId);
   const sess = await db.select().from(sessions).where(eq(sessions.study_id, studyId));
   const segStats: Record<string, { n: number; success: number; gave_up: number }> = {};
   for (const s of sess) { const p = await getPersona(s.persona_id, s.persona_version); const k = p?.spec.segment ?? '?'; segStats[k] ??= { n: 0, success: 0, gave_up: 0 }; segStats[k].n++; if (s.outcome === 'success') segStats[k].success++; if (s.outcome === 'gave_up') segStats[k].gave_up++; }
@@ -231,4 +231,13 @@ export async function dedupeIssues(appVersionId: string) {
     if (merged) await db.update(issues).set({ session_ids: a.session_ids, affected_segments: a.affected_segments, affected_personas: a.affected_personas, severity: a.severity, attribution: a.attribution, status: a.status, repro_path_id: a.repro_path_id, seeded_match: a.seeded_match }).where(eq(issues.id, a.id));
   }
   return merged;
+}
+
+/** 某个 Study 涉及的问题：按 Session 归属判断（跨 Study 合并后的问题同样计入），而不是只看 issues.study_id */
+export async function studyIssues(studyId: string) {
+  const db = getDb();
+  const study = (await db.select().from(studies).where(eq(studies.id, studyId)))[0];
+  if (!study) return [];
+  const sids = new Set((await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.study_id, studyId))).map((s) => s.id));
+  return (await db.select().from(issues).where(eq(issues.app_version_id, study.app_version_id))).filter((i) => i.study_id === studyId || (i.session_ids ?? []).some((s) => sids.has(s)));
 }

@@ -10,6 +10,7 @@ import { getPersona, segmentLabel } from '../human/persona.ts';
 import { calibrationCard } from '../calibration/index.ts';
 import { coverageSummary } from '../exploration/coverage.ts';
 import { simQuality } from '../evaluation/simquality.ts';
+import { studyIssues } from '../evaluation/issues.ts';
 
 const require = createRequire(import.meta.url);
 const SEV_ORDER = { P0: 0, P1: 1, P2: 2, P3: 3 } as Record<string, number>;
@@ -35,7 +36,7 @@ export async function collectReportData(studyId: string, dir: string) {
   const app = (await db.select().from(apps).where(eq(apps.id, av.app_id)))[0];
   const sess = await db.select().from(sessions).where(eq(sessions.study_id, studyId));
   const wts = new Map((await db.select().from(worldTemplates)).map((w) => [w.id, w]));
-  const iss = (await db.select().from(issues).where(and(eq(issues.app_version_id, av.id), eq(issues.study_id, studyId)))).sort((a, b) => (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]) || (b.session_ids?.length ?? 0) - (a.session_ids?.length ?? 0));
+  const iss = (await studyIssues(studyId)).sort((a, b) => (SEV_ORDER[a.severity] - SEV_ORDER[b.severity]) || (b.session_ids?.length ?? 0) - (a.session_ids?.length ?? 0));
   const issueData = [];
   for (const i of iss) {
     const links = await db.select().from(evidenceLinks).where(and(eq(evidenceLinks.subject_type, 'issue'), eq(evidenceLinks.subject_id, i.id)));
@@ -78,7 +79,7 @@ export async function collectReportData(studyId: string, dir: string) {
   const prevReport = (await db.select().from(reports).innerJoin(studies, eq(reports.study_id, studies.id)).innerJoin(appVersions, eq(studies.app_version_id, appVersions.id)).where(and(eq(appVersions.app_id, app.id), ne(reports.study_id, studyId))).orderBy(desc(reports.created_at)))[0];
   let trend: unknown = null;
   if (prevReport) {
-    const prevIss = await db.select().from(issues).where(eq(issues.study_id, prevReport.reports.study_id));
+    const prevIss = await studyIssues(prevReport.reports.study_id);
     const prevFp = new Set(prevIss.filter((i) => i.attribution === 'product').map((i) => i.fingerprint));
     const curFp = new Set(iss.filter((i) => i.attribution === 'product').map((i) => i.fingerprint));
     const prevScores = await db.select().from(scores).where(eq(scores.study_id, prevReport.reports.study_id));
