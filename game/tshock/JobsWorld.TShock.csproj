@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    JobsWorld TShock 插件。编译时引用 TShock 发布包里的程序集（不随插件输出）。
+    TShockDir：解压后的 TShock 6.x 发布目录（含 ServerPlugins/TShockAPI.dll 与 bin/OTAPI.dll）。
+    Docker 构建时由 infra/game/tshock/Dockerfile 下载并传入；本地调试可解压到 game/tshock/.tshock/（已忽略）。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>JobsWorld</AssemblyName>
+    <RootNamespace>JobsWorld.TShock</RootNamespace>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <TShockDir Condition="'$(TShockDir)' == ''">$(MSBuildThisFileDirectory).tshock/</TShockDir>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 与 tModLoader mod 共用的源码（NATS 客户端、城镇构建、蓝图读取、假玩家调度、协议 DTO） -->
+    <Compile Include="../shared/**/*.cs" Link="shared/%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="TShockAPI"><HintPath>$(TShockDir)ServerPlugins/TShockAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="TerrariaServer"><HintPath>$(TShockDir)bin/TerrariaServer.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI"><HintPath>$(TShockDir)bin/OTAPI.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="OTAPI.Runtime"><HintPath>$(TShockDir)bin/OTAPI.Runtime.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="ModFramework"><HintPath>$(TShockDir)bin/ModFramework.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

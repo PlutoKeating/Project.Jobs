@@ -15,10 +15,15 @@
     "db:generate": "drizzle-kit generate --config packages/db/drizzle.config.ts",
     "db:migrate": "tsx apps/cli/src/index.ts db migrate",
     "worker": "tsx apps/worker/src/index.ts",
-    "console": "tsx apps/console/src/server.ts",
     "demos": "tsx demos/kit/src/launch.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "world": "tsx apps/world/src/index.ts",
+    "api": "tsx apps/api/src/server.ts",
+    "web": "pnpm --dir apps/web dev",
+    "web:build": "pnpm --dir apps/web build",
+    "gateway": "tsx apps/gateway/src/index.ts",
+    "jobsworld": "node scripts/jobsworld.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",

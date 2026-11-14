@@ -14,3 +14,10 @@ test-results/
 playwright-report/
 midscene_run/
 config/pux.config.local.yaml
+# JobsWorld 游戏端构建产物与本地下载的服务端
+game/**/bin/
+game/**/obj/
+game/**/.tshock/
+# tModLoader：本地下载的发布包、构建时复制进 mod 目录的共享源码
+game/tmodloader/.tml/
+game/tmodloader/JobsWorld/Shared/

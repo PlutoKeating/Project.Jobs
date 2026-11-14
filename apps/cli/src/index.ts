@@ -167,7 +167,7 @@ program.command('m0').description('M0 执行器对比：在同一被测 App 上�
   const { runM0 } = await import('./m0.ts'); const r = await runM0(o.app); out(r);
 }));
 
-program.command('console').description('启动本地 Web 控制台').action(async () => { await import('@pux/console/server'); });
+program.command('console').description('启动 JobsWorld API 与网页工作台（http://127.0.0.1:5320/）').action(async () => { await import('@pux/api/server'); });
 program.command('worker').description('启动 Temporal worker').action(async () => { await import('@pux/worker'); });
 
 program.parseAsync().catch((e) => { logger.error(e); process.exit(1); });

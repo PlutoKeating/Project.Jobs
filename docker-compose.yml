@@ -63,7 +63,69 @@ services:
     volumes:
       - temporaldata:/data
 
+  nats:
+    # JobsWorld 事件总线（JetStream 持久化；只监听本机）
+    image: nats:2.12-alpine
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data", "-m", "8222"]
+    ports:
+      - "127.0.0.1:${NATS_PORT:-54222}:4222"
+      - "127.0.0.1:${NATS_MONITOR_PORT:-58222}:8222"
+    volumes:
+      - natsdata:/data
+
+  tshock:
+    # JobsWorld 游戏服（TShock 6.x，原版 Terraria 1.4.5.8 客户端）。按需启动：
+    #   docker compose --profile game up -d --build --no-deps tshock
+    profiles: [game]
+    build:
+      context: .
+      dockerfile: infra/game/tshock/Dockerfile
+    image: pux-tshock:latest
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      NATS_URL: nats://nats:4222
+      JW_GAME_PASSWORD: ${JW_GAME_PASSWORD:-}
+      JW_ADMIN_PASSCODE: ${JW_ADMIN_PASSCODE:-}
+      JW_WORLD_NAME: ${JW_WORLD_NAME:-JobsWorld}
+      JW_MAX_PLAYERS: ${JW_MAX_PLAYERS:-16}
+    ports:
+      - "127.0.0.1:${TSHOCK_PORT:-57777}:7777"
+    volumes:
+      - tshockdata:/data
+
+  tml:
+    # JobsWorld 游戏服（tModLoader 稳定版，mod 在构建镜像时编译）。按需启动：
+    #   docker compose --profile game up -d --build --no-deps tml
+    profiles: [game]
+    build:
+      context: .
+      dockerfile: infra/game/tmodloader/Dockerfile
+      args:
+        TML_VERSION: ${TML_VERSION:-v2026.09.3.1}
+    image: pux-tml:latest
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      NATS_URL: nats://nats:4222
+      JW_GAME_PASSWORD: ${JW_GAME_PASSWORD:-}
+      JW_ADMIN_PASSCODE: ${JW_ADMIN_PASSCODE:-}
+      JW_WORLD_NAME: ${JW_WORLD_NAME:-JobsWorld}
+      JW_MAX_PLAYERS: ${JW_MAX_PLAYERS:-16}
+      JW_API_BASE: ${JW_API_BASE:-}
+      JW_PASSCODE: ${JW_PASSCODE:-}
+    ports:
+      - "127.0.0.1:${TML_PORT:-57778}:7777"
+    volumes:
+      - tmldata:/data
+
 volumes:
+  tshockdata:
+  tmldata:
+  natsdata:
   pgdata:
   s3data:
   temporaldata:

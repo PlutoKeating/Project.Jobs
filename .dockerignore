@@ -4,3 +4,8 @@ data
 .env
 infra/volumes
 midscene_run
+game/**/bin
+game/**/obj
+game/**/.tshock
+game/tmodloader/.tml
+game/tmodloader/JobsWorld/Shared

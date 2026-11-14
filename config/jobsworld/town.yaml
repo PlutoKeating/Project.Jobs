@@ -1,0 +1,40 @@
+# JobsWorld 城镇布局（侧视图，单位 = Terraria 图格；x 从城镇左端起算，地面 y=0，向上为负）
+# 同一份布局同时驱动：网页小地图、TShock 插件、tModLoader mod（由 packages/jobsworld 计算成图元后经 NATS 下发）
+id: jobsworld
+name: { zh: 乔布斯镇, en: Jobs Town }
+width: 1180
+ground_depth: 40          # 地表以下保留的土层厚度（地铁隧道在其中）
+subway_line: { y: 22, h: 8 }   # 贯穿全镇的地铁隧道（相对地面向下）
+
+places:
+  - { id: home_a,     kind: home,       name: { zh: 幸福里公寓 A 座, en: Sunny Court A },   x: 16,   w: 64,  floors: 6, floor_h: 8, style: brick }
+  - { id: home_b,     kind: home,       name: { zh: 幸福里公寓 B 座, en: Sunny Court B },   x: 92,   w: 56,  floors: 5, floor_h: 8, style: stucco }
+  - { id: school,     kind: school,     name: { zh: 实验小学, en: Elementary School },      x: 164,  w: 84,  floors: 2, floor_h: 10, style: brick_red }
+  - { id: park,       kind: park,       name: { zh: 滨江公园, en: Riverside Park },         x: 262,  w: 128 }
+  - { id: bus_stop,   kind: bus_stop,   name: { zh: 公交站, en: Bus Stop },                 x: 398,  w: 16 }
+  - { id: subway,     kind: subway,     name: { zh: 人民广场地铁站, en: People's Square Station }, x: 422, w: 150, depth: 30 }
+  - { id: office,     kind: office,     name: { zh: 星河大厦, en: Galaxy Tower },           x: 586,  w: 72,  floors: 10, floor_h: 8, style: glass }
+  - { id: cafe,       kind: cafe,       name: { zh: 转角咖啡, en: Corner Café },            x: 668,  w: 36,  floors: 1, floor_h: 10, style: wood }
+  - { id: restaurant, kind: restaurant, name: { zh: 老街面馆, en: Old Street Noodles },     x: 712,  w: 42,  floors: 1, floor_h: 10, style: wood_dark }
+  - { id: shop,       kind: shop,       name: { zh: 邻里超市, en: Corner Market },          x: 762,  w: 60,  floors: 1, floor_h: 11, style: stucco }
+  - { id: library,    kind: library,    name: { zh: 城市图书馆, en: City Library },         x: 830,  w: 56,  floors: 3, floor_h: 9, style: marble }
+  - { id: hospital,   kind: hospital,   name: { zh: 市第一医院, en: City Hospital },        x: 896,  w: 92,  floors: 5, floor_h: 8, style: white }
+  - { id: factory,    kind: factory,    name: { zh: 电子厂, en: Electronics Plant },       x: 998,  w: 84,  floors: 2, floor_h: 12, style: metal }
+  - { id: home_c,     kind: home,       name: { zh: 河畔小区, en: Riverside Homes },        x: 1092, w: 76,  floors: 3, floor_h: 9, style: wood }
+
+# 世界模板中的地点描述 → 地点类型（按顺序匹配，第一个命中生效；中英文关键词）
+place_match:
+  - { kind: subway,     words: [地铁, 站台, subway, metro, train] }
+  - { kind: road,       words: [出租车, 网约车, 车里, 开车, 驾驶, taxi, uber, car, driving] }
+  - { kind: bus_stop,   words: [公交, bus] }
+  - { kind: hospital,   words: [医院, 诊所, 挂号, hospital, clinic] }
+  - { kind: restaurant, words: [餐厅, 饭店, 食堂, 面馆, restaurant, canteen, diner] }
+  - { kind: cafe,       words: [咖啡, cafe, café, coffee] }
+  - { kind: shop,       words: [超市, 商场, 便利店, supermarket, mall, store, shop] }
+  - { kind: library,    words: [图书馆, 自习, library] }
+  - { kind: school,     words: [学校, 教室, 校门, 课堂, school, classroom] }
+  - { kind: factory,    words: [工厂, 车间, 流水线, factory, plant] }
+  - { kind: home,       words: [家, 卧室, 客厅, 沙发, 床, 书桌, 餐桌, home, bedroom, couch, sofa, bed, living room] }
+  - { kind: office,     words: [公司, 办公, 工位, 会议, office, desk, meeting, cubicle] }
+  - { kind: park,       words: [公园, 长椅, 草坪, park, bench] }
+  - { kind: street,     words: [路上, 街, 走路, 边走, street, walking, sidewalk] }

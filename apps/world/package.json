@@ -1,0 +1,14 @@
+{
+  "name": "@pux/world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
+  "dependencies": {
+    "@pux/core": "workspace:*",
+    "@pux/db": "workspace:*",
+    "@pux/engine": "workspace:*",
+    "@pux/jobsworld": "workspace:*",
+    "drizzle-orm": "^0.45.4"
+  }
+}
