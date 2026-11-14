@@ -158,21 +158,47 @@ export async function saturated(studyId: string, m: number, newIssuesThisRound: 
   return rows.every((r) => ((r.summary as { new_coverage?: number } | null)?.new_coverage ?? 1) === 0);
 }
 
+/** 模型网关预检：凭据过期（例如 gcloud ADC 需要每天重新登录）时暂停等待，而不是让整轮 Session 失败 */
+export async function waitForModelGateway(progress: Progress, maxWaitMin = 60): Promise<void> {
+  const { gateway } = await import('@pux/llm');
+  const deadline = Date.now() + maxWaitMin * 60_000; let warned = false;
+  for (;;) {
+    const r = await gateway().ping();
+    if (r.ok) { if (warned) progress('✅ 模型网关已恢复，继续运行'); return; }
+    const auth = /reauth|credential|401|403|permission|token/i.test(r.detail);
+    if (!warned) { progress(`⏸ 模型网关不可用${auth ? '（凭据过期：请执行 gcloud auth application-default login，然后 docker compose restart litellm）' : ''}：${r.detail.slice(0, 160)}。最多等待 ${maxWaitMin} 分钟后自动继续。`); execFile('notify-send', ['AI 产品体验官：模型网关不可用', auth ? '请重新执行 gcloud auth application-default login' : r.detail.slice(0, 100)], () => {}); warned = true; }
+    if (Date.now() > deadline) throw new Error(`模型网关在 ${maxWaitMin} 分钟内未恢复：${r.detail.slice(0, 200)}`);
+    await new Promise((res) => setTimeout(res, 30_000));
+  }
+}
+
+/** 恢复中断的 Study：把因模型/认证失败而终止的 Session 重新排队，然后继续编排 */
+export async function resumeStudy(studyId: string, progress: Progress = (m) => logger.info(m), opts: { headed?: boolean } = {}) {
+  const db = getDb();
+  const ss = await db.select().from(sessions).where(eq(sessions.study_id, studyId));
+  const broken = ss.filter((x) => x.status === 'planned' || x.status === 'running' || (x.outcome === 'sim_error' && /LLM|reauth|gateway|SIM_LLM_ERROR|APIConnection/i.test(x.end_reason ?? '')));
+  for (const x of broken) await db.delete(sessions).where(eq(sessions.id, x.id));
+  progress(`♻️ 移除 ${broken.length} 个中断的 Session，继续运行`);
+  await db.update(studies).set({ status: 'running', status_detail: null }).where(eq(studies.id, studyId));
+  await runStudyInline(studyId, progress, { ...opts, skipReset: true });
+}
+
 async function pool<T>(items: T[], n: number, fn: (t: T) => Promise<unknown>) {
   const q = [...items]; await Promise.all(Array.from({ length: Math.min(n, q.length) }, async () => { while (q.length) await fn(q.shift()!); }));
 }
 
 /** 全自动运行一个 Study（inline 编排）：多轮「规划 → 执行 → 评估 → 覆盖率 → 饱和判断」，最后合成问题、校准、出报告 */
-export async function runStudyInline(studyId: string, progress: Progress = (m) => logger.info(m), opts: { headed?: boolean } = {}) {
+export async function runStudyInline(studyId: string, progress: Progress = (m) => logger.info(m), opts: { headed?: boolean; skipReset?: boolean } = {}) {
   const db = getDb(); const { config, av } = await studyCtx(studyId);
   await db.update(studies).set({ status: 'running', started_at: new Date() }).where(eq(studies.id, studyId));
-  await resetEnvironment(studyId, progress);
+  if (!opts.skipReset) await resetEnvironment(studyId, progress);
   const b = config.budget;
   let round = 0; let total = (await db.select().from(sessions).where(eq(sessions.study_id, studyId))).length; let stop = '';
   try {
     while (total < b.max_sessions) {
       const tok = (await db.select({ t: studies.tokens }).from(studies).where(eq(studies.id, studyId)))[0].t;
       if (tok > b.max_tokens) { stop = `token 预算耗尽（${tok}）`; break; }
+      await waitForModelGateway(progress);
       const size = Math.min(b.round_size, b.max_sessions - total);
       progress(`🧭 第 ${round + 1} 轮规划（${size} 个 Session）`);
       const ids = await planNextRound(studyId, round, size);
@@ -209,6 +235,7 @@ export async function resetEnvironment(studyId: string, progress: Progress = () 
 export async function finalizeStudy(studyId: string, progress: Progress = () => {}, stopReason = '') {
   const db = getDb(); const { config, app } = await studyCtx(studyId);
   await db.update(studies).set({ status: 'evaluating', ...(stopReason ? { stop_reason: stopReason } : {}) }).where(eq(studies.id, studyId));
+  await waitForModelGateway(progress);
   progress('🧩 合成问题与归因');
   await synthesizeIssues(studyId, { cleanReplay: config.clean_replay, lang: 'zh' });
   const merged = await dedupeIssues((await studyCtx(studyId)).av.id).catch(() => 0);

@@ -95,6 +95,7 @@ study.command('run').argument('<studyId>').option('--temporal', '提交到 Tempo
   if (o.temporal) { const { submitStudy } = await import('@pux/worker/client'); const wf = await submitStudy(id); console.log(`🚀 已提交 Temporal 工作流 ${wf}（UI: http://127.0.0.1:${env.temporalUiPort}）`); return; }
   await E.runStudyInline(id, progress, { headed: o.headed });
 }));
+study.command('resume').argument('<studyId>').option('--headed').description('恢复中断的 Study（例如模型凭据过期导致的失败）').action(wrap(async (id: string, o: { headed?: boolean }) => { await E.resumeStudy(id, progress, { headed: o.headed }); }));
 study.command('list').action(wrap(async () => { const rows = await getDb().select().from(studies).orderBy(desc(studies.created_at)); console.table(rows.map((s) => ({ id: s.id, status: s.status, name: s.name, tokens: s.tokens, cost: s.cost_usd.toFixed(2), stop: s.stop_reason?.slice(0, 30), created: s.created_at.toLocaleString() }))); }));
 study.command('status').argument('<studyId>').action(wrap(async (id: string) => {
   const s = (await getDb().select().from(studies).where(eq(studies.id, id)))[0]; if (!s) throw new Error('不存在');

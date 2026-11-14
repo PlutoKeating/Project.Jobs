@@ -79,6 +79,6 @@ pnpm pux study run <study_id> --temporal      # 终端 B：提交工作流；进
 
 ## 8. 故障排查
 
-- LiteLLM 报 401/403：ADC 过期，重新 `gcloud auth application-default login` 后 `docker compose restart litellm`。
+- LiteLLM 报 401/403 或「Reauthentication is needed」：ADC 过期，重新 `gcloud auth application-default login` 后 `docker compose restart litellm`。运行中的 Study 会在每轮开始前预检并暂停等待（最多 60 分钟）；已经失败的 Study 可用 `pnpm pux study resume <id>` 继续。
 - `pux doctor` 中 Temporal ❌：只影响 `--temporal` 模式，进程内编排不依赖它。
 - 浏览器启动失败：`npx playwright install chromium`；无图形环境时保持 headless（默认）。
