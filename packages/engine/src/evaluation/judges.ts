@@ -7,6 +7,7 @@ import { gateway, type ContentPart } from '@pux/llm';
 import { putEvidence } from '@pux/executor';
 import { personaBio, getPersona } from '../human/persona.ts';
 import type { ObjectiveMetrics } from './objective.ts';
+import { worldNameOfSession } from '../world/live.ts';
 
 export const RUBRIC_VERSION = 'subjective-v1';
 const Score17 = z.number().min(1).max(7);
@@ -66,7 +67,7 @@ export async function judgeSession(sessionId: string, studyId: string, metrics: 
   if (p.kind === 'child' || p.identity.age < 14) {
     try { const rb = (await import('@pux/core')).readYaml<{ checks: { id: string; name: string; rule: string; severity_if_violated: string }[] }>((await import('@pux/core')).configPath(cfg.safety.child_rubric_file)); childRubric = `\n这是儿童用户，请额外按儿童安全 rubric 检查（违反时 category=safety，heuristics 填 child_safety 与条目编号）：\n${rb.checks.map((c) => `${c.id} ${c.name}：${c.rule}（违反时 ${c.severity_if_violated}）`).join('\n')}`; } catch { /* rubric 缺失时忽略 */ }
   }
-  const userDesc = `用户画像（客观信息）：${p.identity.age} 岁 ${p.identity.gender}，${p.identity.occupation}，数字素养 ${p.capability.digital_literacy}，视力 ${p.capability.body.vision}，人群 ${p.segment}。处境：${world?.name}。目标：${goal}`;
+  const userDesc = `用户画像（客观信息）：${p.identity.age} 岁 ${p.identity.gender}，${p.identity.occupation}，数字素养 ${p.capability.digital_literacy}，视力 ${p.capability.body.vision}，人群 ${p.segment}。处境：${worldNameOfSession(s, world?.name)}。目标：${goal}`;
   const results = await Promise.all(roles.map(async (role) => {
     const r = cfg.roles[role];
     const sys = `${PERSPECTIVE[r.perspective ?? 'objective_first']}\n你在 Session 结束后评审一次模拟用户使用真实产品的记录。分数为 1–7（perceived_difficulty/cognitive_load/abandonment_intent 越高越差；trust/satisfaction/value 越高越好）。这些分数是「模拟估计」，不是真实测量。issues 只报告有证据支撑的产品问题（step 指向证据所在步骤），heuristics 用 Nielsen 十大启发式编号（例如 H1 系统状态可见、H3 用户控制与自由、H4 一致性与标准、H5 防错、H6 识别而非回忆、H8 美观简约、H9 帮助用户识别/诊断/恢复错误）或 dark_pattern / wcag / ai_hallucination / child_safety。除了时间线中的直接证据，也可以对截图做专家式启发式检查；你报告的问题只进入给开发者看的工程附录，不代表这位用户亲身遇到了它。不要把模拟器或执行器自身的问题（SIM_*、EXEC_*、ENV_*、INJECTED_*）当成产品问题。注意：时间线里的时钟是模拟世界的时钟，与被测产品服务器/设备的真实时间不同步，页面显示时间与模拟时钟不一致不是产品问题。${childRubric}`;

@@ -9,6 +9,8 @@ import { freezePersona, getPersona, initialState, motorProfile } from '../human/
 import { perceive, type Rect } from '../human/perception.ts';
 import { consolidate, lifeBetween, recall } from '../human/memory.ts';
 import { WorldSimulator } from '../world/simulator.ts';
+import { contextRecord, nextFreeContext, saveSessionContext, stateFromContext, type ContextRecord } from '../world/live.ts';
+import { saveNeeds, toMin as toMinutes } from '@pux/jobsworld';
 import { accountHint } from '../exploration/goals.ts';
 import { taskCompleted } from '../product/intelligence.ts';
 import { normalizeKey, runMind, type MindOut } from './roles.ts';
@@ -70,6 +72,9 @@ export class SessionRunner {
   private worldTpl!: WorldTemplate;
   private screenOn = true;
   private mobile = false;
+  /** 记忆与态度用的日期序号：合并世界里是世界的日子，场景模板里是回访天数 */
+  private simDay = 0;
+  private live?: ContextRecord;
   /** 上一步「凑近看」的区域，只对下一眼有效 */
   private focus?: Rect;
   private refreshes = 0;
@@ -92,10 +97,16 @@ export class SessionRunner {
     if (!p) throw new Error(`Persona 不存在：${this.sess.persona_id}@${this.sess.persona_version}`);
     this.persona = p.spec; this.personaVersion = p.version; this.lang = langOf(p.spec.locale);
     await freezePersona(p.spec.id, p.version);
-    this.worldTpl = (await db.select().from(worldTemplates).where(eq(worldTemplates.id, this.sess.world_template_id)))[0].spec as WorldTemplate;
+    // 合并世界：这次使用发生在这个人此时此地在城里的处境里（规划时已记录；没有记录就现算一份）
+    let rec = this.sess.world_context as ContextRecord | null;
+    if (this.sess.world_template_id === 'live' && !rec?.template) { const lc = await nextFreeContext(this.persona.id); if (!lc) throw new Error(`无法计算 ${this.persona.id} 的处境`); rec = contextRecord(lc); await saveSessionContext(sessionId, rec); }
+    const tpl = rec?.template ?? (await db.select().from(worldTemplates).where(eq(worldTemplates.id, this.sess.world_template_id)))[0]?.spec as WorldTemplate | undefined;
+    if (!tpl) throw new Error(`世界不存在：${this.sess.world_template_id}`);
+    this.worldTpl = tpl; this.simDay = rec ? rec.day + this.sess.revisit_day : this.sess.revisit_day;
     this.rng = new Rng(this.sess.rng_seed);
-    this.world = new WorldSimulator(this.worldTpl, this.rng, this.lang, this.sess.revisit_day, { study_id: st.id, session_id: sessionId });
-    this.state = initialState(p.spec);
+    this.world = new WorldSimulator(this.worldTpl, this.rng, this.lang, this.simDay, { study_id: st.id, session_id: sessionId });
+    this.state = rec ? stateFromContext(initialState(p.spec), rec) : initialState(p.spec);
+    this.live = rec ?? undefined;
     const goal = this.sess.goal_id ? (await db.select().from(goals).where(eq(goals.id, this.sess.goal_id)))[0] : undefined;
     this.goalText = goal?.statement_for_persona ?? '';
     const tid = (goal?.linked_task_ids ?? [])[0];
@@ -107,7 +118,7 @@ export class SessionRunner {
       if (life) this.memories.push(life);
     }
     if (av.reset_url) this.memScope = new Set((await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.study_id, st.id))).map((x) => x.id));
-    const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.sess.revisit_day, undefined, this.memScope, this.persona).catch(() => []);
+    const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.simDay, undefined, this.memScope, this.persona).catch(() => []);
     // 想起一件事时，也会想起与之相反的经历（记忆树里的冲突边）
     this.memories.push(...mem.map((m) => (m.conflicts_with ? (this.lang === 'zh' ? `不过你也记得：${m.content}` : `But you also remember: ${m.content}`) : m.content)));
     this.memories.push(accountHint(this.persona, this.appId));
@@ -149,7 +160,7 @@ export class SessionRunner {
       await putEvidence('world_event', { ...tags, persona_id: this.persona.id }, { inline: { interrupt: it, injected: true } });
     }
     const net = this.world.takeNetworkChange(); if (net !== undefined) await this.browser.setNetwork(net);
-    for (const cue of this.world.takeMemoryCues()) { const m = await recall(this.persona.id, this.appId, cue, this.sess.revisit_day, 2, this.memScope).catch(() => []); this.memories.push(cue, ...m.map((x) => x.content)); }
+    for (const cue of this.world.takeMemoryCues()) { const m = await recall(this.persona.id, this.appId, cue, this.simDay, 2, this.memScope).catch(() => []); this.memories.push(cue, ...m.map((x) => x.content)); }
     const wsId = await this.world.persist(this.sess.id, idx, events);
     for (const e of events) await putEvidence('world_event', { ...tags, persona_id: this.persona.id }, { inline: e });
     const stop = this.world.hardStop();
@@ -330,9 +341,14 @@ export class SessionRunner {
     let memoryResult: unknown;
     try {
       const diary = st.map((s) => `[${s.sim_clock}] ${s.intent ?? ''} — ${s.monologue ?? ''}`).join('\n').slice(0, 6000);
-      memoryResult = await consolidate({ persona: this.persona, appId: this.appId, appName: this.appName, sessionId: this.sess.id, studyId: this.study.id, simDay: this.sess.revisit_day, simTime: this.world.state.sim_clock, outcome: end.outcome, endReason: end.end_reason, diary });
+      memoryResult = await consolidate({ persona: this.persona, appId: this.appId, appName: this.appName, sessionId: this.sess.id, studyId: this.study.id, simDay: this.simDay, simTime: this.world.state.sim_clock, outcome: end.outcome, endReason: end.end_reason, diary });
     } catch (e) { logger.warn({ err: String((e as Error).message).slice(0, 200) }, '记忆整理失败'); }
     await db.update(sessions).set({ status: 'finished', outcome: end.outcome, end_reason: end.end_reason.slice(0, 500), ended_at: new Date(), video_ev: ev.video_ev, har_ev: ev.har_ev, rrweb_ev: ev.rrweb_ev, path_signature: pathSig, summary: { final_state: this.state, world: this.world.state, memory: memoryResult, objective_completion: this.signals.length ? taskCompleted(this.signals, this.obsLog).done : null } }).where(eq(sessions.id, this.sess.id));
+    // 用完之后：这次经历留下的心情和压力带回他在城里的生活（世界服务从这里接着往下算）
+    if (this.live) {
+      const elapsed = Math.max(1, Math.round(this.world.state.sim_minute - toMinutes(this.live.clock)));
+      await saveNeeds(this.persona.id, { hunger: this.state.hunger, energy: Math.max(0, Math.min(1, 1 - this.state.fatigue)), social: this.live.needs.social, stress: this.state.stress, mood: this.state.mood, at: this.live.needs.at + elapsed }).catch(() => {});
+    }
     SessionRunner.registry.delete(this.sess.id);
     logger.info({ session: this.sess.id, outcome: end.outcome, steps: this.stepIdx }, 'Session 结束');
     return end;

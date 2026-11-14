@@ -4,3 +4,6 @@ export * from './protocol.ts';
 export * from './appearance.ts';
 export * from './bus.ts';
 export * from './queries.ts';
+export * from './life.ts';
+export * from './residents.ts';
+export * from './context.ts';

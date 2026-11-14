@@ -90,6 +90,28 @@ namespace JobsWorld.Shared.Protocol
         [JsonPropertyName("status")] public string Status { get; set; } = "";
     }
 
+    /// <summary>需求状态（0–1，mood 为 -1–1）：饿、精力、想跟人说话的程度、压力、心情</summary>
+    public sealed class Needs
+    {
+        [JsonPropertyName("hunger")] public double Hunger { get; set; }
+        [JsonPropertyName("energy")] public double Energy { get; set; }
+        [JsonPropertyName("social")] public double Social { get; set; }
+        [JsonPropertyName("stress")] public double Stress { get; set; }
+        [JsonPropertyName("mood")] public double Mood { get; set; }
+
+        /// <summary>用几个词说出这个人此刻的身心状态（只说明显的）</summary>
+        public string Describe(bool zh)
+        {
+            var parts = new List<string>();
+            if (Hunger > 0.75) parts.Add(zh ? "很饿" : "very hungry"); else if (Hunger > 0.55) parts.Add(zh ? "有点饿" : "a bit hungry");
+            if (Energy < 0.25) parts.Add(zh ? "很累" : "exhausted"); else if (Energy < 0.45) parts.Add(zh ? "有点累" : "a bit tired");
+            if (Social < 0.2) parts.Add(zh ? "很久没跟人说话" : "lonely");
+            if (Stress > 0.7) parts.Add(zh ? "压力很大" : "stressed");
+            if (Mood < -0.3) parts.Add(zh ? "心情不好" : "in a low mood"); else if (Mood > 0.4) parts.Add(zh ? "心情不错" : "in a good mood");
+            return parts.Count == 0 ? (zh ? "状态平稳" : "doing okay") : string.Join(zh ? "，" : ", ", parts);
+        }
+    }
+
     public sealed class PersonaLive
     {
         [JsonPropertyName("id")] public string Id { get; set; } = "";
@@ -113,6 +135,11 @@ namespace JobsWorld.Shared.Protocol
         [JsonPropertyName("session")] public SessionLive? Session { get; set; }
         [JsonPropertyName("appearance")] public Appearance Appearance { get; set; } = new Appearance();
         [JsonPropertyName("visible")] public bool Visible { get; set; } = true;
+        [JsonPropertyName("needs")] public Needs? Needs { get; set; }
+        /// <summary>此刻手机在不在手边（0–1）</summary>
+        [JsonPropertyName("phone")] public double? Phone { get; set; }
+        /// <summary>需求临时改写了日程时的原因：hungry | exhausted | lonely</summary>
+        [JsonPropertyName("driven_by")] public string? DrivenBy { get; set; }
     }
 
     public sealed class Snapshot

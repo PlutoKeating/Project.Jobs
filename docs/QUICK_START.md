@@ -23,11 +23,11 @@ npx playwright install chromium
 ```bash
 docker compose up -d
 pnpm pux doctor        # 全部 ✅ 再继续
-pnpm pux init          # 数据库迁移 + 导入 14 个精品 Persona + 9 个世界模板 + 注册 11 个 Demo
+pnpm pux init          # 数据库迁移 + 导入 14 个手写人物与随包自带的 185 位居民（共 201 人住进城里）+ 场景模板 + 注册 11 个 Demo
 pnpm demos             # 另开终端，启动全部 Demo（22 个实例）
 ```
 
-可选：下载 PersonaHub 子集用于 Persona 生成流水线：`./scripts/download-personahub.sh 10000`，然后 `pnpm pux persona generate -n 5 --locale zh-CN`。
+可选：重新生成居民 `pnpm pux world populate -n 184`（中国按普查口径抽样表，英语区从 Nemotron-Personas-USA 抽样；需要联网，约 10 分钟），然后 `pnpm pux world export-residents` 更新随包文件。
 
 ## 3. 对内置 Demo 跑一次完整闭环
 
@@ -98,7 +98,8 @@ pnpm pux study run <study_id> --temporal      # 终端 B：提交工作流；进
 | `pnpm pux interview <session_id>` | 可追问访谈（交互式） |
 | `pnpm pux human list` / `pnpm pux human resolve <task>` | 人工接管（验证码等） |
 | `pnpm pux calibrate human <study> examples/calibration/human-benchmark.example.yaml` | 导入真人基准 |
-| `pnpm pux persona generate -n 5` | 生成 synthetic Persona |
+| `pnpm pux world populate -n 20` | 生成新居民并住进城里 |
+| `pnpm pux world settle` / `import-residents` / `export-residents` | 安置已有的人物 / 导入、导出随包居民 |
 | `pnpm typecheck` / `pnpm test` | 类型检查 / 单元测试 |
 
 ## 8. 儿童 Persona

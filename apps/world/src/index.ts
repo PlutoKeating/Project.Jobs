@@ -1,9 +1,10 @@
 // JobsWorld 世界服务：时钟、日程、位置、Session 直播与回放 → NATS
-import { logger, newId } from '@pux/core';
-import { closeDb } from '@pux/db';
+import { logger, newId, type PersonaSpec } from '@pux/core';
+import { closeDb, getDb, worldEvents, type NeedsRow } from '@pux/db';
 import {
-  agendaAt, appearanceFor, assignHome, completeAgenda, computeLayout, connectBus, decode, knownHomes, kvPutJson, lastFinishedSession, latestPersonas, loadAgenda,
-  loadTown, personaMemoryList, personaSessions, saveAgenda, skeletonAgenda, SUBJ,
+  absMinute, actKindOf, agendaAt, agendaFor, allResidents, appearanceFor, completeAgenda, computeLayout, connectBus, decode, EVENT_EFFECT, kvPutJson, lastFinishedSession, latestPersonas,
+  loadTown, needOverride, needsAt, OUTDOOR, personaMemoryList, personaSessions, phoneAffinity, placeForKind, residentOf, saveAgenda, saveNeeds, saveWorldClock, SUBJ, tickNeeds, tiesOf, toClock, toMin,
+  type ResidentRow,
   type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type SessionLive, type Snapshot, type WorldEvent,
 } from '@pux/jobsworld';
 import { WorldClock } from './clock.ts';
@@ -29,42 +30,79 @@ const replays = new Map<string, { session: SessionLive; steps: Awaited<ReturnTyp
 const events: WorldEvent[] = [];
 const tracker = new SessionTracker();
 const llmQueue: string[] = [];
+// 世界里的人：居民信息、需求、钱包（需求由规则推进，并且真的改写日程）
+const residents = new Map<string, ResidentRow>();
+const needs = new Map<string, NeedsRow>();
+const wallets = new Map<string, number>();
+const dirty = new Set<string>();
+const drivenBy = new Map<string, { reason: string; until: number }>();
+const lastIdx = new Map<string, string>();
+const wasInSession = new Set<string>();
+const MEAL_COST = { 'zh-CN': 28, 'en-US': 14 } as const;
 
 async function loadRoster() {
   roster = await latestPersonas();
-  const homes = await knownHomes();
-  const taken = new Set([...homes.values()].map((h) => h.unit));
+  const res = await allResidents();
   for (const p of roster) {
-    const key = `${p.id}@${clock.date}`;
+    const r = res.get(p.id); if (r) residents.set(p.id, r);
     if (agendas.get(p.id)?.sim_date === clock.date) continue;
-    let a = await loadAgenda(p.id, clock.date);
-    if (!a) {
-      const home = homes.get(p.id) ?? assignHome(layout, p.id, taken);
-      taken.add(home.unit);
-      a = skeletonAgenda(layout, p.spec, clock.date, home);
-      await saveAgenda(a);
-    }
+    const a = await agendaFor(p.spec, clock.date, r);
     agendas.set(p.id, a);
-    if (AGENDA_LLM && a.source === 'skeleton' && !llmQueue.includes(key)) llmQueue.push(key);
+    if (!needs.has(p.id)) needs.set(p.id, needsAt(p.spec, r?.needs, a, clock.date, clock.minute, () => 0));
+    if (!wallets.has(p.id)) wallets.set(p.id, r?.wallet ?? 300);
   }
 }
 
-/** 后台逐个补全日程（并发 2） */
+/** 日程的意图补全只在需要时做（有人点开这个人，或他开始使用产品）：模型只用在决策点上，不为 200 个人每天各调一次 */
+function wantAgendaDetail(id: string) {
+  const a = agendas.get(id); if (!AGENDA_LLM || !a || a.source !== 'skeleton') return;
+  const key = `${id}@${clock.date}`; if (!llmQueue.includes(key)) { llmQueue.push(key); void drainLlm(); }
+}
+let draining = false;
 async function drainLlm() {
-  const work = async () => {
+  if (draining) return; draining = true;
+  try {
     for (;;) {
       const key = llmQueue.shift(); if (!key) return;
       const [id, date] = key.split('@');
       const p = roster.find((r) => r.id === id); const a = agendas.get(id);
       if (!p || !a || a.sim_date !== date || a.source !== 'skeleton') continue;
       const done = await completeAgenda(p.spec, a);
-      if (done.source === 'llm') { await saveAgenda(done); agendas.set(id, done); logger.info({ persona: id }, '日程已补全'); }
+      if (done.source === 'llm' && agendas.get(id)?.sim_date === date) { const cur = agendas.get(id)!; const merged = { ...cur, source: 'llm' as const, items: cur.items.map((it) => { const d = done.items.find((x) => x.from === it.from && x.to === it.to); return d && !it.override ? { ...it, activity: d.activity, intent: d.intent, with: d.with } : it; }) }; await saveAgenda(merged); agendas.set(id, merged); logger.info({ persona: id }, '日程已补全'); }
     }
-  };
-  await Promise.all([work(), work()]);
+  } finally { draining = false; }
 }
 
-clock.onNewDay = () => { void loadRoster().then(drainLlm); };
+/** 需求临时改写日程：从现在起插入一段（饿了去吃、困了早睡、闷了找人聊），后面的安排顺延截断 */
+function applyOverride(a: Agenda, minute: number, ov: NonNullable<ReturnType<typeof needOverride>>, spec: PersonaSpec): Agenda {
+  const start = Math.floor(minute); const end = Math.min(1440, start + ov.minutes);
+  const cur = agendaAt(a, minute).current!;
+  const kind = ov.place_kind === 'here' ? cur.place_kind : ov.place_kind;
+  const place_id = ov.place_kind === 'here' ? cur.place_id : kind === 'home' ? a.home_place_id : placeForKind(layout, kind as never, `${a.persona_id}:${start}`);
+  const items: Agenda['items'] = [];
+  for (const it of a.items) {
+    const f = toMin(it.from); const t = toMin(it.to);
+    if (t <= start || f >= end) { items.push(it); continue; }
+    if (f < start) items.push({ ...it, to: toClock(start) });
+    if (t > end) items.push({ ...it, from: toClock(end) });
+  }
+  items.push({ from: toClock(start), to: end >= 1440 ? '24:00' : toClock(end), place_id, place_kind: kind, activity: spec.locale === 'en-US' ? ov.activity.en : ov.activity.zh, kind: ov.kind, override: ov.reason });
+  items.sort((x, y) => toMin(x.from) - toMin(y.from));
+  return { ...a, items };
+}
+
+function newDay(date: string) {
+  const dom = Number(date.slice(8, 10));
+  for (const p of roster) {
+    const r = residents.get(p.id); if (!r) continue;
+    let w = wallets.get(p.id) ?? 0;
+    w -= (r.income_month * 0.55) / 30;                                      // 房租水电等日常开销
+    if (r.currency === 'CNY' ? dom === 10 : dom === 1 || dom === 15) w += r.currency === 'CNY' ? r.income_month : r.income_month / 2;   // 发工资
+    wallets.set(p.id, Math.round(Math.max(0, w))); dirty.add(p.id);
+  }
+}
+
+clock.onNewDay = (date) => { newDay(date); void loadRoster(); };
 
 function say(p: PersonaLive, text: string, tone: NonNullable<PersonaLive['say']>['tone']) {
   p.say = { text, tone, at: Date.now() };
@@ -78,23 +116,56 @@ function onStep(personaId: string, s: SessionLive) {
 }
 
 function step() {
-  clock.tick();
+  clock.tick(tracker.running() > 0 ? 4 : undefined);
   const minute = clock.minute;
+  const abs = absMinute(clock.date, minute);
   const byPersona = tracker.byPersona();
   const now = Date.now();
+  // 上一拍每个地点里有谁（用来算「身边有没有人」）
+  const crowd = new Map<string, number>();
+  for (const p of live.values()) { const k = p.place_kind === 'home' ? `home:${agendas.get(p.id)?.home_unit}` : p.place_id; crowd.set(k, (crowd.get(k) ?? 0) + 1); }
   for (const r of roster) {
-    const a = agendas.get(r.id); if (!a) continue;
+    let a = agendas.get(r.id); if (!a) continue;
     const prev = live.get(r.id);
     const tracked = byPersona.get(r.id);
     const rp = replays.get(r.id);
     const sess = rp?.session ?? tracked?.live;
-    const tgt = sess ? placement.forSession(r.spec, a, sess) : placement.forAgenda(r.spec, a, minute);
+    const inSession = !!sess && !rp;
+    // 需求推进：饿、累、孤单、压力按正在做的事变化；正在使用产品时由那次使用自己结算
+    let n = needs.get(r.id);
+    const cur0 = agendaAt(a, minute).current;
+    if (inSession) { if (!wasInSession.has(r.id)) { wasInSession.add(r.id); wantAgendaDetail(r.id); } }
+    else if (wasInSession.has(r.id)) { wasInSession.delete(r.id); void residentOf(r.id).then((x) => { if (x?.needs) needs.set(r.id, { ...x.needs, at: Math.max(x.needs.at, absMinute(clock.date, clock.minute)) }); }); }
+    else if (n && cur0 && abs - n.at >= 1) {
+      const key = cur0.place_kind === 'home' ? `home:${a.home_unit}` : cur0.place_id;
+      const kind = actKindOf(cur0);
+      n = tickNeeds(n, Math.min(abs - n.at, 180), kind, r.spec, { companions: Math.max(0, (crowd.get(key) ?? 1) - 1), placeKind: cur0.place_kind });
+      n.at = abs; needs.set(r.id, n); dirty.add(r.id);
+      // 进入一段新的安排：在外面吃饭要花钱
+      const idxKey = `${clock.date}:${cur0.from}`;
+      if (lastIdx.get(r.id) !== idxKey) { lastIdx.set(r.id, idxKey); if (kind === 'meal' && !cur0.override) wallets.set(r.id, Math.max(0, (wallets.get(r.id) ?? 0) - MEAL_COST[r.spec.locale] * (cur0.place_kind === 'home' ? 0.3 : 1))); }
+      // 需求驱动的行为
+      const d = drivenBy.get(r.id);
+      if (!d || d.until <= abs) {
+        if (d) drivenBy.delete(r.id);
+        const nextMeal = a.items.find((it) => actKindOf(it) === 'meal' && toMin(it.from) > minute);
+        const res = residents.get(r.id); const w = wallets.get(r.id) ?? 0; const cost = MEAL_COST[r.spec.locale];
+        const ov = needOverride(n, { kind, place_kind: cur0.place_kind, minuteOfDay: minute, minutesToNextMeal: nextMeal ? toMin(nextMeal.from) - minute : 999 }, { wallet: w, mealCost: cost, tight: !!res && w < res.income_month * 0.05 });
+        if (ov) {
+          a = applyOverride(a, minute, ov, r.spec); agendas.set(r.id, a); void saveAgenda(a);
+          drivenBy.set(r.id, { reason: ov.reason, until: abs + Math.min(ov.minutes, 240) });
+          if (ov.cost) wallets.set(r.id, Math.max(0, w - ov.cost));
+          if (prev) say(prev, r.spec.locale === 'en-US' ? ov.activity.en : ov.activity.zh, ov.reason === 'lonely' ? 'neutral' : 'confused');
+        }
+      }
+    }
+    const tgt = sess ? (tracked?.place_id && !rp ? placement.forPlace(r.spec, a, tracked.place_id, tracked.place_kind ?? 'home', sess.id) : placement.forSession(r.spec, a, sess)) : placement.forAgenda(r.spec, a, minute);
     const at = agendaAt(a, minute);
     // 平滑移动：同一楼层沿 x 走过去；跨楼层/地下直接到位
     let x = tgt.x; let facing: 1 | -1 = prev?.facing ?? 1;
     if (prev && prev.y === tgt.y && prev.place_id === tgt.place_id && Math.abs(prev.x - tgt.x) > WALK_TILES_PER_S) { const d = Math.sign(tgt.x - prev.x); x = prev.x + d * WALK_TILES_PER_S; facing = d > 0 ? 1 : -1; }
     else if (prev && tgt.x !== prev.x) facing = tgt.x > prev.x ? 1 : -1;
-    const id = r.spec.identity;
+    const id = r.spec.identity; const nn = needs.get(r.id);
     const pl: PersonaLive = {
       id: r.id, name: id.name, locale: r.spec.locale, segment: r.segment, kind: r.kind, target_user: r.target_user,
       occupation: id.occupation, age: id.age, gender: id.gender,
@@ -105,10 +176,16 @@ function step() {
       next: at.next ? { from: at.next.from, to: at.next.to, activity: at.next.activity, place_id: at.next.place_id, intent: at.next.intent } : undefined,
       session: sess, say: prev?.say && now - prev.say.at < 12_000 ? prev.say : undefined,
       appearance: prev?.appearance ?? appearanceFor(r.spec), visible: true,
+      needs: nn ? { hunger: r3(nn.hunger), energy: r3(nn.energy), social: r3(nn.social), stress: r3(nn.stress), mood: r3(nn.mood) } : undefined,
+      wallet: wallets.get(r.id), currency: residents.get(r.id)?.currency, household_id: residents.get(r.id)?.household_id,
+      phone: at.current ? r3(phoneAffinity(actKindOf(at.current), at.current.place_kind, r.spec)) : 0,
+      driven_by: at.current?.override,
     };
-    // 世界事件：地点里的人做出反应（每个事件每人一次）
-    for (const e of events) if (e.place_id === pl.place_id && !reacted.has(`${e.id}:${r.id}`)) {
+    // 城里的事件：地点里的人做出反应并受到影响（每个事件每人一次）
+    for (const e of events) if ((e.place_id === pl.place_id || (e.place_id === 'street' && OUTDOOR.includes(pl.place_kind))) && !reacted.has(`${e.id}:${r.id}`)) {
       reacted.add(`${e.id}:${r.id}`);
+      const ef = EVENT_EFFECT[e.kind]; const cn = needs.get(r.id);
+      if (ef && cn && !inSession) { needs.set(r.id, { ...cn, stress: Math.min(1, cn.stress + ef.stress) }); dirty.add(r.id); }
       const lines = REACTIONS[e.kind]?.[r.spec.locale === 'en-US' ? 'en' : 'zh'] ?? [];
       if (lines.length) { pl.say = { text: lines[(r.id.length + e.id.length) % lines.length], tone: 'confused', at: now }; bus.publish(SUBJ.say(r.id), { persona_id: r.id, name: pl.name, text: pl.say.text, tone: 'confused', ts: now }); }
     }
@@ -130,8 +207,12 @@ function step() {
   const snap: Snapshot = { clock: clock.msg(), personas: [...live.values()], events: [...events], town_version: layout.version, ts: now };
   bus.publish(SUBJ.snapshot, snap);
   bus.publish(SUBJ.clock, snap.clock);
-  if (now - lastKv > 5000) { lastKv = now; void kvPutJson(bus.kv, 'snapshot', snap); void kvPutJson(bus.kv, 'clock', snap.clock); }
+  if (now - lastKv > 5000) { lastKv = now; void kvPutJson(bus.kv, 'snapshot', snap); void kvPutJson(bus.kv, 'clock', snap.clock); void saveWorldClock(snap.clock).catch(() => {}); }
+  // 需求与钱包每半分钟落一次库（引擎算处境时从这里接着算）
+  if (now - lastPersist > 30_000) { lastPersist = now; const ids = [...dirty]; dirty.clear(); void (async () => { for (const id of ids) { const n = needs.get(id); if (n) await saveNeeds(id, n, wallets.get(id)).catch(() => {}); } })(); }
 }
+const r3 = (v: number) => Math.round(v * 1000) / 1000;
+let lastPersist = 0;
 const reacted = new Set<string>();
 let lastKv = 0;
 
@@ -165,6 +246,9 @@ sub(SUBJ.cmdEvent, (d) => {
   if (!layout.places.some((p) => p.id === c.place_id) && c.place_id !== 'street') throw new Error('未知地点');
   const e: WorldEvent = { id: newId('wev'), place_id: c.place_id, kind: c.kind, until: clock.minute + (c.minutes ?? 20), date: clock.date, by: c.by };
   events.push(e);
+  // 落库：合并世界后，正在这个地点使用产品的人会真的受到影响（断网、被打断、分心）
+  const from = absMinute(clock.date, clock.minute);
+  void getDb().insert(worldEvents).values({ id: e.id, place_id: e.place_id, kind: e.kind, from_min: from, until_min: from + (c.minutes ?? 20), by: c.by }).catch(() => {});
   return e;
 });
 sub(SUBJ.cmdReplay, async (d) => {
@@ -177,7 +261,8 @@ sub(SUBJ.cmdReplay, async (d) => {
 sub(SUBJ.detail, async (d) => {
   const id = (d as { persona_id: string }).persona_id;
   const p = live.get(id);
-  return { live: p, agenda: agendas.get(id), memories: (await personaMemoryList(id, 8)).map((m) => ({ kind: m.kind, content: m.content, valence: m.valence })), sessions: (await personaSessions(id, 6)).map((s) => ({ id: s.id, app: s.app, outcome: s.outcome, steps: s.steps, ended_at: s.ended_at })) };
+  wantAgendaDetail(id);
+  return { live: p, agenda: agendas.get(id), ties: (await tiesOf(id)).slice(0, 12), memories: (await personaMemoryList(id, 8)).map((m) => ({ kind: m.kind, content: m.content, valence: m.valence })), sessions: (await personaSessions(id, 6)).map((s) => ({ id: s.id, app: s.app, outcome: s.outcome, steps: s.steps, ended_at: s.ended_at })) };
 });
 sub(SUBJ.ask, async (d) => {
   const { persona_id, question } = d as { persona_id: string; question: string };
@@ -189,7 +274,6 @@ sub(SUBJ.ask, async (d) => {
 });
 
 await loadRoster();
-void drainLlm();
 setInterval(step, 1000);
 setInterval(() => void pollSessions(), 1500);
 setInterval(() => void loadRoster(), 60_000);

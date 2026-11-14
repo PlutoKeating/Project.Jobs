@@ -324,6 +324,20 @@ namespace JobsWorld.Client
                 }
                 Line(Sys.T("现在 ", "Now ") + live.Activity, Color.White, 0.86f, 2);
                 if (!string.IsNullOrEmpty(live.Intent)) Line("→ " + live.Intent, Color.LightGray, 0.8f, 2, 14);
+                // 需求状态：饿、累、孤单、压力、心情（只说明显的）
+                if (live.Needs != null)
+                {
+                    var n = live.Needs; var st = new List<string>();
+                    if (n.Hunger > 0.75) st.Add(Sys.T("很饿", "very hungry")); else if (n.Hunger > 0.55) st.Add(Sys.T("有点饿", "a bit hungry"));
+                    if (n.Energy < 0.25) st.Add(Sys.T("很累", "exhausted")); else if (n.Energy < 0.45) st.Add(Sys.T("有点累", "a bit tired"));
+                    if (n.Social < 0.2) st.Add(Sys.T("很久没跟人说话", "lonely"));
+                    if (n.Stress > 0.7) st.Add(Sys.T("压力很大", "stressed"));
+                    if (n.Mood < -0.3) st.Add(Sys.T("心情不好", "low mood")); else if (n.Mood > 0.4) st.Add(Sys.T("心情不错", "good mood"));
+                    if (live.Phone.HasValue && live.Phone.Value >= 0.5) st.Add(Sys.T("手机在手边", "phone at hand"));
+                    if (st.Count > 0) Line(string.Join(Sys.T("，", ", "), st), new Color(170, 200, 190), 0.78f, 1, 14);
+                }
+                var ties = _p.Detail?.Ties;
+                if (ties != null && ties.Count > 0) Line(Sys.T("熟人 ", "Knows ") + string.Join(Sys.T("、", ", "), ties.Take(5).Select(x => x.Name)), Dim, 0.76f, 1, 14);
                 if (live.Next != null)
                 {
                     Line(Sys.T("接下来 ", "Next ") + $"{live.Next.From}-{live.Next.To} {live.Next.Activity} @{Sys.PlaceName(live.Next.PlaceId)}", new Color(255, 210, 127), 0.82f, 2);

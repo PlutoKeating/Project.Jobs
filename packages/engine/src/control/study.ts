@@ -1,10 +1,11 @@
 // Experience Control Plane：Study 生命周期、规划、编排（§3、§5、§18）
 import { execFile } from 'node:child_process';
-import { loadConfig, logger, newId, seedFrom, StudyInputSchema, langOf, type StudyInput, type Mode, type ActionRequest } from '@pux/core';
+import { loadConfig, logger, newId, Rng, seedFrom, StudyInputSchema, langOf, type StudyInput, type Mode, type ActionRequest, type WorldTemplate } from '@pux/core';
 import { and, appVersions, apps, eq, features, getDb, humanTasks, inArray, observations, sessions, steps, studies, desc, issues } from '@pux/db';
 import { checkVendorIsolation } from '@pux/llm';
 import { activePersonas, getPersona } from '../human/persona.ts';
 import { allWorldTemplates } from '../world/simulator.ts';
+import { contextRecord, nextFreeContext, scenarioOfSession, type LiveContext } from '../world/live.ts';
 import { planRound } from '../exploration/sampler.ts';
 import { makeLifeGoal } from '../exploration/goals.ts';
 import { touch } from '../exploration/coverage.ts';
@@ -50,7 +51,17 @@ export async function planNextRound(studyId: string, round: number, size: number
   const personas = await activePersonas({ includeChildren: config.include_children, locale: config.locale });
   if (!personas.length) throw new Error('没有可用的 Persona（先 pux persona import）');
   const worlds = await allWorldTemplates();
-  if (!worlds.length) throw new Error('没有世界模板（先 pux world import）');
+  // 合并世界：默认用每个人此时此地在城里的处境；只有显式指定了场景模板（world_ids，用于可复现的校准）才用模板
+  const live = !config.world_ids?.length;
+  if (!live && !worlds.length) throw new Error('没有世界模板（先 jobs world import）');
+  const contexts = new Map<string, LiveContext>();
+  const contextOf = async (pid: string) => {
+    if (contexts.has(pid)) return contexts.get(pid);
+    // 把手机递给他：此刻有空就是此刻；没空（在睡觉、在开车、在上课）就等到他下一个有空的时候
+    const c = await nextFreeContext(pid).catch((e) => { logger.warn({ pid, err: String((e as Error).message).slice(0, 120) }, '处境计算失败'); return undefined; });
+    if (c) contexts.set(pid, c);
+    return c;
+  };
   let plan;
   if (opts.revisitDay) {
     const prev = await db.select().from(sessions).where(and(eq(sessions.study_id, studyId), eq(sessions.revisit_day, 0)));
@@ -59,17 +70,28 @@ export async function planNextRound(studyId: string, round: number, size: number
     for (const pid of ids) {
       const p = personas.find((x) => x.spec.id === pid); if (!p) continue;
       const last = prev.filter((s) => s.persona_id === pid).sort((a, b) => (b.started_at?.getTime() ?? 0) - (a.started_at?.getTime() ?? 0))[0];
-      const world = worlds.find((w) => w.id === last.world_template_id) ?? worlds[0];
+      const world = last.world_template_id === 'live' ? (await contextOf(pid))?.template : worlds.find((w) => w.id === last.world_template_id) ?? worlds[0];
+      if (!world) continue;
       plan.push({ persona: p.spec, persona_version: p.version, world, mode: last.mode as Mode, task: undefined, is_expert_baseline: false, priority: 0, reason: { revisit_day: opts.revisitDay, after_session: last.id }, hypothesis_ids: [] });
     }
   } else {
-    plan = await planRound({ study: { id: studyId, config, app_version_id: av.id, app_id: app.id, rng_seed: study.rng_seed }, personas, worlds, size, round });
+    let liveWorlds: Map<string, WorldTemplate> | undefined;
+    if (live) {
+      // 候选人：指定了人就用指定的；否则随机抽一批居民（专家对照始终在内），逐个看他们此时此地的处境
+      const rng = new Rng(study.rng_seed + round * 31);
+      const pool = config.persona_ids?.length ? personas.filter((p) => config.persona_ids!.includes(p.spec.id)) : [...personas.filter((p) => p.spec.kind === 'expert'), ...rng.shuffle(personas.filter((p) => p.spec.kind !== 'expert')).slice(0, Math.max(24, size * 6))];
+      liveWorlds = new Map();
+      for (const p of pool) { const c = await contextOf(p.spec.id); if (c) liveWorlds.set(p.spec.id, c.template); }
+      if (!liveWorlds.size) throw new Error('城里此刻没有人有空（没有可用的居民）');
+    }
+    plan = await planRound({ study: { id: studyId, config, app_version_id: av.id, app_id: app.id, rng_seed: study.rng_seed }, personas, worlds, size, round, liveWorlds });
   }
   const ids: string[] = [];
   for (const it of plan) {
     const goal = await makeLifeGoal({ persona: it.persona, world: it.world, mode: it.mode, task: it.task, appName: app.name.replace(/^demo-/, ''), appDesc: av.prd ?? app.description ?? '', studyId, hypothesisIds: it.hypothesis_ids });
     const id = newId('ses');
-    await db.insert(sessions).values({ id, study_id: studyId, round, persona_id: it.persona.id, persona_version: it.persona_version, world_template_id: it.world.id, goal_id: goal.id, mode: it.mode, is_expert_baseline: it.is_expert_baseline, revisit_day: opts.revisitDay ?? 0, plan_priority: it.priority, plan_reason: { ...it.reason, task_id: it.task?.id }, rng_seed: seedFrom(id) % 1_000_000, executor: config.executor });
+    const lc = it.world.id === 'live' ? contexts.get(it.persona.id) : undefined;
+    await db.insert(sessions).values({ id, study_id: studyId, round, persona_id: it.persona.id, persona_version: it.persona_version, world_template_id: it.world.id, world_context: lc ? contextRecord(lc) : null, goal_id: goal.id, mode: it.mode, is_expert_baseline: it.is_expert_baseline, revisit_day: opts.revisitDay ?? 0, plan_priority: it.priority, plan_reason: { ...it.reason, task_id: it.task?.id }, rng_seed: seedFrom(id) % 1_000_000, executor: config.executor });
     ids.push(id);
   }
   return ids;
@@ -144,7 +166,7 @@ export async function evaluateSessionPost(sessionId: string, progress: Progress 
   }
   if (metrics.task_completed) newCov += (await touch(av.id, 'path', `${(s.plan_reason as { task_id?: string })?.task_id}|${s.path_signature}`, sessionId)) ? 1 : 0;
   if (p) newCov += (await touch(av.id, 'segment', p.spec.segment, sessionId)) ? 1 : 0;
-  newCov += (await touch(av.id, 'scenario', s.world_template_id, sessionId)) ? 1 : 0;
+  newCov += (await touch(av.id, 'scenario', scenarioOfSession(s), sessionId)) ? 1 : 0;
   newCov += (await touch(av.id, 'mode', s.mode, sessionId)) ? 1 : 0;
   await db.update(sessions).set({ status: 'evaluated', summary: { ...(((await db.select().from(sessions).where(eq(sessions.id, sessionId)))[0].summary) as object ?? {}), objective: metrics, new_coverage: newCov } }).where(eq(sessions.id, sessionId));
   return metrics;

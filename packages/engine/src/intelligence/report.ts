@@ -11,6 +11,7 @@ import { calibrationCard } from '../calibration/index.ts';
 import { coverageSummary } from '../exploration/coverage.ts';
 import { simQuality } from '../evaluation/simquality.ts';
 import { studyIssues } from '../evaluation/issues.ts';
+import { worldNameOfSession } from '../world/live.ts';
 
 const require = createRequire(import.meta.url);
 const SEV_ORDER = { P0: 0, P1: 1, P2: 2, P3: 3 } as Record<string, number>;
@@ -63,7 +64,7 @@ export async function collectReportData(studyId: string, dir: string) {
     }
     const itv = await db.select().from(interviews).where(eq(interviews.session_id, s.id));
     const js = await db.select().from(judgments).where(and(eq(judgments.target_id, s.id), eq(judgments.target, 'session')));
-    sessData.push({ id: s.id, persona: p?.spec, mode: s.mode, world: wts.get(s.world_template_id)?.name, scenario: wts.get(s.world_template_id)?.scenario_class, goal: goal?.statement_for_persona, outcome: s.outcome, end_reason: s.end_reason, steps: s.steps_count, expert: s.is_expert_baseline, revisit_day: s.revisit_day, tokens: s.tokens, cost: s.cost_usd, objective: (s.summary as { objective?: unknown } | null)?.objective, memory: (s.summary as { memory?: unknown } | null)?.memory, timeline, interview: itv, judgments: js.map((j) => ({ role: j.evaluator_role, model: j.model_alias, phase: j.phase, scores: j.scores, rationale: j.rationale })), video: await exportEvidence(s.video_ev, dir), rrweb: await exportEvidence(s.rrweb_ev, dir) });
+    sessData.push({ id: s.id, persona: p?.spec, mode: s.mode, world: worldNameOfSession(s, wts.get(s.world_template_id)?.name), scenario: wts.get(s.world_template_id)?.scenario_class, goal: goal?.statement_for_persona, outcome: s.outcome, end_reason: s.end_reason, steps: s.steps_count, expert: s.is_expert_baseline, revisit_day: s.revisit_day, tokens: s.tokens, cost: s.cost_usd, objective: (s.summary as { objective?: unknown } | null)?.objective, memory: (s.summary as { memory?: unknown } | null)?.memory, timeline, interview: itv, judgments: js.map((j) => ({ role: j.evaluator_role, model: j.model_alias, phase: j.phase, scores: j.scores, rationale: j.rationale })), video: await exportEvidence(s.video_ev, dir), rrweb: await exportEvidence(s.rrweb_ev, dir) });
   }
   const hyps = await db.select().from(hypotheses).where(eq(hypotheses.app_id, app.id));
   const sc = await db.select().from(scores).where(eq(scores.study_id, studyId));

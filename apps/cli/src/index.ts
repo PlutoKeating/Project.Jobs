@@ -34,6 +34,7 @@ program.command('init').description('一键初始化：数据库迁移 + 导入 
   await runMigrations(); console.log('✅ 数据库迁移完成');
   const p = await E.importPersonas(); console.log(`✅ Persona：新增 ${p.imported}，未变化 ${p.unchanged}${p.errors.length ? `，错误 ${p.errors.length}\n${p.errors.join('\n')}` : ''}`);
   const w = await E.importWorldTemplates(); console.log(`✅ 世界模板：${w.join(', ')}`);
+  const rs = await E.importResidents(); const ex = await E.settleExisting(); console.log(`✅ 居民：随包导入 ${rs.imported} 人，入住 ${rs.settled + ex.added} 人`);
   if (o.demos) { const d = await E.registerDemos(); console.log(`✅ Demo：${d.map((x) => x.app).join(', ')}（先运行 pnpm demos 启动）`); }
 }));
 
@@ -75,9 +76,13 @@ product.command('import').argument('<file>').option('--auto-confirm', '全部功
 const persona = program.command('persona').description('Persona（六层 Human Ontology）');
 persona.command('import').argument('[dirs...]').action(wrap(async (dirs: string[]) => out(await E.importPersonas(dirs.length ? dirs : undefined))));
 persona.command('list').action(wrap(async () => { const rows = await getDb().select().from(personas).where(eq(personas.active, true)); console.table(rows.map((r) => ({ id: r.id, version: r.version, kind: r.kind, locale: r.locale, segment: r.segment, name: (r.spec as { identity: { name: string } }).identity.name, frozen: r.frozen }))); }));
-persona.command('generate').description('生成流水线：分布骨架 → PersonaHub 种子 → 六层补全 → 一致性 → 去重').option('-n <n>', '数量', '5').option('--locale <l>', 'zh-CN | en-US', 'zh-CN').option('--seed <s>').action(wrap(async (o: { n: string; locale: 'zh-CN' | 'en-US'; seed?: string }) => out(await E.generatePersonas({ n: Number(o.n), locale: o.locale, seed: o.seed ? Number(o.seed) : undefined }))));
 const world = program.command('world').description('世界模板');
 world.command('import').action(wrap(async () => out(await E.importWorldTemplates())));
+world.command('populate').description('生成新居民：统计骨架（中国普查口径 + Nemotron-Personas-USA）→ 规则推导能力与性格 → 模型按家庭写叙事 → 住进城里').option('-n <n>', '人数', '184').option('--seed <s>').option('--zh-share <x>', '中国人群占比', '0.5').option('--concurrency <c>', '并发', '5')
+  .action(wrap(async (o: { n: string; seed?: string; zhShare: string; concurrency: string }) => out(await E.generatePopulation({ n: Number(o.n), seed: o.seed ? Number(o.seed) : undefined, zhShare: Number(o.zhShare), concurrency: Number(o.concurrency), onProgress: (m) => console.log(m) }))));
+world.command('settle').description('让已有的人物（手写的与之前生成的）也住进城里').action(wrap(async () => out(await E.settleExisting())));
+world.command('export-residents').description('把生成的居民导出为随包自带的数据文件 config/population/residents.jsonl').action(wrap(async () => out(await E.exportResidents())));
+world.command('import-residents').description('导入随包自带的居民').action(wrap(async () => out(await E.importResidents())));
 
 // ---------------------------------------------------------------- Study
 const studyOpts = (c: Command) => c.option('--sessions <n>', '最多 Session 数').option('--steps <n>', '每个 Session 最多步数').option('--concurrency <n>', '并发').option('--round <n>', '每轮 Session 数').option('--locale <l>', 'zh-CN | en-US | mixed', 'zh-CN').option('--personas <ids>', '逗号分隔的 Persona id').option('--tasks <keys>', '只采样这些任务（ProductSpec 中的 task id，逗号分隔）').option('--worlds <ids>', '逗号分隔的世界模板 id').option('--mix <g,c,s,a>', '模式配比 goal,curiosity,stress,adversarial').option('--revisits <days>', '留存回访天数，例如 1,7,30').option('--children', '包含儿童 Persona（需配置开启）').option('--no-replay', '不做干净重放').option('--no-interview', '不做事后访谈').option('--judges <n>', '评审数 1–3').option('--headed', '有头浏览器（可实时观察）').option('--key <k>', '幂等键').option('--study-name <name>', 'Study 名称').option('--lang <l>', '报告语言 zh | en | both');

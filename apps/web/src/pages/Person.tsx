@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
-import { ArrowUpRight, MapPin } from 'lucide-react';
+import { ArrowUpRight, MapPin, Monitor, Smartphone } from 'lucide-react';
 import { usePersona, useTown } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import { useSnapshot } from '../lib/stream.ts';
@@ -134,6 +134,33 @@ export function PersonPage() {
           <Section title={t('memories')} aside={<span className="tabular text-xs text-fg-subtle">{d.memories.length}</span>}>{d.memories.length ? <MemoryList items={d.memories} apps={apps} /> : <p className="text-sm text-fg-subtle">—</p>}</Section>
         </div>
         <aside className="min-w-0">
+          {(live?.needs ?? d.here?.needs) && (() => { const n = (live?.needs ?? d.here!.needs); return (
+            <Section title={t('right_now')} aside={d.here && <span className="text-xs text-fg-subtle">{d.here.device === 'computer' ? <Monitor size={14} /> : <Smartphone size={14} />}</span>}>
+              {d.here && <p className="mb-4 text-sm leading-relaxed text-fg-muted">{lang === 'zh' ? d.here.posture.zh : d.here.posture.en}{d.here.companions.length > 0 && ` · ${d.here.companions.slice(0, 3).map((c) => c.name).join(lang === 'zh' ? '、' : ', ')}`}</p>}
+              <div className="space-y-2.5">
+                <Meter label={t('need_hunger')} value={n.hunger} tone={n.hunger > 0.75 ? 'danger' : 'secondary'} />
+                <Meter label={t('need_energy')} value={n.energy} tone={n.energy < 0.25 ? 'danger' : 'secondary'} />
+                <Meter label={t('need_social')} value={n.social} tone={n.social < 0.2 ? 'danger' : 'secondary'} />
+                <Meter label={t('need_stress')} value={n.stress} tone={n.stress > 0.7 ? 'danger' : 'secondary'} />
+                <Meter label={t('need_mood')} value={(n.mood + 1) / 2} tone={n.mood < -0.3 ? 'danger' : n.mood > 0.3 ? 'success' : 'secondary'} />
+                {live?.phone !== undefined && <Meter label={t('phone_at_hand')} value={live.phone} tone="accent" />}
+              </div>
+              {d.resident?.life_event && <p className="mt-4 text-xs text-fg-muted">{d.resident.life_event}</p>}
+            </Section>
+          ); })()}
+          {d.ties.length > 0 && (
+            <Section title={t('ties')} aside={<span className="tabular text-xs text-fg-subtle">{d.ties.length}</span>}>
+              <ul className="space-y-1">
+                {d.ties.slice(0, 14).map((x) => (
+                  <li key={x.id}><Link to="/people/$id" params={{ id: x.id }} className="-mx-2 flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-surface">
+                    <Avatar id={x.id} size={28} />
+                    <span className="min-w-0 flex-1 truncate text-sm">{x.name}<span className="ml-2 text-xs text-fg-subtle">{L(`tie_${x.kind}`)}</span></span>
+                    <span className="h-1 w-10 overflow-hidden rounded-full bg-border"><span className="block h-full rounded-full bg-secondary" style={{ width: `${x.strength * 100}%` }} /></span>
+                  </Link></li>
+                ))}
+              </ul>
+            </Section>
+          )}
           <Section title={t('profile')}>
             <dl className="space-y-4 text-sm">
               <div><dt className="text-xs text-fg-subtle">{t('story')}</dt><dd className="mt-1 leading-relaxed text-fg">{id0.life_story}</dd></div>

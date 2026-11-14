@@ -4,8 +4,8 @@
 
 | 目录 | 职责 | 主要导出 |
 |---|---|---|
-| `human/` | 六层 Persona 导入/冻结、MotorProfile、Dynamic State 规则、感知滤镜（注意力与阅读预算、视力、识字量、凑近看）、识字量模型、记忆检索与整理、生成流水线 | `importPersonas` `motorProfile` `updateState` `perceive` `recall` `consolidate` `generatePersonas` |
-| `world/` | World Simulator（时钟、时间线、规则事件、社交、资源、约束、矩阵初始化、LLM 补充事件） | `WorldSimulator` `importWorldTemplates` |
+| `human/` | 六层 Persona 导入/冻结、MotorProfile、Dynamic State 规则、感知滤镜（注意力与阅读预算、视力、识字量、凑近看）、识字量模型、记忆检索与整理（ewave 记忆树）与态度规则、人口合成（`population.ts` 统计骨架与规则推导，`populate.ts` 抽样、叙事、入库、入住） | `importPersonas` `motorProfile` `updateState` `perceive` `recall` `consolidate` `generatePersonas` |
+| `world/` | World Simulator（时钟、时间线、规则事件、社交、资源、约束）；`live.ts` 是合并世界的入口：一次使用发生在人物此时此地的处境里（处境由 `@pux/jobsworld` 计算） | `WorldSimulator` `nextFreeContext` `contextRecord` `worldOfSession` |
 | `exploration/` | 生活目标、覆盖率、自适应采样 | `makeLifeGoal` `touch` `planRound` |
 | `product/` | 爬取、归纳、ProductSpec 导入、任务成功信号 | `crawl` `induceProductSpec` `importProductSpec` `taskCompleted` |
 | `runtime/` | 人物的想法（只看截图，输出手上的一个动作）、Session 运行器 | `SessionRunner` `runMind` `mindSystemPrompt` |
@@ -14,4 +14,4 @@
 | `intelligence/` | 报告（Markdown 中英 + HTML 查看器） | `generateReport` |
 | `control/` | App 注册、Study 创建（幂等）、规划、inline 编排、收尾 | `createStudy` `runStudyInline` `finalizeStudy` |
 
-依赖：`@pux/core`、`@pux/db`、`@pux/storage`、`@pux/llm`、`@pux/memory`、`@pux/executor`、`@pux/demos`（仅用于注册内置 Demo）。
+依赖：`@pux/core`、`@pux/db`、`@pux/storage`、`@pux/llm`、`@pux/memory`、`@pux/jobsworld`、`@pux/executor`、`@pux/demos`（仅用于注册内置 Demo）。

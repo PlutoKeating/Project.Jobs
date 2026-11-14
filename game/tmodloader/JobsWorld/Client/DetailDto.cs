@@ -10,7 +10,26 @@ namespace JobsWorld.Client
         [JsonPropertyName("agenda")] public AgendaDto? Agenda { get; set; }
         [JsonPropertyName("memories")] public List<MemoryDto>? Memories { get; set; }
         [JsonPropertyName("sessions")] public List<SessionRowDto>? Sessions { get; set; }
+        [JsonPropertyName("ties")] public List<TieDto>? Ties { get; set; }
         [JsonPropertyName("error")] public string? Error { get; set; }
+    }
+
+    /// <summary>需求状态（0–1，mood 为 -1–1）</summary>
+    public sealed class NeedsDto
+    {
+        [JsonPropertyName("hunger")] public double Hunger { get; set; }
+        [JsonPropertyName("energy")] public double Energy { get; set; }
+        [JsonPropertyName("social")] public double Social { get; set; }
+        [JsonPropertyName("stress")] public double Stress { get; set; }
+        [JsonPropertyName("mood")] public double Mood { get; set; }
+    }
+
+    /// <summary>家人与熟人</summary>
+    public sealed class TieDto
+    {
+        [JsonPropertyName("id")] public string Id { get; set; } = "";
+        [JsonPropertyName("name")] public string Name { get; set; } = "";
+        [JsonPropertyName("kind")] public string Kind { get; set; } = "";
     }
 
     public sealed class AgendaRefDto
@@ -57,6 +76,8 @@ namespace JobsWorld.Client
         [JsonPropertyName("prev")] public AgendaRefDto? Prev { get; set; }
         [JsonPropertyName("next")] public AgendaRefDto? Next { get; set; }
         [JsonPropertyName("session")] public SessionDto? Session { get; set; }
+        [JsonPropertyName("needs")] public NeedsDto? Needs { get; set; }
+        [JsonPropertyName("phone")] public double? Phone { get; set; }
     }
 
     public sealed class AgendaItemDto

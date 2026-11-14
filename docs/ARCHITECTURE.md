@@ -28,7 +28,7 @@
 | Product Intelligence | `packages/engine/src/product/intelligence.ts` | Playwright 爬取（遇登录墙自动注册测试账号）→ LLM 归纳 Feature/Task/Hypothesis → YAML 人工确认 → 入库；任务成功信号的客观判定 |
 | Scenario & Exploration | `packages/engine/src/exploration/` | 生活目标（禁用测试类词汇）、四种模式、覆盖率（state/feature/task path/segment/scenario/hypothesis/issue/mode）、自适应采样、饱和停止 |
 | Human Simulation | `packages/engine/src/human/` | 六层 Persona（YAML + zod 校验 + 版本哈希冻结）、MotorProfile、Dynamic State 规则引擎、感知滤镜、识字量模型、记忆（每人一棵 ewave 记忆树，`packages/memory`；身份钉住、对产品的态度有界可变、全局信念要多次独立经历才动）、生成流水线 |
-| World Simulation | `packages/engine/src/world/simulator.ts` | 模拟时钟、Timeline、概率事件规则、Social Context、Resource Model（时间/电量/金钱/注意力/网络）、Constraint Engine（硬/软约束）、矩阵初始化器、因果链 caused_by、LLM 补充事件 |
+| World Simulation | `packages/jobsworld/src/{life,context,residents}.ts`、`packages/engine/src/world/` | **合并世界**：一个人此时此地在城里的状态（地点、在做什么、需求、身边的人、城里的事件）由 `liveContextFor` 算成一份处境并写成世界模板；`WorldSimulator` 运行这份模板：模拟时钟、时间线、概率事件规则、Resource Model（时间/电量/金钱/注意力/网络）、Constraint Engine。YAML 场景模板只在显式指定 `world_ids` 时用于可复现的校准 |
 | Simulation Runtime | `packages/engine/src/runtime/` | 每步：世界推进 → 打断/弱网注入 → 观察（截图）→ 感知滤镜 → 想法（只看图，输出手上的一个动作）→ 预期违背 → 状态更新 → 落点（看截图定位）→ Policy Gate → 按人物的手注入 → 护栏 |
 | UAP 执行层 | `packages/executor/` | UAP v0.2（`packages/core/src/types/uap.ts`）；浏览器沙箱、成功标准判定、6 层错误分类、动作精度模型、Policy Gate、模态注入、录像/rrweb/HAR/axe |
 | Evidence Engine | `packages/executor/src/evidence.ts`、`evidence`/`evidence_links`/`repro_paths` 表 | 统一登记（内容哈希）、多对象关联（primary/supporting/counter）、复现路径与重放 |
@@ -93,6 +93,18 @@ sequenceDiagram
 - **信息隔离兜底**：给 Persona 侧使用的产品描述会剔除含测试/缺陷类词汇的句子。
 - **模拟器错误不惩罚 Persona**：模拟器/执行器层的失败不计入预期违背与耐心消耗。
 
+## 6.1 合并世界与人口（2026-11-15）
+
+| 项 | 做法 |
+|---|---|
+| 使用时的处境 | `liveContextFor(personaId)`：世界时钟 → 当天日程的当前段 → 需求（从上次结算按日程推进到现在）→ 同一地点的家人、同事、朋友 → 设备与手眼耳嘴（`placeContext`）→ 还能用多久（到下一件不能耽误的事）→ 城里正在该地点发生的事件 → 世界模板 |
+| 把手机递给谁 | 规划时随机抽一批居民看各自的处境；此刻有空的用此刻，没空的（睡觉、开车、上课）取他接下来第一个有空的时刻（`nextFreeContext`） |
+| 城里的事件 | 管理员制造的事件写入 `world_events`；与使用时间重叠时进入该次使用的时间线：弱网（限速）、停电（断网并打断）、噪音与拥挤（分心）、下雨（户外的人去躲雨） |
+| 时钟 | 世界服务驱动，默认 1:1；有人正在使用产品时最多 4×。一次使用内部的时间按人物的阅读、思考、操作耗时推进 |
+| 人口 | 中国：家庭 → 年龄 → 学历 → 职业 → 收入的条件抽样（`config/population/zh-CN.json`）；英语区：Nemotron-Personas-USA 抽样行拼成家庭；数值由规则推导；模型按家庭写叙事 |
+| 关系网 | 家人（同住）、同事与同学（同一工作地点分小组）、邻居（同楼相邻）、朋友（同语言、年龄相近） |
+| 记忆与日子 | 记忆和态度的 `sim_day` 用世界的日子（自 2026-01-01 起的天数） |
+
 ## 7. 数据模型
 
 见 `packages/db/src/schema.ts`（完整实现 spec §16 的全部实体，另加 `issue_candidates`、`persona_global_state`、`human_tasks`、`llm_traces`、`executor_comparisons`（历史表，不再写入））。`issue_candidates.track` 与 `issues.track` 区分 `experience`（亲历）与 `engineering`（工程附录）。迁移位于 `packages/db/migrations/`。
@@ -101,8 +113,10 @@ sequenceDiagram
 
 详见 [`JOBSWORLD.md`](JOBSWORLD.md)。要点：
 
-- **解耦**：引擎不知道世界的存在。`apps/world` 每 1.5 秒只读轮询 Postgres 中正在运行的 Session 的新步骤，转成 NATS 事件；无论 Study 由 CLI、API 还是 Temporal 运行都能被看到。
+- **一个世界**：一次使用发生在这个人此时此地在城里的处境里（`sessions.world_context` 记录地点、活动、设备、需求、身边的人和据此生成的世界模板）。处境由 `packages/jobsworld` 的纯规则计算，世界服务和引擎用同一套函数；引擎从 Postgres 读时钟（`world_kv`）、日程、需求和城里的事件，不要求世界服务在线。使用结束后，心情和压力写回这个人在城里的状态。
+- **居民**：`households` / `residents` / `relations` 三张表。201 人、113 户；需求（饿、精力、孤单、压力、心情）按规则推进并改写日程；模型只用在决策点。
+- **直播**：`apps/world` 每 1.5 秒只读轮询 Postgres 中正在进行的 Session 的新步骤，转成 NATS 事件；无论由 CLI、API 还是 Temporal 运行都能被看到。
 - **同一份城镇**：`config/jobsworld/town.yaml` → `computeLayout()`（`packages/jobsworld/src/town.ts`）生成渲染无关的图元与落脚点；网页小地图、TShock 插件、tModLoader mod 都从它渲染。
 - **人物日程**：`persona_agendas` 表；规则骨架（`config/jobsworld/agenda.yaml`）+ `mind.slow` 补全意图与因果。
-- **新增表**：`persona_agendas`、`persona_avatars`、`app_verdicts`（迁移 `0002_jobsworld.sql`，只新增）。
+- **表**：`persona_agendas`、`persona_avatars`、`app_verdicts`（迁移 `0002`）；`households`、`residents`、`relations`、`world_events`、`sessions.world_context`（`0005`）；`world_kv`（`0006`）。
 - **入口**：`apps/gateway` 在一个端口上按首包分流 HTTP / 原版 Terraria / tModLoader。

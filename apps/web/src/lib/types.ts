@@ -10,7 +10,10 @@ export interface PersonaLive {
   x: number; y: number; floor: number; facing: 1 | -1; pose: 'stand' | 'sit' | 'lie' | 'walk' | 'ride'; place_id: string; place_kind: string;
   mode: 'idle' | 'travel' | 'session' | 'replay' | 'event'; activity: string; intent?: string; prev?: AgendaRef; next?: AgendaRef;
   session?: SessionLive; say?: { text: string; tone: Tone; at: number }; appearance: Appearance; visible: boolean;
+  needs?: Needs; wallet?: number; currency?: string; household_id?: string; phone?: number; driven_by?: string;
 }
+export interface Needs { hunger: number; energy: number; social: number; stress: number; mood: number }
+export interface Tie { id: string; name: string; kind: string; strength: number; age: number; occupation: string }
 export interface WorldEvent { id: string; place_id: string; kind: string; until: number; date: string; by?: string }
 export interface Snapshot { clock: ClockMsg; personas: PersonaLive[]; events: WorldEvent[]; town_version: string; ts: number }
 
@@ -56,6 +59,9 @@ export interface PersonaDetail {
   id: string; version: string; kind: string; locale: string; segment: string; target_user: boolean; source: string; frozen: boolean; created_at: string;
   spec: PersonaSpec; agenda: { items: AgendaItem[]; home_place_id: string; role: string; source: string; sim_date: string } | null; memories: Memory[]; sessions: PersonaSession[];
   trust: { ai_trust: number; app_trust: Record<string, number>; sim_day: number } | null; live: PersonaLive | null; clock: ClockMsg | null;
+  resident: { household_id: string; role: string; work_group: string; workplace_id: string | null; income_month: number; currency: string; wallet: number; life_event: string | null } | null;
+  ties: Tie[];
+  here: { clock: string; name: string; scenario: string; place_id: string; device: 'phone' | 'computer'; posture: { zh: string; en: string }; needs: Needs; phone_affinity: number; available: boolean; unavailable_reason: string | null; time_left_min: number; companions: { id: string; name: string; kind: string }[] } | null;
 }
 
 export interface AppListItem { id: string; name: string; description: string; form: string; versions: number; sessions: number; personas: number; completion: number | null; sus: number | null; issues: { P0: number; P1: number; total: number }; last_run: string | null }

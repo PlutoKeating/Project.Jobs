@@ -24,10 +24,11 @@ export class WorldClock {
     this.date = s.date; this.minute = s.minute; this.speed = s.speed; this.paused = s.paused;
   }
 
-  tick() {
+  /** maxSpeed：有人正在使用产品时限速——一次使用按自己的节奏推进，世界不能跑到它前面太远 */
+  tick(maxSpeed?: number) {
     const now = Date.now(); const dt = now - this.last; this.last = now;
     if (this.paused) return;
-    this.minute += (dt / 60000) * this.speed;
+    this.minute += (dt / 60000) * (maxSpeed ? Math.min(this.speed, maxSpeed) : this.speed);
     while (this.minute >= 1440) { this.minute -= 1440; this.date = nextDate(this.date); this.day++; this.onNewDay?.(this.date); }
   }
 

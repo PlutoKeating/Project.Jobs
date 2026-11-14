@@ -21,6 +21,8 @@ export function learningWeights(appId?: string): Partial<Record<string, number>>
 export async function planRound(opts: {
   study: { id: string; config: StudyInput; app_version_id: string; app_id: string; rng_seed: number };
   personas: { spec: PersonaSpec; version: string }[]; worlds: WorldTemplate[]; size: number; round: number;
+  /** 合并世界：每个人各自此时此地的处境（有它时不再用 worlds 里的场景模板） */
+  liveWorlds?: Map<string, WorldTemplate>;
 }): Promise<PlanItem[]> {
   const cfg = loadConfig(); const w = { ...cfg.sampler_weights, ...learningWeights(opts.study.app_id) };
   const db = getDb(); const rng = new Rng(opts.study.rng_seed + opts.round * 7919);
@@ -31,7 +33,7 @@ export async function planRound(opts: {
   const cov = await coverageOf(opts.study.app_version_id);
   const usedFeatures = new Set(cov.filter((c) => c.dimension === 'feature' && c.used).map((c) => c.key));
   const segCount = new Map<string, number>(); const scenCount = new Map<string, number>(); const modeCount = new Map<string, number>();
-  for (const s of done) { const p = opts.personas.find((x) => x.spec.id === s.persona_id); if (p) segCount.set(p.spec.segment, (segCount.get(p.spec.segment) ?? 0) + 1); const wt = opts.worlds.find((x) => x.id === s.world_template_id); if (wt) scenCount.set(wt.scenario_class, (scenCount.get(wt.scenario_class) ?? 0) + 1); modeCount.set(s.mode, (modeCount.get(s.mode) ?? 0) + 1); }
+  for (const s of done) { const p = opts.personas.find((x) => x.spec.id === s.persona_id); if (p) segCount.set(p.spec.segment, (segCount.get(p.spec.segment) ?? 0) + 1); const scn = (s.world_context as { scenario?: string } | null)?.scenario ?? opts.worlds.find((x) => x.id === s.world_template_id)?.scenario_class; if (scn) scenCount.set(scn, (scenCount.get(scn) ?? 0) + 1); modeCount.set(s.mode, (modeCount.get(s.mode) ?? 0) + 1); }
   const calib = await db.select().from(calibrationResults).where(eq(calibrationResults.app_id, opts.study.app_id));
   const recentIssues = await db.select().from(issues).where(and(eq(issues.app_version_id, opts.study.app_version_id), inArray(issues.status, ['open', 'confirmed'])));
   const issueSegs = new Set(recentIssues.flatMap((i) => i.affected_segments ?? []));
@@ -45,10 +47,12 @@ export async function planRound(opts: {
   for (const p of persPool) {
     const en = p.spec.locale === 'en-US';
     const isChild = p.spec.kind === 'child';
-    for (const world of worldsPool) {
-      if (en && !(world.situation_en || world.id.startsWith('en_'))) continue;
-      if (!en && world.id.startsWith('en_')) continue;
-      if (isChild !== (world.scenario_class === 'kids_home')) continue;
+    const lw = opts.liveWorlds?.get(p.spec.id);
+    if (opts.liveWorlds && !lw) continue;                  // 这个人此刻没法用手机或电脑
+    for (const world of lw ? [lw] : worldsPool) {
+      if (!lw && en && !(world.situation_en || world.id.startsWith('en_'))) continue;
+      if (!lw && !en && world.id.startsWith('en_')) continue;
+      if (!lw && isChild !== (world.scenario_class === 'kids_home')) continue;
       for (const mode of world.modes as Mode[]) {
         if ((mix[mode] ?? 0) <= 0) continue;
         if (mode === 'adversarial' && !p.spec.behavior_policy.adversarial_traits?.length) continue;
@@ -95,7 +99,7 @@ export async function planRound(opts: {
   }
   // 逐个挑选：每选一个，对同模式 / 同世界 / 同任务的候选降权，保证一轮内的多样性
   const adj = (c: PlanItem) => {
-    const m = picked.filter((x) => x.mode === c.mode).length; const wd = picked.filter((x) => x.world.id === c.world.id).length; const tk = c.task ? picked.filter((x) => x.task?.id === c.task!.id).length : 0;
+    const m = picked.filter((x) => x.mode === c.mode).length; const wd = picked.filter((x) => x.world.scenario_class === c.world.scenario_class).length * (c.world.id === 'live' ? 0.5 : 1); const tk = c.task ? picked.filter((x) => x.task?.id === c.task!.id).length : 0;
     const target = (mix[c.mode] / mixTotal) * opts.size;
     return c.priority - 1.2 * Math.max(0, m + 1 - target) - 1.0 * wd - 2.5 * tk;
   };

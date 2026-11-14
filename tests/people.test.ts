@@ -70,3 +70,118 @@ describe('态度：海不被一朵浪改变', () => {
     expect(step('s1', 'a', 9).evidence.filter((e) => e.session_id === 's1')).toHaveLength(1);     // 同一次经历不重复计数
   });
 });
+
+// ---------------------------------------------------------------- 人口：统计骨架 + 规则推导
+import { PersonaSpecSchema as Spec } from '@pux/core';
+import { buildRelations, deriveTraits, fallbackRowsEn, householdsFromRows, marginals, sampleHouseholdsZh, type Resident } from '@pux/engine';
+import { absMinute, actKindOf, computeLayout, dateOfAbs, initialNeeds, inferRole, loadTown, needOverride, needsAt, phoneAffinity, placeContext, skeletonAgenda, tickNeeds, toMin, workplaceFor } from '@pux/jobsworld';
+
+describe('人口合成', () => {
+  const zh = sampleHouseholdsZh(new Rng(42), 300); const people = zh.flatMap((h) => h.members);
+  it('同一个种子得到同一批人；家庭结构与年龄、学历的边际分布落在合理范围', () => {
+    expect(sampleHouseholdsZh(new Rng(42), 300).flatMap((h) => h.members).map((m) => `${m.age}${m.occupation}`)).toEqual(people.map((m) => `${m.age}${m.occupation}`));
+    const m = marginals(people);
+    expect(m.n).toBeGreaterThanOrEqual(300);
+    expect(m.age['60+']).toBeGreaterThan(0.1); expect(m.age['60+']).toBeLessThan(0.35);
+    expect(m.education['初中及以下']).toBeGreaterThan(0.2);           // 多数人没上过大学，不能全是白领
+    expect(m.education['研究生'] ?? 0).toBeLessThan(0.08);
+    expect(zh.filter((h) => h.members.length === 1).length / zh.length).toBeGreaterThan(0.12);
+    expect(zh.some((h) => h.type === 'three_generation')).toBe(true);
+  });
+  it('年龄越大学历越低的趋势存在；老人多数已退休；孩子在上学', () => {
+    const low = (xs: typeof people) => xs.filter((p) => p.education === '初中及以下').length / Math.max(1, xs.length);
+    expect(low(people.filter((p) => p.age >= 60))).toBeGreaterThan(low(people.filter((p) => p.age >= 18 && p.age < 30)));
+    const old = people.filter((p) => p.age >= 65); expect(old.filter((p) => p.work_group === 'retired').length / old.length).toBeGreaterThan(0.6);
+    for (const k of people.filter((p) => p.age < 18)) expect(k.work_group).toBe('school_kid');
+  });
+  it('能力与性格由规则推导：群体内差异很大，年龄和学历的影响方向正确，结果能通过人物 schema', () => {
+    const adults = people.filter((p) => p.age >= 18);
+    const t = adults.map((p) => ({ p, t: deriveTraits(p, new Rng(p.age * 131 + p.income_month)) }));
+    const dl = t.map((x) => x.t.capability.digital_literacy).sort((a, b) => a - b);
+    expect(dl[Math.floor(dl.length * 0.9)] - dl[Math.floor(dl.length * 0.1)]).toBeGreaterThan(0.4);
+    const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+    expect(mean(t.filter((x) => x.p.age < 30).map((x) => x.t.capability.digital_literacy))).toBeGreaterThan(mean(t.filter((x) => x.p.age >= 60).map((x) => x.t.capability.digital_literacy)) + 0.25);
+    expect(mean(t.filter((x) => x.p.age >= 65).map((x) => x.t.capability.body.vision))).toBeLessThan(0.8);
+    expect(new Set(t.map((x) => x.t.behavior_policy.reading)).size).toBe(2);
+    expect(new Set(t.map((x) => x.t.segment)).size).toBeGreaterThanOrEqual(6);
+    const { p, t: tr } = t[0]; const { psychology_numbers, ...rest } = tr;
+    const spec = Spec.parse({ id: 'zh_r_test', kind: 'synthetic', locale: 'zh-CN', segment: rest.segment, target_user: false, tags: rest.tags, identity: { name: '测试', age: p.age, gender: p.gender, region: p.region, education: p.education, occupation: p.occupation, life_story: 'x' }, capability: rest.capability, psychology: { ...psychology_numbers }, behavior_policy: { ...rest.behavior_policy, abandonment_rules: [] }, state_defaults: rest.state_defaults });
+    expect(spec.capability.digital_literacy).toBeGreaterThanOrEqual(0);
+    const kid = people.find((x) => x.age < 14)!; const kt = deriveTraits(kid, new Rng(1));
+    expect(kt.child_profile?.literacy_chars).toBeGreaterThan(0); expect(kt.segment).toMatch(/^child_/);
+  });
+  it('英语区：从个人行拼成家庭，已婚者有配偶，孩子并入年龄合适的家庭', () => {
+    const hh = householdsFromRows(fallbackRowsEn(new Rng(5), 400), new Rng(6), 120, 'fallback-en');
+    const ps = hh.flatMap((h) => h.members);
+    expect(ps.length).toBeGreaterThanOrEqual(110);
+    expect(hh.some((h) => h.members.some((m) => m.role === 'spouse'))).toBe(true);
+    for (const h of hh) for (const c of h.members.filter((m) => m.role === 'child' && m.age < 18)) expect(h.members[0].age - c.age).toBeGreaterThanOrEqual(19);
+    expect(new Set(ps.map((p) => p.work_group)).size).toBeGreaterThanOrEqual(6);
+  });
+  it('关系网：家人关系最强；朋友只在同语言、年龄相近的人之间', () => {
+    const res: Resident[] = zh.slice(0, 40).flatMap((h) => h.members.map((m) => ({ id: m.key, household_id: h.id, locale: m.locale, role: m.role, age: m.age, work_group: m.work_group, workplace: ['office', 'tech'].includes(m.work_group) ? 'office' : undefined, home_place: 'home_a', home_unit: 0, segment: 'x' })));
+    res.push({ id: 'en_1', household_id: 'h_en', locale: 'en-US', role: 'head', age: 30, work_group: 'office', workplace: 'office', segment: 'x' });
+    const rel = buildRelations(res, new Rng(3));
+    const couple = zh.slice(0, 40).find((h) => h.members.some((m) => m.role === 'spouse'))!;
+    const [a, b] = [couple.members[0].key, couple.members.find((m) => m.role === 'spouse')!.key].sort();
+    expect(rel.find((r) => r.a === a && r.b === b)).toMatchObject({ kind: 'spouse', strength: 0.95 });
+    const byId = new Map(res.map((r) => [r.id, r]));
+    for (const r of rel.filter((x) => x.kind === 'friend')) { expect(byId.get(r.a)!.locale).toBe(byId.get(r.b)!.locale); expect(Math.abs(byId.get(r.a)!.age - byId.get(r.b)!.age)).toBeLessThanOrEqual(9); }
+    for (const r of rel) expect(r.a < r.b).toBe(true);
+  });
+});
+
+describe('需求驱动的生活', () => {
+  const linwei = Spec.parse(readYaml(configPath('personas/hero/zh_linwei.yaml')));
+  const kid = Spec.parse(readYaml(configPath('personas/child/zh_child_doudou.yaml')));
+  it('需求按正在做的事变化：睡觉回血，吃饭解饿，一个人待久了会孤单', () => {
+    const n0 = { ...initialNeeds(linwei, 0), hunger: 0.5, energy: 0.4, social: 0.5 };
+    expect(tickNeeds(n0, 240, 'sleep', linwei, { companions: 0 }).energy).toBeGreaterThan(0.9);
+    expect(tickNeeds(n0, 20, 'meal', linwei, { companions: 1 }).hunger).toBe(0);
+    expect(tickNeeds(n0, 240, 'work', linwei, { companions: 0 }).hunger).toBeGreaterThan(0.9);
+    expect(tickNeeds(n0, 300, 'leisure', linwei, { companions: 0 }).social).toBeLessThan(0.5);
+    expect(tickNeeds(n0, 60, 'leisure', linwei, { companions: 2 }).social).toBeGreaterThan(0.5);
+    expect(tickNeeds({ ...n0, hunger: 0.95, energy: 0.1 }, 120, 'work', linwei, { companions: 0 }).mood).toBeLessThan(n0.mood);
+  });
+  it('需求真的改写行为：饿极了去吃，手头紧就买便宜的，夜里困了提前睡，闷了找人聊', () => {
+    const cur = { kind: 'work' as const, place_kind: 'office', minuteOfDay: 15 * 60, minutesToNextMeal: 200 };
+    expect(needOverride({ hunger: 0.9, energy: 0.6, social: 0.5, stress: 0.3, mood: 0 }, cur, { wallet: 500, mealCost: 28, tight: false })).toMatchObject({ kind: 'meal', place_kind: 'restaurant', reason: 'hungry' });
+    expect(needOverride({ hunger: 0.9, energy: 0.6, social: 0.5, stress: 0.3, mood: 0 }, cur, { wallet: 5, mealCost: 28, tight: true })).toMatchObject({ place_kind: 'shop' });
+    expect(needOverride({ hunger: 0.9, energy: 0.6, social: 0.5, stress: 0.3, mood: 0 }, { ...cur, minutesToNextMeal: 20 }, { wallet: 500, mealCost: 28, tight: false })).toBeUndefined();
+    expect(needOverride({ hunger: 0.2, energy: 0.05, social: 0.5, stress: 0.3, mood: 0 }, { kind: 'leisure', place_kind: 'home', minuteOfDay: 22 * 60, minutesToNextMeal: 999 }, { wallet: 500, mealCost: 28, tight: false })).toMatchObject({ kind: 'sleep', reason: 'exhausted' });
+    expect(needOverride({ hunger: 0.2, energy: 0.6, social: 0.05, stress: 0.3, mood: 0 }, { kind: 'leisure', place_kind: 'home', minuteOfDay: 20 * 60, minutesToNextMeal: 999 }, { wallet: 500, mealCost: 28, tight: false })).toMatchObject({ kind: 'phone', reason: 'lonely' });
+    expect(needOverride({ hunger: 0.3, energy: 0.6, social: 0.5, stress: 0.3, mood: 0 }, cur, { wallet: 500, mealCost: 28, tight: false })).toBeUndefined();
+  });
+  it('手机在不在手边：睡着和开车时不在，地铁上、睡前最常在；上课的孩子基本碰不到', () => {
+    expect(phoneAffinity('sleep', 'home', linwei)).toBe(0); expect(phoneAffinity('commute', 'road', linwei, true)).toBe(0);
+    expect(phoneAffinity('commute', 'subway', linwei)).toBeGreaterThan(phoneAffinity('work', 'office', linwei));
+    expect(phoneAffinity('phone', 'home', linwei)).toBeGreaterThan(0.8);
+    expect(phoneAffinity('study', 'school', kid)).toBeLessThan(0.05);
+  });
+  it('此时此地决定手眼耳嘴、设备和网络', () => {
+    const sub = placeContext('commute', 'subway', linwei, { hashSeed: 1 });
+    expect(sub).toMatchObject({ motion: 'vehicle', device: 'phone' }); expect(sub.channels.hands).toBe('one'); expect(sub.constraints).toContain('weak_network'); expect(sub.network.down_kbps).toBeLessThan(2000);
+    expect(placeContext('work', 'office', linwei)).toMatchObject({ device: 'computer' });
+    expect(placeContext('meal', 'restaurant', linwei).channels.mouth).toBe('busy');
+    expect(placeContext('care', 'home', linwei).constraints).toContain('one_handed');
+  });
+  it('日程：按职业大类选角色和工作地点，每段都有活动类别，首尾相接；周末不上班', () => {
+    const L = computeLayout(loadTown()); const home = { place_id: 'home_a', unit: 0 };
+    expect(L.homes.length).toBeGreaterThanOrEqual(115);
+    expect(inferRole(linwei, { work_group: 'delivery' })).toBe('driver'); expect(inferRole(linwei, { work_group: 'retired' })).toBe('senior'); expect(inferRole(kid)).toBe('child');
+    expect(workplaceFor(L, 'delivery', 'x')).toBe('street'); expect(workplaceFor(L, 'retired', 'x')).toBeNull(); expect(workplaceFor(L, 'medical', 'x')).toBe('hospital');
+    const wd = skeletonAgenda(L, linwei, '2026-11-16', home, { work_group: 'factory', workplace_id: 'factory' });      // 周一
+    expect(wd.role).toBe('factory_shift'); expect(wd.items.some((i) => i.place_id === 'factory' && i.kind === 'work')).toBe(true);
+    for (const [i, it] of wd.items.entries()) { expect(it.kind).toBeTruthy(); if (i) expect(it.from).toBe(wd.items[i - 1].to); }
+    expect(wd.items[0].from).toBe('00:00'); expect(wd.items[wd.items.length - 1].to).toBe('24:00');
+    const we = skeletonAgenda(L, linwei, '2026-11-15', home, { work_group: 'office', workplace_id: 'office' });        // 周日
+    expect(we.role).toBe('weekend'); expect(we.items.some((i) => i.kind === 'work')).toBe(false);
+    expect(actKindOf({ place_kind: 'home', activity: '睡觉' })).toBe('sleep'); expect(actKindOf({ place_kind: 'subway', activity: '通勤上班' })).toBe('commute');
+  });
+  it('需求可以按日程从上次结算的时刻推进到现在；世界分钟可以还原成日期', () => {
+    const L = computeLayout(loadTown()); const a = skeletonAgenda(L, linwei, '2026-11-16', { place_id: 'home_a', unit: 0 }, { work_group: 'office', workplace_id: 'office' });
+    const noon = needsAt(linwei, null, a, '2026-11-16', toMin('11:50'), () => 0); const after = needsAt(linwei, noon, a, '2026-11-16', toMin('13:05'), () => 1);
+    expect(noon.hunger).toBeGreaterThan(0.6); expect(after.hunger).toBeLessThan(0.2); expect(after.at).toBe(absMinute('2026-11-16', toMin('13:05')));
+    expect(dateOfAbs(absMinute('2026-11-16', 600))).toBe('2026-11-16'); expect(absMinute('2026-01-01', 0)).toBe(0);
+  });
+});

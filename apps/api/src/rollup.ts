@@ -40,7 +40,7 @@ export async function sessionFacts(appId: string): Promise<SessionFacts[]> {
     const sum = s.summary as { objective?: { task_completed?: boolean }; memory?: { would_return?: boolean } } | null;
     const q = qs.get(s.id);
     return {
-      id: s.id, study_id: s.study_id, version, persona_id: s.persona_id, mode: s.mode, world: s.world_template_id, scenario: wt.get(s.world_template_id) ?? s.world_template_id, expert: s.is_expert_baseline,
+      id: s.id, study_id: s.study_id, version, persona_id: s.persona_id, mode: s.mode, world: s.world_template_id, scenario: (s.world_context as { scenario?: string } | null)?.scenario ?? wt.get(s.world_template_id) ?? s.world_template_id, expert: s.is_expert_baseline,
       completed: sum?.objective?.task_completed ?? (s.outcome ? s.outcome === 'success' : null),
       sus: typeof q?.sus_score_simulated === 'number' ? q.sus_score_simulated : null,
       again: typeof q?.would_use_again === 'boolean' ? q.would_use_again : (typeof sum?.memory?.would_return === 'boolean' ? sum.memory.would_return : null),

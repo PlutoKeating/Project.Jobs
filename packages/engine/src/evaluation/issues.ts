@@ -8,6 +8,7 @@ import { getPersona } from '../human/persona.ts';
 import { personaAccount } from '../exploration/goals.ts';
 import { touch } from '../exploration/coverage.ts';
 import { buildReproPath, cleanReplay } from './replay.ts';
+import { scenarioOfSession } from '../world/live.ts';
 
 type Cand = typeof issueCandidates.$inferSelect;
 
@@ -196,7 +197,7 @@ export async function aggregateScores(studyId: string) {
     for (const [sg, sc] of [[segment, scenario], [segment, '*'], ['*', scenario], ['*', '*']]) { const k = `${sg}|${sc}|${dim}|${cls}`; const b = bucket.get(k) ?? { segment: sg, scenario: sc, dim, cls, vals: [] }; b.vals.push(v); bucket.set(k, b); }
   };
   for (const s of sess) {
-    const p = await getPersona(s.persona_id, s.persona_version); const seg = p?.spec.segment ?? '?'; const sc = wts.get(s.world_template_id) ?? '?';
+    const p = await getPersona(s.persona_id, s.persona_version); const seg = p?.spec.segment ?? '?'; const sc = scenarioOfSession(s, wts.get(s.world_template_id) ?? '?');
     const m = (s.summary as { objective?: { task_completed?: boolean | null; steps?: number; expectation_violations?: number } } | null)?.objective;
     add(seg, sc, 'task_completion', 'objective', m?.task_completed === null || m?.task_completed === undefined ? null : m.task_completed ? 1 : 0);
     add(seg, sc, 'persona_claimed_success', 'objective', s.outcome === 'success' ? 1 : 0);

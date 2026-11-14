@@ -11,8 +11,10 @@
 ```
 灌入一个 Web App（URL）
   → Product Intelligence：爬取页面、LLM 归纳功能/任务/假设（YAML 可人工确认）
-  → Exploration：按覆盖缺口、未验证假设、低可信区域自适应采样「谁 × 在什么世界 × 带着什么生活目标 × 哪种模式」
-  → Simulation：每个 Session 一个独立浏览器沙箱；World Simulator 推进时钟、制造打断/弱网/社交压力；
+  → World：一座常驻运行的城（JobsWorld）住着 201 位居民——按人口统计分布抽样的家庭、职业、收入，有日程、关系网和需求
+            （饿了去吃、困了早睡、闷了找人聊）。一个人此时此地在城里的状态，就是他使用产品时的处境
+  → Exploration：按覆盖缺口、未验证假设、低可信区域自适应采样「把手机递给谁 × 带着什么生活目标 × 哪种模式」
+  → Simulation：每次使用一个独立浏览器沙箱；处境决定设备、手眼是否有空、网络、还能用多久；城里的事件和身边的人会真的打断他；
                 虚拟人（第一人称、不知道自己在被测试）只看屏幕截图——经注意力、视力、识字量滤镜后的「这一眼」——决定手上的一个动作；
                 执行层用 Midscene 看截图定位，再按这个人的手注入点击、触屏滑动、长按、打字；Policy Gate 拦截高风险动作
   → Evidence：截图、这一眼看到的画面、录像、独白、世界事件；a11y、axe、rrweb、网络日志作为工程证据。全部内容寻址入库
@@ -30,7 +32,7 @@ cp .env.example .env               # 填 VERTEX_PROJECT 与 GOOGLE_ADC_FILE
 pnpm install && npx playwright install chromium
 docker compose up -d               # Postgres+pgvector / MinIO / LiteLLM / Temporal
 pnpm pux doctor                    # 检查全部依赖
-pnpm pux init                      # 迁移 + 导入 Persona/世界模板 + 注册内置 Demo
+pnpm pux init                      # 迁移 + 导入人物与随包自带的 185 位居民 + 让他们住进城里 + 注册内置 Demo
 pnpm demos &                       # 启动 11 个 Demo × (干净版 + 植入缺陷版)
 
 # 全自动评测任意 Web App（新项目一步到位）
@@ -51,7 +53,7 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | `apps/web` | 可视化工作台（React）：侧视像素城市实时观察、人物管理、软件汇总报告、评测与接管 |
 | `apps/world` | 世界服务：世界时钟、人物日程、位置模拟、只读跟踪正在运行的 Session、回放 → NATS |
 | `apps/gateway` | 单端口复用网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
-| `packages/jobsworld` | 世界契约：城镇布局、日程、NATS 主题与消息、外观映射、共用查询 |
+| `packages/jobsworld` | 世界契约与规则：城镇布局、日程、需求与行为规则、居民与关系网、此时此地的处境（合并世界）、NATS 主题与消息 |
 | `apps/worker` | Temporal worker（Study=工作流，Session=子工作流，Step=Activity，人工接管=Signal） |
 | `packages/core` | UAP v0.2 类型、领域 schema（六层 Persona、世界模板、ProductSpec、Study）、配置 |
 | `packages/db` | Drizzle schema（spec §16 全部实体）与迁移 |
@@ -61,7 +63,7 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | `packages/executor` | UAP 执行层：浏览器沙箱（桌面 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像/rrweb/axe |
 | `packages/engine` | Human / World / Exploration / Product / Runtime / Evaluation / Calibration / Report / Control |
 | `demos/kit` | 11 个被测 Demo（AI 助手、记账、待办、外卖、游戏、资讯、健身、笔记、天气、菜谱、儿童识字），每个都有干净版与植入缺陷版 |
-| `config/` | 全局配置、Persona、世界模板、人口分布、规则、JobsWorld 城镇布局与日程骨架（`config/jobsworld/`） |
+| `config/` | 全局配置、手写人物、场景模板（只用于可复现的校准）、人口抽样表与随包居民（`config/population/`）、规则、JobsWorld 城镇布局与日程骨架（`config/jobsworld/`） |
 | `infra/` | LiteLLM 角色别名配置、Postgres 初始化 |
 | `examples/calibration` | 真人基准 / 漏斗 / 评论的示例文件 |
 | `data/` | 运行时数据（不入库）：报告、产品理解草稿、生成的 Persona、学习参数 |
@@ -69,6 +71,14 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 ## 本机模型
 
 本机只配置了 Vertex AI 上的 Gemini（经 LiteLLM 代理，ADC 鉴权）：`gemini-4-hydrogen`（≈flash，用于虚拟人的想法与 Midscene 定位）、`gemini-4-argon`（≈pro，用于记忆整理/访谈/评审）、`gemini-4-carbon`（≈ultra，用于评审/归因复核）。由于只有一家厂商，厂商隔离为 `warn` 模式：报告会标注并把相关结论可信度降一级。新增厂商只需修改 `infra/litellm/config.yaml` 与 `config/pux.config.yaml` 的 `roles`。
+
+## 人口从哪来
+
+- **中国人群**：按普查口径的条件抽样表（`config/population/zh-CN.json`：家庭类型 → 年龄 → 学历 → 职业 → 收入）。表里的数值是依据公开汇总数据的量级手工设定的近似值，不是微观数据拟合；生成后输出边际分布供核对。
+- **英语区人群**：从 [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA)（CC BY 4.0，基于美国人口普查分布的合成人口）随机抽样，年龄、性别、婚姻、学历、职业、所在地原样采用，再拼成家庭。
+- **数值由规则推导**：数字素养、视力、阅读速度、性格、耐心、价格敏感度等由年龄、学历、职业、收入加随机扰动推导（`packages/engine/src/human/population.ts`），模型不决定任何数值。
+- **模型只写叙事**：按家庭一次调用，写名字、生平、家人、看法。
+- 随包自带一批已生成的居民：`config/population/residents.jsonl`（185 人）。重新生成：`pnpm pux world populate -n <人数>`。
 
 ## 定位声明
 
@@ -86,6 +96,7 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | 人工接管 | 验证码检测 → 挂起 → DevTools 远程接管地址 → `pux human resolve` → 继续 |
 | 校准验收（助手 Demo 植入缺陷版，16 Session + D1/D7 回访） | 最终运行检出率 72.7%（8/11，CI 0.43–0.90）≥ 60% ✅，误报率 7.7%（CI 0.01–0.33）≤ 30% ✅；两次完整运行合计 72.7%，四次运行合计 65.9%，11 个缺陷均至少检出一次。详见 `docs/CALIBRATION_RECORD.md` |
 | JobsWorld 工作台 | 世界服务 + API + 网页 + 单端口网关 + TShock/tModLoader 游戏服，均在本机实测（详见 `docs/JOBSWORLD.md` §7）；产品负责人已用真实 Terraria 客户端验证 |
+| 重塑阶段 ②「世界和人」（2026-11-15） | 单元测试 54 项通过；生成并入住 185 位新居民（97 户，中国与英语区各半），连同原有 16 人共 201 人、113 户、1287 条关系；世界服务带 201 人常驻运行；合并世界 3 人批次（`std_if0qv0z9zm38`）：66 岁的退休职工清晨在公园打太极时被递了手机，看到红色报错「怕乱点扣钱」放弃；另一位在早饭时亲身遇到笔记不保存；TShock 与 tModLoader 镜像重新编译通过 |
 | 重塑阶段 ①「像人」（2026-11-15） | 单元测试 37 项、集成测试 6 项通过；笔记 Demo 植入缺陷版 3 人批次（`std_kcejshfmj6a5`）：虚拟人只看截图完成注册、登录失败后改去注册、新建并填写笔记；一人亲身遇到「显示已自动保存但内容丢失」并放弃（命中 NT-01，干净重放 100% 复现）；报告分为体验问题 2 条与工程附录 3 条 |
 
 已知局限：本机只有一家模型厂商（Gemini），评审与 Mind 未做到厂商隔离（报告已标注并降级）；单次 Study 的检出率存在抽样波动（n=11，置信区间较宽），需要较深使用才会暴露的缺陷（例如第 3 次提问才出现的弹窗）依赖留存回访与更多轮次；真人基准、埋点、评论校准需要导入真实数据才有意义（已提供示例与命令）；儿童 Persona 的安全 rubric 仍需人工审核后才能在正式环境开启。

@@ -2,7 +2,8 @@
 
 ## Session 一步（`runtime/session-runner.ts`）
 
-1. `WorldSimulator.advance(上一步模拟耗时)`：时间线、社交请求、概率规则、电量/时间结算、LLM 补充事件。
+0. 开始前：`world_template_id = 'live'` 时读取（或现算）这个人此时此地的处境 `sessions.world_context`，据此决定设备（手机/电脑）、初始身心状态（饿、累、压力、心情）、还能用多久、网络；`WorldSimulator` 运行处境里的世界模板。
+1. `WorldSimulator.advance(上一步模拟耗时)`：时间线（含城里的事件、「快到点了」）、概率规则（孩子来拉你、同事来问事、伴侣发消息…）、电量/时间结算。
 2. 打断：`switch_away / lock / close_tab` 通过 UAP 真实执行；工作记忆按打断时长与 `working_memory` 衰减（历史截断 + 提示「想不起做到哪」）。
 3. 弱网：网络画像变化时用 CDP 限速并标记 injected。
 4. `observe`：视口截图（人物唯一的输入）；元素几何、a11y、axe（新状态）、rrweb 是仪器与工程证据。验证码 → `needs_human`。

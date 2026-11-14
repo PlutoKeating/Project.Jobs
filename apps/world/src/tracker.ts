@@ -3,7 +3,9 @@ import { and, apps, appVersions, desc, eq, evidence, getDb, gt, inArray, observa
 import type { SessionLive } from '@pux/jobsworld';
 
 type StepRow = typeof steps.$inferSelect;
-export interface TrackedSession { id: string; study_id: string; persona_id: string; status: string; lastIdx: number; world_place?: string; ended_at?: Date | null; live?: SessionLive }
+export interface TrackedSession { id: string; study_id: string; persona_id: string; status: string; lastIdx: number; world_place?: string; ended_at?: Date | null; live?: SessionLive; started_at?: Date | null;
+  /** 合并世界：这次使用发生的地点（来自 sessions.world_context） */
+  place_id?: string; place_kind?: string }
 
 const appCache = new Map<string, { app: string; app_id: string; version: string }>();
 
@@ -50,17 +52,18 @@ export class SessionTracker {
   async poll(): Promise<{ sess: TrackedSession; step: StepRow }[]> {
     const db = getDb();
     const recent = new Date(Date.now() - 90_000);
-    const act = await db.select({ id: sessions.id, study_id: sessions.study_id, persona_id: sessions.persona_id, status: sessions.status, ended_at: sessions.ended_at }).from(sessions)
-      .where(inArray(sessions.status, ['running', 'waiting_human']));
-    const ended = await db.select({ id: sessions.id, study_id: sessions.study_id, persona_id: sessions.persona_id, status: sessions.status, ended_at: sessions.ended_at }).from(sessions)
-      .where(and(isNotNull(sessions.ended_at), gt(sessions.ended_at, recent)));
+    const cols = { id: sessions.id, study_id: sessions.study_id, persona_id: sessions.persona_id, status: sessions.status, ended_at: sessions.ended_at, started_at: sessions.started_at, ctx: sessions.world_context };
+    // 只认真正在跑的：状态是 running 但超过 3 小时没结束的，是被中断后留下的残留记录，不算「正在使用」
+    const alive = new Date(Date.now() - 3 * 3600_000);
+    const act = await db.select(cols).from(sessions).where(and(inArray(sessions.status, ['running', 'waiting_human']), gt(sessions.started_at, alive)));
+    const ended = await db.select(cols).from(sessions).where(and(isNotNull(sessions.ended_at), gt(sessions.ended_at, recent)));
     const seen = new Set<string>();
     const out: { sess: TrackedSession; step: StepRow }[] = [];
     for (const r of [...act, ...ended]) {
       if (seen.has(r.id)) continue; seen.add(r.id);
       let t = this.tracked.get(r.id);
       const fresh = !t;
-      if (!t) { t = { ...r, lastIdx: -1 }; this.tracked.set(r.id, t); }
+      if (!t) { const c = r.ctx as { place_id?: string; place_kind?: string } | null; t = { id: r.id, study_id: r.study_id, persona_id: r.persona_id, status: r.status, ended_at: r.ended_at, started_at: r.started_at, lastIdx: -1, place_id: c?.place_id, place_kind: c?.place_kind }; this.tracked.set(r.id, t); }
       t.status = r.status; t.ended_at = r.ended_at;
       const rows = fresh
         ? await db.select().from(steps).where(eq(steps.session_id, r.id)).orderBy(desc(steps.idx)).limit(1)
@@ -71,6 +74,9 @@ export class SessionTracker {
     for (const [id] of this.tracked) if (!seen.has(id)) this.tracked.delete(id);
     return out;
   }
+
+  /** 有几次使用正在进行 */
+  running(): number { let n = 0; for (const t of this.tracked.values()) if (t.status === 'running') n++; return n; }
 
   /** 每个人物当前对应的 Session（同一人多个时取最近活跃的） */
   byPersona(): Map<string, TrackedSession> {

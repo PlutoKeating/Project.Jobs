@@ -215,6 +215,7 @@ export const sessions = pgTable('sessions', {
   har_ev: text('har_ev'),
   rrweb_ev: text('rrweb_ev'),
   summary: jsonb('summary'),                             // 客观指标汇总
+  world_context: jsonb('world_context'),                 // 合并世界：开始使用时这个人在城里此时此地的处境（地点、在做什么、设备、需求、身边的人）
   started_at: ts('started_at'),
   ended_at: ts('ended_at'),
 }, (t) => [index('sessions_study').on(t.study_id)]);
@@ -481,7 +482,8 @@ export const executorComparisons = pgTable('executor_comparisons', {
 });
 
 // ---- JobsWorld（可视化世界，docs/JOBSWORLD.md）----
-export interface AgendaItemRow { from: string; to: string; place_id: string; place_kind: string; activity: string; intent?: string; with?: string }
+/** kind：这段时间在做哪一类事（决定需求怎么变化、手机在不在手边）。见 @pux/jobsworld 的 life.ts */
+export interface AgendaItemRow { from: string; to: string; place_id: string; place_kind: string; activity: string; intent?: string; with?: string; kind?: string; override?: string }
 
 /** 人物每个模拟日的日程（模板骨架 + mind.slow 补全） */
 export const personaAgendas = pgTable('persona_agendas', {
@@ -513,3 +515,61 @@ export const appVerdicts = pgTable('app_verdicts', {
   verdict: jsonb('verdict').notNull(),
   created_at: createdAt(),
 }, (t) => [index('verdict_app').on(t.app_id)]);
+
+// ============================================================
+// 世界里的人（阶段②）：家庭、居民状态、关系网、城里发生的事
+// ============================================================
+export const households = pgTable('households', {
+  id: text('id').primaryKey(),
+  locale: text('locale').notNull(),
+  type: text('type').notNull(),                          // single|couple|couple_child|three_generation|single_parent|roommates…
+  region: text('region').notNull(),
+  home_place_id: text('home_place_id'),
+  home_unit: integer('home_unit'),
+  created_at: createdAt(),
+});
+
+export interface NeedsRow { hunger: number; energy: number; social: number; stress: number; mood: number; at: number }
+
+/** 每个住在世界里的人的世界侧状态（人物本身的六层描述在 personas 表） */
+export const residents = pgTable('residents', {
+  persona_id: text('persona_id').primaryKey(),
+  household_id: text('household_id').notNull(),
+  role: text('role').notNull(),                          // head|spouse|child|grandparent|roommate
+  work_group: text('work_group').notNull(),              // office|tech|factory|medical|education|retail|food|service|delivery|outdoor|freelance|home|student|retired|none|school_kid
+  workplace_id: text('workplace_id'),                    // 城里的地点 id；在家或没有固定工作地点时为空
+  income_month: real('income_month').notNull().default(0),
+  currency: text('currency').notNull().default('CNY'),
+  wallet: real('wallet').notNull().default(0),           // 手头的钱（沙箱支付从这里扣）
+  needs: jsonb('needs').$type<NeedsRow>(),               // 需求状态；at 是结算到的世界分钟（自 2026-01-01 起）
+  life_event: text('life_event'),
+  phone: text('phone'),                                  // 世界分配的虚拟手机号
+  email: text('email'),                                  // 世界分配的虚拟邮箱
+  skeleton: jsonb('skeleton'),                           // 生成时的人口骨架（来源、收入、婚姻、兴趣等）
+  updated_at: ts('updated_at').default(sql`now()`),
+}, (t) => [index('residents_household').on(t.household_id)]);
+
+export const relations = pgTable('relations', {
+  a: text('a').notNull(),
+  b: text('b').notNull(),
+  kind: text('kind').notNull(),                          // spouse|parent_child|grandparent|sibling|roommate|colleague|classmate|friend|neighbor
+  strength: real('strength').notNull().default(0.5),
+}, (t) => [primaryKey({ columns: [t.a, t.b] }), index('relations_b').on(t.b)]);
+
+/** 城里发生的事（管理员制造或规则触发）。合并世界后，它们会真的影响正在该地点使用产品的人 */
+export const worldEvents = pgTable('world_events', {
+  id: text('id').primaryKey(),
+  place_id: text('place_id').notNull(),
+  kind: text('kind').notNull(),                          // weak_network|crowd|rain|power_cut|noise
+  from_min: integer('from_min').notNull(),               // 世界分钟（自 2026-01-01 起）
+  until_min: integer('until_min').notNull(),
+  by: text('by'),
+  created_at: createdAt(),
+}, (t) => [index('world_events_until').on(t.until_min)]);
+
+/** 世界服务写入的小状态（时钟等），供不连消息总线的进程读取 */
+export const worldKv = pgTable('world_kv', {
+  key: text('key').primaryKey(),
+  value: jsonb('value').notNull(),
+  updated_at: ts('updated_at').default(sql`now()`),
+});

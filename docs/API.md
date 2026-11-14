@@ -47,10 +47,10 @@
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /personas` | 每个人物的最新版本 + 使用统计（Session 数、用过的软件、记忆数）+ 此刻位置 |
-| `GET /personas/:id` | 六层画像、今天的日程、记忆（最近 120 条）、历史 Session、信任状态、实时状态与世界时钟 |
+| `GET /personas` | 每个人物的最新版本 + 使用统计（Session 数、用过的软件、记忆数）+ 此刻位置、需求（`live.needs`）、手机在不在手边（`live.phone`）、所在家庭 |
+| `GET /personas/:id` | 六层画像、今天的日程、记忆（最近 120 条，来自他的记忆树）、历史 Session、信任状态、实时状态与世界时钟；`resident`（家庭、职业大类、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境：地点、姿势、设备、需求、身边的人、是否有空、还能用多久） |
 | `GET /personas/:id/avatar` | 头像：`image.gen` 生成后缓存到 MinIO；生成前返回确定性像素头像 SVG |
-| `POST /personas/generate`（管理员） `{ n, locale }` | 调用生成流水线新增人物（1–12） |
+| `POST /personas/generate`（管理员） `{ n, locale }` | 生成新居民并住进城里（1–12 人；`locale`：`zh-CN` 中国、`en-US` 英语区、`mixed` 各半） |
 
 ### 世界
 
@@ -59,7 +59,7 @@
 | `GET /world/town` | 城镇布局（图元、地点、落脚点，`packages/jobsworld/src/town.ts`） |
 | `GET /world/snapshot` | 最近一次世界快照（时钟、人物位置/状态、世界事件） |
 | `POST /world/clock`（管理员） `{ paused?, speed?, jump_to? }` | 控制世界时钟 |
-| `POST /world/events`（管理员） `{ place_id, kind, minutes }` | 制造事件：`weak_network` `crowd` `rain` `power_cut` `noise` |
+| `POST /world/events`（管理员） `{ place_id, kind, minutes }` | 制造事件：`weak_network` `crowd` `rain` `power_cut` `noise`。写入 `world_events`；正在该地点使用产品的人会真的受到影响 |
 | `POST /world/replay` `{ session_id, speed? }` | 在原地点回放一个 Session |
 | `POST /world/ask` `{ persona_id, question }` | 和人物聊聊（基于最近一次已结束的 Session；正在使用软件时返回 `busy`） |
 | `GET /stream`（WebSocket） | 实时推送：`{ type: "snapshot" \| "live" \| "say", data }` |
@@ -119,7 +119,8 @@ interface Executor {
 ## 5. 数据文件格式
 
 - Persona：`config/personas/**/*.yaml`（`PersonaSpecSchema`）
-- 世界模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）
+- 场景模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）。默认不用：每次使用发生在人物此时此地的处境里（`sessions.world_context`，`world_template_id = 'live'`）；只有 Study 显式指定 `world_ids` 时才用模板
+- 人口抽样表：`config/population/{zh-CN,en-US}.json`；随包居民：`config/population/residents.jsonl`（每行 `{ spec, household, skeleton }`）
 - ProductSpec：`data/apps/<app>/<version>/product.yaml`（`ProductSpecSchema`）
 - 测试环境重置（`pux app add --reset-url`）：每次 Study 开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。注意：同一环境上并发运行多个 Study 会互相干扰。
 - 已知缺陷清单（`pux app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`

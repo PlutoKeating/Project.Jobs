@@ -35,6 +35,14 @@ export class Placement {
     return { place_id: placeId, place_kind: kind, x: sp?.x ?? this.centerX(placeId), y: sp?.y ?? 0, floor: sp?.floor ?? 0, pose: sp?.pose ?? 'stand', mode: s.replay ? 'replay' : 'session' };
   }
 
+  /** 合并世界里正在使用产品的人：就在他处境里的那个地点 */
+  forPlace(p: PersonaSpec, a: Agenda, placeId: string, placeKind: string, seed: string): Target {
+    if (placeKind === 'home') { const h = this.homeSpot(a); return { place_id: a.home_place_id, place_kind: 'home', x: h?.x ?? 0, y: h?.y ?? 0, floor: h?.floor ?? 0, pose: 'sit', mode: 'session' }; }
+    if (placeId === 'street' || placeKind === 'road' || placeKind === 'street') { const x = (hashNum(seed) % (this.layout.width - 40)) + 20; return { place_id: 'street', place_kind: placeKind, x, y: 0, floor: 0, pose: placeKind === 'road' ? 'ride' : 'stand', mode: 'session' }; }
+    const sp = this.spot(placeId, `${p.id}:${seed}`, placeKind === 'subway' ? (x) => x.floor < 0 : undefined);
+    return { place_id: placeId, place_kind: placeKind, x: sp?.x ?? this.centerX(placeId), y: sp?.y ?? 0, floor: sp?.floor ?? 0, pose: sp?.pose ?? 'stand', mode: 'session' };
+  }
+
   /** 按日程：通勤段在路上移动，其余在地点内的落脚点（每 20 模拟分钟换一个位置） */
   forAgenda(p: PersonaSpec, a: Agenda, minute: number): Target & { idx: number } {
     const at = agendaAt(a, minute);
@@ -48,7 +56,7 @@ export class Placement {
       const y = under ? this.layout.subway_line.y + this.layout.subway_line.h : 0;
       return { idx: at.idx, place_id: under ? 'subway' : 'street', place_kind: it.place_kind, x, y, floor: under ? -2 : 0, pose: under || it.place_kind === 'road' ? 'ride' : 'walk', mode: 'travel' };
     }
-    const sleeping = /睡|sleep/i.test(it.activity) && it.place_kind === 'home';
+    const sleeping = (it.kind === 'sleep' || /睡|sleep/i.test(it.activity)) && it.place_kind === 'home';
     if (it.place_kind === 'home') {
       const h = this.homeSpot(a);
       const wobble = sleeping ? 0 : ((hashNum(`${p.id}:${Math.floor(minute / 20)}`) % 7) - 3);

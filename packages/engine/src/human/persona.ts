@@ -101,7 +101,9 @@ Your habits: you ${b.decision_style === 'satisficer' ? 'go with the first thing 
 export const segmentLabel = (seg: string, lang: 'zh' | 'en' = 'zh') => ({
   office_worker: L(lang, '职场白领', 'Office workers'), senior: L(lang, '老年人', 'Seniors'), student: L(lang, '大学生', 'Students'), skeptic: L(lang, 'AI 怀疑者', 'AI skeptics'),
   freeloader: L(lang, '羊毛党', 'Freeloaders'), busy_parent: L(lang, '忙碌父母', 'Busy parents'), expert: L(lang, '专家对照', 'Expert baseline'),
-  child_primary_low: L(lang, '儿童（低年级）', 'Children (6–8)'), child_primary_high: L(lang, '儿童（高年级）', 'Children (9–11)'),
+  child_primary_low: L(lang, '儿童（低年级）', 'Children (6–9)'), child_primary_high: L(lang, '儿童（高年级）', 'Children (10–13)'), teen: L(lang, '中学生', 'Teens'),
+  professional: L(lang, '医护与教师', 'Healthcare & teachers'), blue_collar: L(lang, '工人与司机', 'Workers & drivers'), service_worker: L(lang, '服务业从业者', 'Service workers'),
+  freelancer: L(lang, '自由职业者', 'Freelancers'), homemaker: L(lang, '全职在家', 'Homemakers'), job_seeker: L(lang, '待业', 'Between jobs'),
 } as Record<string, string>)[seg] ?? seg;
 
 export async function globalTrust(personaId: string) {

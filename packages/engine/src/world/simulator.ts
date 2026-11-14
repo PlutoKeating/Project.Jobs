@@ -24,9 +24,13 @@ export async function importWorldTemplates(dir = configPath('worlds')) {
     await getDb().insert(worldTemplates).values({ id: t.id, name: t.name, scenario_class: t.scenario_class, spec: t }).onConflictDoUpdate({ target: worldTemplates.id, set: { name: t.name, scenario_class: t.scenario_class, spec: t } });
     out.push(t.id);
   }
+  // 合并世界用的占位行：真正的处境记录在每次使用的 sessions.world_context 里
+  const live = WorldTemplateSchema.parse({ id: 'live', name: '此时此地', name_en: 'Here and now', scenario_class: 'live', init: { place: '城里' }, situation: '（每个人此时此地在城里的处境）' });
+  await getDb().insert(worldTemplates).values({ id: live.id, name: live.name, scenario_class: live.scenario_class, spec: live }).onConflictDoUpdate({ target: worldTemplates.id, set: { name: live.name, scenario_class: live.scenario_class, spec: live } });
   return out;
 }
-export async function allWorldTemplates(): Promise<WorldTemplate[]> { return (await getDb().select().from(worldTemplates)).map((r) => r.spec as WorldTemplate); }
+/** 场景模板库（不含合并世界的占位行）。合并世界是默认方式；模板只在显式指定时用于可复现的校准 */
+export async function allWorldTemplates(): Promise<WorldTemplate[]> { return (await getDb().select().from(worldTemplates)).map((r) => r.spec as WorldTemplate).filter((t) => t.id !== 'live'); }
 
 /** 矩阵初始化器：Human I/O 四通道 × 时间 × 地点 × 情绪 × 经济（只用于生成初始 WorldState） */
 const MATRIX = {

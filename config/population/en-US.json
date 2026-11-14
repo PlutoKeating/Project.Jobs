@@ -1,0 +1,31 @@
+{
+  "_note": "English-speaking residents come from NVIDIA Nemotron-Personas-USA (CC BY 4.0), a synthetic population grounded in US Census Bureau distributions: age, sex, marital status, education, occupation and location are taken from sampled rows. The tables below only decide household shape, income and attitudes, and act as an offline fallback. Shares are approximations set by hand from public Census summary tables.",
+  "dataset": { "id": "nvidia/Nemotron-Personas-USA", "license": "CC BY 4.0", "url": "https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA", "rows_api": "https://datasets-server.huggingface.co/rows" },
+  "kids_by_marital": { "married_present": 0.38, "divorced": 0.2, "separated": 0.22, "widowed": 0.04, "never_married": 0.07 },
+  "kids_age_range": [24, 52],
+  "roommate_share_never_married_under_32": 0.3,
+  "income_by_education": {
+    "less_than_9th": [1400, 2800], "9th_12th_no_diploma": [1500, 3200], "high_school": [2200, 4500], "some_college": [2600, 5200], "associates": [3000, 6000],
+    "bachelors": [4200, 10000], "graduate": [5500, 16000]
+  },
+  "retired_income": [1600, 5200],
+  "life_events": [
+    { "v": "", "w": 0.58 }, { "v": "just started a new job and still finding my feet", "w": 0.05 }, { "v": "laid off last month and job hunting", "w": 0.03 }, { "v": "new baby at home, very little sleep", "w": 0.03 },
+    { "v": "my dad is in the hospital, lots of visits", "w": 0.04 }, { "v": "just moved, still setting everything up", "w": 0.04 }, { "v": "got promoted, suddenly a lot more on my plate", "w": 0.03 }, { "v": "money is tight with rent and debt", "w": 0.06 },
+    { "v": "got a bonus recently, feeling good", "w": 0.03 }, { "v": "studying for an exam / certification", "w": 0.04 }, { "v": "going through a breakup", "w": 0.02 }, { "v": "planning a wedding", "w": 0.02 }, { "v": "started watching my health after a scare", "w": 0.03 }
+  ],
+  "attitudes": [
+    { "tag": "ai_skeptic", "w": 0.08, "traits": ["doesn't trust what AI says and tries to catch it out", "sees the word AI and immediately doubts it"] },
+    { "tag": "freeloader", "w": 0.05, "traits": ["never pays if there's a free way, hunts for free tiers", "leaves the moment a paywall shows up"] },
+    { "tag": "nitpicker", "w": 0.05, "traits": ["picky; pokes at anything that seems off and complains about it", "typos and misaligned things bother them"] },
+    { "tag": "impatient", "w": 0.06, "traits": ["no patience; more than a few seconds of waiting and they're gone", "too many steps and they quit"] },
+    { "tag": "prankster", "w": 0.02, "traits": ["types nonsense to see if it breaks"] }
+  ],
+  "fallback": {
+    "age": [{ "v": [18, 24], "w": 0.12 }, { "v": [25, 34], "w": 0.18 }, { "v": [35, 44], "w": 0.17 }, { "v": [45, 64], "w": 0.32 }, { "v": [65, 82], "w": 0.21 }],
+    "education": [{ "v": "high_school", "w": 0.34 }, { "v": "some_college", "w": 0.2 }, { "v": "associates", "w": 0.09 }, { "v": "bachelors", "w": 0.23 }, { "v": "graduate", "w": 0.14 }],
+    "marital": [{ "v": "married_present", "w": 0.48 }, { "v": "never_married", "w": 0.33 }, { "v": "divorced", "w": 0.11 }, { "v": "widowed", "w": 0.06 }, { "v": "separated", "w": 0.02 }],
+    "occupation": [{ "v": "office_and_administrative_support", "w": 0.14 }, { "v": "sales_and_related", "w": 0.1 }, { "v": "food_preparation_and_serving", "w": 0.07 }, { "v": "healthcare_practitioners", "w": 0.07 }, { "v": "transportation_and_material_moving", "w": 0.09 }, { "v": "production", "w": 0.06 }, { "v": "education_training_and_library", "w": 0.07 }, { "v": "computer_and_mathematical", "w": 0.05 }, { "v": "management", "w": 0.08 }, { "v": "construction_and_extraction", "w": 0.05 }, { "v": "not_in_workforce", "w": 0.22 }],
+    "regions": ["New York, NY", "Los Angeles, CA", "Chicago, IL", "Houston, TX", "Phoenix, AZ", "Philadelphia, PA", "Atlanta, GA", "Denver, CO", "Columbus, OH", "Nashville, TN", "Portland, OR", "Miami, FL", "Tulsa, OK", "Boise, ID", "Mobile, AL"]
+  }
+}

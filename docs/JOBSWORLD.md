@@ -43,6 +43,21 @@
 - 社区几乎没有许可证干净的现代城市蓝图；TEdit（MS-PL）的 `.TEditSch` V5 已支持 1.4.5.8 与 tModLoader，作为唯一蓝图格式。WorldEdit（MIT）可作 TShock 侧参考。无许可证代码只作为运行依赖或思路参考，不复制进仓库。
 - 法律上“无许可证 = 保留所有权利”；按用户决定，社区素材只由下载脚本拉到本机 `data/` 使用，不提交、不分发。
 
+## 2.1 2026-11-15 重塑后的变化（以此为准）
+
+| 主题 | 之前 | 现在 |
+|---|---|---|
+| 世界与使用的关系 | 引擎不知道世界的存在；小城只读展示 | **一个世界**：一个人此时此地在城里的状态就是他使用产品时的处境；城里的事件会真的打断他；用完后的心情和压力写回城里 |
+| 人口 | 16 人 | 201 人、113 户（中国与英语区各半）；按人口统计分布抽样，有关系网 |
+| 人的生活 | 固定日程骨架 | 日程 + 需求：饿、精力、孤单、压力、心情按规则推进，并临时改写日程 |
+| 日程的模型调用 | 每人每天一次 | 只在需要时（有人点开这个人，或他开始使用产品） |
+| 时钟 | 多个 Session 时互不相干 | 有人正在使用产品时世界最多 4× |
+| 城镇 | 3 栋住宅、40 套 | 5 栋住宅、120 套（宽度 1356 格）；游戏端按布局版本自动重建 |
+| 游戏内 | `/jw info` 与人物面板显示位置、日程、软件 | 另显示身心状态（很饿、很累、心情不好…）、手机是否在手边、熟人 |
+| Terraria 图形客户端 | 开发时只做了协议层与编译层验证 | 产品负责人已用真实客户端验证可用 |
+
+规则与契约见 [`packages/jobsworld/docs/README.md`](../packages/jobsworld/docs/README.md)，世界服务见 [`apps/world/docs/README.md`](../apps/world/docs/README.md)。
+
 ## 3. 架构
 
 ```
@@ -64,7 +79,7 @@
                      Postgres（权威数据，只读跟踪 + 新增 jobsworld 表）/ MinIO（截图）
 ```
 
-- **解耦原则**：引擎（`packages/engine`）不知道世界的存在。世界服务只读 Postgres 中的 sessions/steps/observations/events 来获取实时进展，所以无论 Study 由 CLI、API 还是 Temporal 运行，都能被看到。
+- **一个世界**（2026-11-15 起）：处境由 `packages/jobsworld` 的规则计算，引擎与世界服务共用；引擎从 Postgres 读时钟、日程、需求和城里的事件。世界服务仍然只读 sessions/steps 来直播进展，所以无论由 CLI、API 还是 Temporal 运行，都能被看到。
 - **所有游戏端只依赖 NATS 上的 JSON 消息**（C# 侧内置一个极简 NATS 文本协议客户端，不引入 NuGet 依赖，避免 tModLoader 打包问题）。
 
 ### 3.1 新增模块
@@ -88,7 +103,7 @@
 | 主题 | 方向 | 内容 |
 |---|---|---|
 | `jw.clock` | world → * | `{ day, minute, clock, speed, paused }`，每真实秒一次 |
-| `jw.snapshot` | world → * | 全部可见人物的位置/状态，每真实秒一次（同时写入 KV `jobsworld.snapshot`） |
+| `jw.snapshot` | world → * | 全部人物的位置/状态，每真实秒一次（同时写入 KV `jobsworld.snapshot`）。每个人另带 `needs`（饿、精力、孤单、压力、心情）、`wallet`、`phone`（手机在不在手边）、`driven_by`（需求改写日程的原因） |
 | `jw.persona.<id>.live` | world → * | 实时 Session 步骤：独白、意图、动作、决策、截图证据 id、情绪 |
 | `jw.persona.<id>.say` | world → 游戏 | 头顶气泡文本（想法摘要、骂人时刻） |
 | `jw.town` | 请求/应答 | 城镇布局 JSON（游戏端启动时拉取） |
@@ -145,6 +160,5 @@ JetStream 流 `JW_LIVE` 保留 `jw.persona.*.live` 24 小时，用于断线补�
 
 - 开发环境没有真实 Terraria / tModLoader 图形客户端：假玩家外观、气泡渲染、tML 人物面板与截图贴图、无敌/禁止破坏方块在开发时只做了协议层与编译层验证。产品负责人随后用真实客户端验证可用（2026-11-15 确认）。
 - 假玩家的坐、躺姿态未实现（网页里有）；时装物品为空。
-- 世界事件只影响 JobsWorld 的呈现，不注入正在运行的 Session（引擎与世界解耦的设计选择）。
-- 同时有多个 Session 时，世界时钟不跟随某一个 Session 的模拟时钟；人物卡单独显示该 Session 的模拟时间。
+- （已解决，见 §2.1）世界事件现在会影响正在该地点使用产品的人；有人使用产品时世界限速。
 - 社区蓝图（`scripts/download-community-assets.sh`）多数无许可证，只下载到 `data/community/` 本机使用，不入库。

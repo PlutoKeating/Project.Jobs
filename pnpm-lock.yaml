@@ -457,6 +457,9 @@ importers:
       '@pux/executor':
         specifier: workspace:*
         version: link:../executor
+      '@pux/jobsworld':
+        specifier: workspace:*
+        version: link:../jobsworld
       '@pux/llm':
         specifier: workspace:*
         version: link:../llm

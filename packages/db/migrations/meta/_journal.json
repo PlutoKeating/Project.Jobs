@@ -36,6 +36,20 @@
       "when": 1794687070554,
       "tag": "0004_memory_trees",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794687619256,
+      "tag": "0005_residents",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794688018174,
+      "tag": "0006_world_kv",
+      "breakpoints": true
     }
   ]
 }

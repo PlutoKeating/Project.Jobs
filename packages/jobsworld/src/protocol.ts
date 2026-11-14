@@ -36,6 +36,13 @@ export interface PersonaLive {
   say?: { text: string; tone: 'neutral' | 'happy' | 'confused' | 'angry'; at: number };
   appearance: Appearance;
   visible: boolean;
+  /** 需求状态（0–1，mood 为 -1–1）：饿、精力、想跟人说话的程度、压力、心情 */
+  needs?: { hunger: number; energy: number; social: number; stress: number; mood: number };
+  wallet?: number; currency?: string; household_id?: string;
+  /** 此刻手机在不在手边、有没有空看（0–1） */
+  phone?: number;
+  /** 需求临时改写了日程时的原因：hungry | exhausted | lonely */
+  driven_by?: string;
 }
 
 export interface SessionLive {

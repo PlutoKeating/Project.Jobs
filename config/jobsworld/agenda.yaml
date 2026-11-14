@@ -1,69 +1,206 @@
-# 日程骨架规则：按人物角色给出一天的地点序列；mind.slow 只补全意图与因果，不改地点与时间
-# place: 地点类型（town.yaml 的 kind）；special: home=自己的家，work=按职业推断的工作地点
+# 日程骨架规则：按人物角色给出一天的地点序列；模型只补全意图与因果，不改地点与时间
+# place: 地点类型（town.yaml 的 kind）；special: home=自己的家，work=这个人的工作地点（居民表里登记的，或按职业推断），commute=按人推断地铁或开车
+# k: 这段时间在做哪一类事（sleep / routine / commute / work / study / meal / errand / care / leisure / phone / rest），
+#    决定需求怎么变化（饿、累、孤单、压力）以及手机在不在手边。需求会临时改写日程：饿极了去吃东西，困得不行提前睡，闷了找人聊。
+# 周末：weekend_roles 里列出的角色在周六日改用 <角色>_weekend（没有则用 weekend）。
+weekend_roles: [office_worker, parent, student, teen, child, teacher, factory_shift]
 roles:
   office_worker:
-    - { from: "00:00", to: "07:30", place: home, act: { zh: 睡觉, en: Sleeping } }
-    - { from: "07:30", to: "08:10", place: home, act: { zh: 起床洗漱、吃早饭, en: Getting ready, breakfast } }
-    - { from: "08:10", to: "08:50", place: commute, act: { zh: 通勤上班, en: Commuting to work } }
-    - { from: "08:50", to: "12:00", place: work, act: { zh: 上班, en: At work } }
-    - { from: "12:00", to: "13:00", place: restaurant, act: { zh: 午饭, en: Lunch } }
-    - { from: "13:00", to: "18:00", place: work, act: { zh: 上班, en: At work } }
-    - { from: "18:00", to: "18:40", place: commute, act: { zh: 下班回家, en: Commuting home } }
-    - { from: "18:40", to: "19:20", place: shop, act: { zh: 顺路买菜, en: Grocery run }, if: has_household }
-    - { from: "19:20", to: "23:30", place: home, act: { zh: 在家, en: At home } }
-    - { from: "23:30", to: "24:00", place: home, act: { zh: 睡前刷手机, en: Scrolling in bed } }
+    - { from: "00:00", to: "07:30", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "07:30", to: "08:10", place: home, k: routine, act: { zh: 起床洗漱、吃早饭, en: Getting ready, breakfast } }
+    - { from: "08:10", to: "08:50", place: commute, k: commute, act: { zh: 通勤上班, en: Commuting to work } }
+    - { from: "08:50", to: "12:00", place: work, k: work, act: { zh: 上班, en: At work } }
+    - { from: "12:00", to: "13:00", place: restaurant, k: meal, act: { zh: 午饭, en: Lunch } }
+    - { from: "13:00", to: "18:00", place: work, k: work, act: { zh: 上班, en: At work } }
+    - { from: "18:00", to: "18:40", place: commute, k: commute, act: { zh: 下班回家, en: Commuting home } }
+    - { from: "18:40", to: "19:20", place: shop, k: errand, act: { zh: 顺路买菜, en: Grocery run }, if: has_household }
+    - { from: "19:20", to: "20:00", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "20:00", to: "23:00", place: home, k: leisure, act: { zh: 在家休息, en: Relaxing at home } }
+    - { from: "23:00", to: "24:00", place: home, k: phone, act: { zh: 睡前刷手机, en: Scrolling in bed } }
   parent:
-    - { from: "00:00", to: "06:50", place: home, act: { zh: 睡觉, en: Sleeping } }
-    - { from: "06:50", to: "07:40", place: home, act: { zh: 做早饭、叫孩子起床, en: Breakfast, waking the kids } }
-    - { from: "07:40", to: "08:00", place: school, act: { zh: 送孩子上学, en: School drop-off }, if: has_school_kid }
-    - { from: "08:00", to: "08:50", place: commute, act: { zh: 通勤上班, en: Commuting to work } }
-    - { from: "08:50", to: "12:00", place: work, act: { zh: 上班, en: At work } }
-    - { from: "12:00", to: "12:50", place: restaurant, act: { zh: 午饭, en: Lunch } }
-    - { from: "12:50", to: "17:00", place: work, act: { zh: 上班, en: At work } }
-    - { from: "17:00", to: "17:40", place: school, act: { zh: 接孩子放学, en: School pick-up }, if: has_school_kid }
-    - { from: "17:40", to: "18:20", place: shop, act: { zh: 买菜, en: Grocery run } }
-    - { from: "18:20", to: "22:30", place: home, act: { zh: 做饭、陪孩子, en: Dinner, time with kids } }
-    - { from: "22:30", to: "24:00", place: home, act: { zh: 孩子睡了，自己的时间, en: Kids asleep, me time } }
+    - { from: "00:00", to: "06:50", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "06:50", to: "07:40", place: home, k: care, act: { zh: 做早饭、叫孩子起床, en: Breakfast, waking the kids } }
+    - { from: "07:40", to: "08:00", place: school, k: care, act: { zh: 送孩子上学, en: School drop-off }, if: has_school_kid }
+    - { from: "08:00", to: "08:50", place: commute, k: commute, act: { zh: 通勤上班, en: Commuting to work } }
+    - { from: "08:50", to: "12:00", place: work, k: work, act: { zh: 上班, en: At work } }
+    - { from: "12:00", to: "12:50", place: restaurant, k: meal, act: { zh: 午饭, en: Lunch } }
+    - { from: "12:50", to: "17:00", place: work, k: work, act: { zh: 上班, en: At work } }
+    - { from: "17:00", to: "17:40", place: school, k: care, act: { zh: 接孩子放学, en: School pick-up }, if: has_school_kid }
+    - { from: "17:40", to: "18:20", place: shop, k: errand, act: { zh: 买菜, en: Grocery run } }
+    - { from: "18:20", to: "19:10", place: home, k: meal, act: { zh: 做饭、吃晚饭, en: Cooking and dinner } }
+    - { from: "19:10", to: "22:00", place: home, k: care, act: { zh: 陪孩子写作业、洗漱, en: Homework and bedtime with the kids } }
+    - { from: "22:00", to: "24:00", place: home, k: phone, act: { zh: 孩子睡了，自己的时间, en: Kids asleep, me time } }
   student:
-    - { from: "00:00", to: "08:30", place: home, act: { zh: 睡觉, en: Sleeping } }
-    - { from: "08:30", to: "09:00", place: cafe, act: { zh: 买咖啡, en: Coffee run } }
-    - { from: "09:00", to: "12:00", place: library, act: { zh: 上课/自习, en: Classes and study } }
-    - { from: "12:00", to: "13:00", place: restaurant, act: { zh: 食堂吃饭, en: Lunch } }
-    - { from: "13:00", to: "17:00", place: library, act: { zh: 写作业, en: Assignments } }
-    - { from: "17:00", to: "19:00", place: park, act: { zh: 跑步散心, en: Run in the park } }
-    - { from: "19:00", to: "24:00", place: home, act: { zh: 宿舍里追剧、刷手机, en: Shows and phone } }
+    - { from: "00:00", to: "08:30", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "08:30", to: "09:00", place: cafe, k: meal, act: { zh: 买咖啡和早饭, en: Coffee and breakfast } }
+    - { from: "09:00", to: "12:00", place: library, k: study, act: { zh: 上课/自习, en: Classes and study } }
+    - { from: "12:00", to: "13:00", place: restaurant, k: meal, act: { zh: 食堂吃饭, en: Lunch } }
+    - { from: "13:00", to: "17:00", place: library, k: study, act: { zh: 写作业, en: Assignments } }
+    - { from: "17:00", to: "18:30", place: park, k: leisure, act: { zh: 跑步散心, en: Run in the park } }
+    - { from: "18:30", to: "19:10", place: restaurant, k: meal, act: { zh: 晚饭, en: Dinner } }
+    - { from: "19:10", to: "24:00", place: home, k: phone, act: { zh: 宿舍里追剧、刷手机, en: Shows and phone } }
+  teen:
+    - { from: "00:00", to: "06:40", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "06:40", to: "07:20", place: home, k: routine, act: { zh: 起床吃早饭, en: Breakfast } }
+    - { from: "07:20", to: "12:00", place: school, k: study, act: { zh: 上课, en: At school } }
+    - { from: "12:00", to: "12:40", place: school, k: meal, act: { zh: 学校吃午饭, en: Lunch at school } }
+    - { from: "12:40", to: "17:30", place: school, k: study, act: { zh: 上课, en: At school } }
+    - { from: "17:30", to: "18:30", place: park, k: leisure, act: { zh: 放学和同学打球, en: Ball with classmates after school } }
+    - { from: "18:30", to: "19:10", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:10", to: "21:40", place: home, k: study, act: { zh: 写作业, en: Homework } }
+    - { from: "21:40", to: "23:00", place: home, k: phone, act: { zh: 躲在房间里玩手机, en: On the phone in my room } }
+    - { from: "23:00", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
   senior:
-    - { from: "00:00", to: "05:40", place: home, act: { zh: 睡觉, en: Sleeping } }
-    - { from: "05:40", to: "07:30", place: park, act: { zh: 晨练, en: Morning exercise } }
-    - { from: "07:30", to: "09:00", place: shop, act: { zh: 早市买菜, en: Morning market } }
-    - { from: "09:00", to: "11:00", place: hospital, act: { zh: 医院复查, en: Hospital check-up }, if: weekday_odd }
-    - { from: "11:00", to: "15:30", place: home, act: { zh: 做饭、午睡, en: Lunch and nap } }
-    - { from: "15:30", to: "16:30", place: school, act: { zh: 接孙辈放学, en: Picking up grandkid }, if: has_grandkid }
-    - { from: "16:30", to: "18:30", place: park, act: { zh: 公园散步聊天, en: Walk and chat in the park } }
-    - { from: "18:30", to: "24:00", place: home, act: { zh: 看电视、和家人视频, en: TV and video calls } }
+    - { from: "00:00", to: "05:40", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "05:40", to: "07:30", place: park, k: leisure, act: { zh: 晨练, en: Morning exercise } }
+    - { from: "07:30", to: "08:10", place: home, k: meal, act: { zh: 吃早饭, en: Breakfast } }
+    - { from: "08:10", to: "09:00", place: shop, k: errand, act: { zh: 早市买菜, en: Morning market } }
+    - { from: "09:00", to: "11:00", place: hospital, k: errand, act: { zh: 医院复查, en: Hospital check-up }, if: weekday_odd }
+    - { from: "11:00", to: "12:00", place: home, k: routine, act: { zh: 做午饭, en: Cooking lunch } }
+    - { from: "12:00", to: "12:40", place: home, k: meal, act: { zh: 吃午饭, en: Lunch } }
+    - { from: "12:40", to: "14:30", place: home, k: rest, act: { zh: 午睡, en: Nap } }
+    - { from: "14:30", to: "15:30", place: home, k: phone, act: { zh: 看手机、刷视频, en: On the phone } }
+    - { from: "15:30", to: "16:30", place: school, k: care, act: { zh: 接孙辈放学, en: Picking up grandkid }, if: has_grandkid }
+    - { from: "16:30", to: "18:30", place: park, k: leisure, act: { zh: 公园散步聊天, en: Walk and chat in the park } }
+    - { from: "18:30", to: "19:10", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:10", to: "21:30", place: home, k: leisure, act: { zh: 看电视、和家人视频, en: TV and video calls } }
+    - { from: "21:30", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
   night_shift:
-    - { from: "00:00", to: "07:00", place: work, act: { zh: 上夜班, en: Night shift } }
-    - { from: "07:00", to: "07:40", place: restaurant, act: { zh: 下班吃早饭, en: Breakfast after shift } }
-    - { from: "07:40", to: "15:00", place: home, act: { zh: 补觉, en: Sleeping } }
-    - { from: "15:00", to: "17:30", place: home, act: { zh: 刷手机、打游戏, en: Phone and games } }
-    - { from: "17:30", to: "19:00", place: shop, act: { zh: 逛超市, en: Shopping } }
-    - { from: "19:00", to: "23:20", place: home, act: { zh: 吃饭休息, en: Dinner and rest } }
-    - { from: "23:20", to: "24:00", place: commute, act: { zh: 去厂里上夜班, en: Heading to night shift } }
+    - { from: "00:00", to: "03:00", place: work, k: work, act: { zh: 上夜班, en: Night shift } }
+    - { from: "03:00", to: "03:30", place: work, k: meal, act: { zh: 夜班吃宵夜, en: Night shift meal } }
+    - { from: "03:30", to: "07:00", place: work, k: work, act: { zh: 上夜班, en: Night shift } }
+    - { from: "07:00", to: "07:40", place: restaurant, k: meal, act: { zh: 下班吃早饭, en: Breakfast after shift } }
+    - { from: "07:40", to: "15:00", place: home, k: sleep, act: { zh: 补觉, en: Sleeping } }
+    - { from: "15:00", to: "17:30", place: home, k: phone, act: { zh: 刷手机、打游戏, en: Phone and games } }
+    - { from: "17:30", to: "19:00", place: shop, k: errand, act: { zh: 逛超市, en: Shopping } }
+    - { from: "19:00", to: "19:40", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:40", to: "23:20", place: home, k: rest, act: { zh: 休息, en: Resting } }
+    - { from: "23:20", to: "24:00", place: commute, k: commute, act: { zh: 去厂里上夜班, en: Heading to night shift } }
+  factory_shift:
+    - { from: "00:00", to: "06:40", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "06:40", to: "07:20", place: home, k: routine, act: { zh: 起床吃早饭, en: Breakfast } }
+    - { from: "07:20", to: "08:00", place: commute, k: commute, act: { zh: 去上工, en: Heading to work } }
+    - { from: "08:00", to: "12:00", place: work, k: work, act: { zh: 上工, en: On shift } }
+    - { from: "12:00", to: "12:40", place: work, k: meal, act: { zh: 食堂吃饭, en: Canteen lunch } }
+    - { from: "12:40", to: "13:10", place: work, k: phone, act: { zh: 午休刷手机, en: Phone during break } }
+    - { from: "13:10", to: "18:00", place: work, k: work, act: { zh: 上工, en: On shift } }
+    - { from: "18:00", to: "18:40", place: commute, k: commute, act: { zh: 下工回家, en: Heading home } }
+    - { from: "18:40", to: "19:20", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:20", to: "22:30", place: home, k: phone, act: { zh: 躺着刷手机, en: On the phone } }
+    - { from: "22:30", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+  service_shift:
+    - { from: "00:00", to: "08:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "08:00", to: "09:00", place: home, k: routine, act: { zh: 起床收拾, en: Getting ready } }
+    - { from: "09:00", to: "09:40", place: commute, k: commute, act: { zh: 去上班, en: Heading to work } }
+    - { from: "09:40", to: "13:30", place: work, k: work, act: { zh: 上班，客人不断, en: At work, busy with customers } }
+    - { from: "13:30", to: "14:10", place: work, k: meal, act: { zh: 错峰吃午饭, en: Late lunch } }
+    - { from: "14:10", to: "14:40", place: work, k: phone, act: { zh: 没客人，刷会儿手机, en: Quiet spell, on the phone } }
+    - { from: "14:40", to: "20:00", place: work, k: work, act: { zh: 上班, en: At work } }
+    - { from: "20:00", to: "20:40", place: commute, k: commute, act: { zh: 下班回家, en: Heading home } }
+    - { from: "20:40", to: "21:20", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "21:20", to: "24:00", place: home, k: phone, act: { zh: 躺着刷手机, en: On the phone } }
+  driver:
+    - { from: "00:00", to: "07:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "07:00", to: "07:30", place: home, k: routine, act: { zh: 起床出门, en: Up and out } }
+    - { from: "07:30", to: "11:30", place: street, k: work, act: { zh: 在路上跑单, en: On the road working } }
+    - { from: "11:30", to: "12:10", place: restaurant, k: meal, act: { zh: 路边快餐, en: Quick lunch } }
+    - { from: "12:10", to: "12:40", place: park, k: phone, act: { zh: 等单，刷手机, en: Waiting for jobs, on the phone } }
+    - { from: "12:40", to: "18:30", place: street, k: work, act: { zh: 在路上跑单, en: On the road working } }
+    - { from: "18:30", to: "19:10", place: restaurant, k: meal, act: { zh: 晚饭, en: Dinner } }
+    - { from: "19:10", to: "21:30", place: street, k: work, act: { zh: 晚高峰多跑几单, en: Evening rush jobs } }
+    - { from: "21:30", to: "23:30", place: home, k: phone, act: { zh: 回家刷手机, en: Home, on the phone } }
+    - { from: "23:30", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+  medical_shift:
+    - { from: "00:00", to: "06:30", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "06:30", to: "07:10", place: home, k: routine, act: { zh: 起床吃早饭, en: Breakfast } }
+    - { from: "07:10", to: "07:50", place: commute, k: commute, act: { zh: 去医院, en: Heading to the hospital } }
+    - { from: "07:50", to: "12:30", place: work, k: work, act: { zh: 上班，病人很多, en: On duty, many patients } }
+    - { from: "12:30", to: "13:10", place: work, k: meal, act: { zh: 匆匆吃午饭, en: Hurried lunch } }
+    - { from: "13:10", to: "18:30", place: work, k: work, act: { zh: 上班, en: On duty } }
+    - { from: "18:30", to: "19:10", place: commute, k: commute, act: { zh: 下班回家, en: Heading home } }
+    - { from: "19:10", to: "19:50", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:50", to: "22:30", place: home, k: rest, act: { zh: 累了，歇着, en: Tired, resting } }
+    - { from: "22:30", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+  teacher:
+    - { from: "00:00", to: "06:20", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "06:20", to: "07:00", place: home, k: routine, act: { zh: 起床吃早饭, en: Breakfast } }
+    - { from: "07:00", to: "07:30", place: commute, k: commute, act: { zh: 去学校, en: Heading to school } }
+    - { from: "07:30", to: "12:00", place: work, k: work, act: { zh: 上课, en: Teaching } }
+    - { from: "12:00", to: "12:40", place: work, k: meal, act: { zh: 食堂吃饭, en: Canteen lunch } }
+    - { from: "12:40", to: "17:30", place: work, k: work, act: { zh: 上课、批作业, en: Teaching and grading } }
+    - { from: "17:30", to: "18:10", place: commute, k: commute, act: { zh: 下班回家, en: Heading home } }
+    - { from: "18:10", to: "18:50", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "18:50", to: "21:00", place: home, k: work, act: { zh: 在家备课, en: Lesson prep at home } }
+    - { from: "21:00", to: "22:40", place: home, k: phone, act: { zh: 刷手机, en: On the phone } }
+    - { from: "22:40", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+  homemaker:
+    - { from: "00:00", to: "06:40", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "06:40", to: "07:40", place: home, k: care, act: { zh: 做早饭、照顾一家人出门, en: Breakfast, getting everyone out the door } }
+    - { from: "07:40", to: "08:10", place: school, k: care, act: { zh: 送孩子上学, en: School drop-off }, if: has_school_kid }
+    - { from: "08:10", to: "09:30", place: shop, k: errand, act: { zh: 买菜, en: Grocery shopping } }
+    - { from: "09:30", to: "11:30", place: home, k: routine, act: { zh: 做家务, en: Housework } }
+    - { from: "11:30", to: "12:30", place: home, k: meal, act: { zh: 做午饭、吃饭, en: Lunch } }
+    - { from: "12:30", to: "14:30", place: home, k: phone, act: { zh: 难得清闲，刷手机, en: A quiet moment, on the phone } }
+    - { from: "14:30", to: "16:30", place: park, k: leisure, act: { zh: 出门走走，和邻居聊天, en: A walk, chatting with neighbors } }
+    - { from: "16:30", to: "17:10", place: school, k: care, act: { zh: 接孩子放学, en: School pick-up }, if: has_school_kid }
+    - { from: "17:10", to: "19:10", place: home, k: meal, act: { zh: 做饭、吃晚饭, en: Cooking and dinner } }
+    - { from: "19:10", to: "21:40", place: home, k: care, act: { zh: 陪孩子、收拾, en: Kids and tidying up } }
+    - { from: "21:40", to: "23:20", place: home, k: phone, act: { zh: 自己的时间，刷手机, en: Me time, on the phone } }
+    - { from: "23:20", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+  job_seeker:
+    - { from: "00:00", to: "09:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "09:00", to: "10:00", place: home, k: routine, act: { zh: 起床磨蹭, en: Slow morning } }
+    - { from: "10:00", to: "12:00", place: home, k: phone, act: { zh: 刷招聘信息、投简历, en: Browsing jobs, sending applications } }
+    - { from: "12:00", to: "12:40", place: home, k: meal, act: { zh: 随便吃点, en: A simple lunch } }
+    - { from: "12:40", to: "15:30", place: library, k: study, act: { zh: 去图书馆学点东西, en: Studying at the library } }
+    - { from: "15:30", to: "17:30", place: park, k: leisure, act: { zh: 出门走走散心, en: A walk to clear the head } }
+    - { from: "17:30", to: "18:30", place: shop, k: errand, act: { zh: 买点便宜的菜, en: Cheap groceries } }
+    - { from: "18:30", to: "19:10", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:10", to: "24:00", place: home, k: phone, act: { zh: 刷手机、打游戏, en: Phone and games } }
   child:
-    - { from: "00:00", to: "07:00", place: home, act: { zh: 睡觉, en: Sleeping } }
-    - { from: "07:00", to: "07:50", place: home, act: { zh: 起床吃早饭, en: Breakfast } }
-    - { from: "07:50", to: "16:00", place: school, act: { zh: 上课, en: At school } }
-    - { from: "16:00", to: "17:30", place: park, act: { zh: 在公园玩, en: Playing in the park } }
-    - { from: "17:30", to: "21:00", place: home, act: { zh: 写作业、吃饭, en: Homework and dinner } }
-    - { from: "21:00", to: "24:00", place: home, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "00:00", to: "07:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "07:00", to: "07:50", place: home, k: routine, act: { zh: 起床吃早饭, en: Breakfast } }
+    - { from: "07:50", to: "12:00", place: school, k: study, act: { zh: 上课, en: At school } }
+    - { from: "12:00", to: "12:40", place: school, k: meal, act: { zh: 学校吃午饭, en: Lunch at school } }
+    - { from: "12:40", to: "16:00", place: school, k: study, act: { zh: 上课, en: At school } }
+    - { from: "16:00", to: "17:30", place: park, k: leisure, act: { zh: 在公园玩, en: Playing in the park } }
+    - { from: "17:30", to: "18:30", place: home, k: study, act: { zh: 写作业, en: Homework } }
+    - { from: "18:30", to: "19:10", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:10", to: "20:30", place: home, k: leisure, act: { zh: 玩一会儿, en: Play time } }
+    - { from: "20:30", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
   freelancer:
-    - { from: "00:00", to: "09:30", place: home, act: { zh: 睡觉, en: Sleeping } }
-    - { from: "09:30", to: "10:30", place: home, act: { zh: 起床磨蹭, en: Slow morning } }
-    - { from: "10:30", to: "14:00", place: cafe, act: { zh: 在咖啡店干活, en: Working from a café } }
-    - { from: "14:00", to: "15:00", place: restaurant, act: { zh: 午饭, en: Late lunch } }
-    - { from: "15:00", to: "18:30", place: library, act: { zh: 赶稿, en: Deadline work } }
-    - { from: "18:30", to: "20:00", place: park, act: { zh: 散步, en: Evening walk } }
-    - { from: "20:00", to: "24:00", place: home, act: { zh: 在家剪片子, en: Editing at home } }
+    - { from: "00:00", to: "09:30", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "09:30", to: "10:30", place: home, k: routine, act: { zh: 起床磨蹭, en: Slow morning } }
+    - { from: "10:30", to: "13:30", place: cafe, k: work, act: { zh: 在咖啡店干活, en: Working from a café } }
+    - { from: "13:30", to: "14:20", place: restaurant, k: meal, act: { zh: 午饭, en: Late lunch } }
+    - { from: "14:20", to: "18:30", place: library, k: work, act: { zh: 赶稿, en: Deadline work } }
+    - { from: "18:30", to: "19:30", place: park, k: leisure, act: { zh: 散步, en: Evening walk } }
+    - { from: "19:30", to: "20:10", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "20:10", to: "23:00", place: home, k: work, act: { zh: 在家继续干活, en: More work at home } }
+    - { from: "23:00", to: "24:00", place: home, k: phone, act: { zh: 睡前刷手机, en: Scrolling in bed } }
+  weekend:
+    - { from: "00:00", to: "09:00", place: home, k: sleep, act: { zh: 周末睡个懒觉, en: Sleeping in } }
+    - { from: "09:00", to: "10:00", place: home, k: meal, act: { zh: 慢悠悠吃早饭, en: A slow breakfast } }
+    - { from: "10:00", to: "11:30", place: home, k: phone, act: { zh: 窝在家里刷手机, en: Lounging with the phone } }
+    - { from: "11:30", to: "13:00", place: shop, k: errand, act: { zh: 逛超市采购, en: Weekly shopping } }
+    - { from: "13:00", to: "14:00", place: restaurant, k: meal, act: { zh: 在外面吃午饭, en: Lunch out } }
+    - { from: "14:00", to: "17:00", place: park, k: leisure, act: { zh: 公园里晒太阳, en: Afternoon in the park } }
+    - { from: "17:00", to: "18:00", place: cafe, k: leisure, act: { zh: 咖啡店坐坐, en: Coffee with a friend } }
+    - { from: "18:00", to: "19:00", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:00", to: "23:30", place: home, k: leisure, act: { zh: 看剧、打游戏, en: Shows and games } }
+    - { from: "23:30", to: "24:00", place: home, k: phone, act: { zh: 睡前刷手机, en: Scrolling in bed } }
+  child_weekend:
+    - { from: "00:00", to: "08:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
+    - { from: "08:00", to: "09:00", place: home, k: meal, act: { zh: 吃早饭, en: Breakfast } }
+    - { from: "09:00", to: "11:00", place: library, k: study, act: { zh: 上兴趣班, en: Weekend class } }
+    - { from: "11:00", to: "12:30", place: park, k: leisure, act: { zh: 在公园玩, en: Playing in the park } }
+    - { from: "12:30", to: "13:10", place: home, k: meal, act: { zh: 吃午饭, en: Lunch } }
+    - { from: "13:10", to: "15:00", place: home, k: leisure, act: { zh: 看动画片、玩玩具, en: Cartoons and toys } }
+    - { from: "15:00", to: "17:30", place: park, k: leisure, act: { zh: 和小伙伴玩, en: Playing with friends } }
+    - { from: "17:30", to: "18:30", place: home, k: study, act: { zh: 写作业, en: Homework } }
+    - { from: "18:30", to: "19:10", place: home, k: meal, act: { zh: 吃晚饭, en: Dinner } }
+    - { from: "19:10", to: "20:40", place: home, k: leisure, act: { zh: 玩一会儿, en: Play time } }
+    - { from: "20:40", to: "24:00", place: home, k: sleep, act: { zh: 睡觉, en: Sleeping } }
 
 # 工作地点推断（按职业关键词）
 workplaces:

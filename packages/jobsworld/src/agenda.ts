@@ -8,8 +8,10 @@ const AgendaConfigSchema = z.object({
   roles: z.record(z.string(), z.array(z.object({
     from: z.string(), to: z.string(), place: z.string(),
     act: z.object({ zh: z.string(), en: z.string() }),
+    k: z.string().optional(),
     if: z.string().optional(),
   }))),
+  weekend_roles: z.array(z.string()).default([]),
   workplaces: z.array(z.object({ place: z.string(), words: z.array(z.string()) })),
 });
 type AgendaConfig = z.infer<typeof AgendaConfigSchema>;
@@ -21,16 +23,38 @@ export interface Agenda { persona_id: string; sim_date: string; home_place_id: s
 
 const has = (list: string[] | undefined, re: RegExp) => (list ?? []).some((s) => re.test(s));
 
-export function inferRole(p: PersonaSpec): string {
-  const id = p.identity; const occ = `${id.occupation ?? ''}`;
-  if (p.kind === 'child' || (id.age ?? 30) < 13) return 'child';
-  if (p.segment === 'senior' || (id.age ?? 30) >= 60 || /退休|retired/i.test(occ)) return 'senior';
+/** 世界侧的居民信息（来自 residents 表）；没有时按人物描述推断 */
+export interface ResidentHint { work_group?: string | null; workplace_id?: string | null; role?: string | null }
+
+export function inferRole(p: PersonaSpec, r?: ResidentHint): string {
+  const id = p.identity; const occ = `${id.occupation ?? ''}`; const age = id.age ?? 30;
+  if (p.kind === 'child' || age < 13) return 'child';
+  if (age < 18) return 'teen';
+  const kidAtHome = has(id.family, /儿子|女儿|孩子|son|daughter|kid|child/i) && age < 55;
+  switch (r?.work_group) {
+    case 'retired': return 'senior';
+    case 'student': return 'student';
+    case 'school_kid': return age < 13 ? 'child' : 'teen';
+    case 'home': return 'homemaker';
+    case 'none': return age >= 60 ? 'senior' : 'job_seeker';
+    case 'freelance': return 'freelancer';
+    case 'delivery': return 'driver';
+    case 'factory': case 'outdoor': return /夜班|night/i.test(occ) ? 'night_shift' : 'factory_shift';
+    case 'retail': case 'food': case 'service': return 'service_shift';
+    case 'medical': return 'medical_shift';
+    case 'education': return 'teacher';
+    case 'office': case 'tech': return kidAtHome ? 'parent' : 'office_worker';
+    default: break;
+  }
+  if (p.segment === 'senior' || age >= 60 || /退休|retired/i.test(occ)) return 'senior';
   if (/夜班|night/i.test(occ)) return 'night_shift';
   if (p.segment === 'student' || /大学生|研究生|student/i.test(occ)) return 'student';
   if (/自由|freelanc/i.test(occ)) return 'freelancer';
-  if (has(id.family, /儿子|女儿|孩子|son|daughter|kid|child/i)) return 'parent';
+  if (kidAtHome) return 'parent';
   return 'office_worker';
 }
+
+const isWeekend = (date: string) => { const d = new Date(`${date}T12:00:00`).getDay(); return d === 0 || d === 6; };
 
 function conditions(p: PersonaSpec, date: string): Record<string, boolean> {
   const fam = p.identity.family ?? [];
@@ -63,21 +87,27 @@ export function assignHome(layout: TownLayout, personaId: string, taken: Set<num
   return { place_id: layout.homes[i].place_id, unit: i };
 }
 
-export function skeletonAgenda(layout: TownLayout, p: PersonaSpec, date: string, home: { place_id: string; unit: number }): Agenda {
-  const role = inferRole(p);
-  const rules = agendaConfig().roles[role] ?? agendaConfig().roles.office_worker;
+export function skeletonAgenda(layout: TownLayout, p: PersonaSpec, date: string, home: { place_id: string; unit: number }, r?: ResidentHint): Agenda {
+  const base = inferRole(p, r); const c = agendaConfig();
+  const role = isWeekend(date) && c.weekend_roles.includes(base) ? (c.roles[`${base}_weekend`] ? `${base}_weekend` : 'weekend') : base;
+  const rules = c.roles[role] ?? c.roles.office_worker;
   const cond = conditions(p, date);
   const lang = p.locale === 'en-US' ? 'en' : 'zh';
   const items: AgendaItem[] = [];
-  for (const r of rules) {
-    if (r.if && !cond[r.if]) continue;
-    let kind: PlaceKindT;
-    if (r.place === 'home') kind = 'home';
-    else if (r.place === 'work') kind = workplaceKind(p);
-    else if (r.place === 'commute') kind = commuteKind(p);
-    else kind = r.place as PlaceKindT;
-    const place_id = kind === 'home' ? home.place_id : placeForKind(layout, kind, `${p.id}:${r.from}`);
-    items.push({ from: r.from, to: r.to, place_id, place_kind: kind, activity: r.act[lang] });
+  for (const rule of rules) {
+    if (rule.if && !cond[rule.if]) continue;
+    let kind: PlaceKindT; let place_id: string | undefined;
+    if (rule.place === 'home') kind = 'home';
+    else if (rule.place === 'work') {
+      const wp = r?.workplace_id ? layout.places.find((x) => x.id === r.workplace_id) : undefined;
+      if (wp) { kind = wp.kind; place_id = wp.id; }
+      else if (r && !r.workplace_id && ['home', 'freelance'].includes(r.work_group ?? '')) kind = 'home';
+      else if (r?.workplace_id === 'street') { kind = 'street'; place_id = 'street'; }
+      else kind = workplaceKind(p);
+    } else if (rule.place === 'commute') kind = commuteKind(p);
+    else kind = rule.place as PlaceKindT;
+    place_id ??= kind === 'home' ? home.place_id : placeForKind(layout, kind, `${p.id}:${rule.from}`);
+    items.push({ from: rule.from, to: rule.to, place_id, place_kind: kind, activity: rule.act[lang], kind: rule.k });
   }
   // 被跳过的条件段会留下时间空洞：把空洞并入前一段
   for (let i = 1; i < items.length; i++) if (items[i].from !== items[i - 1].to) items[i - 1].to = items[i].from;
@@ -98,7 +128,7 @@ export async function completeAgenda(p: PersonaSpec, a: Agenda): Promise<Agenda>
     ? 'You plan one ordinary day for a real person. Keep every time slot and place exactly; rewrite each activity as a short concrete phrase (≤ 12 words) and add an intent: what they are thinking about / planning next, linking consecutive slots causally (e.g. "has to leave by 5 to pick up her son"). Mention people from their family when natural. Never mention software testing, products under test, or evaluation.'
     : '你在为一个普通人安排平常的一天。严格保持每个时间段和地点不变；把每段活动改写成具体的短语（不超过 16 字），再补一句意图：他此刻惦记着什么、接下来打算干什么，并让相邻时间段有前因后果（例如「五点前得走，要去接儿子」）。自然地提到家人。不要提及测试、被测产品或评估。';
   try {
-    const r = await gateway().chat('mind_slow', {
+    const r = await gateway().chat('world_sim', {
       messages: [{ role: 'system', content: sys }, { role: 'user', content: `${who}\n${en ? 'Date' : '日期'}：${a.sim_date}\n${lines}` }],
       schema: Completion, schemaName: 'agenda', temperature: 0.8, retries: 1, tags: { purpose: 'jobsworld_agenda' },
     });

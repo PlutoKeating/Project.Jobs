@@ -2,7 +2,7 @@
 # 同一份布局同时驱动：网页小地图、TShock 插件、tModLoader mod（由 packages/jobsworld 计算成图元后经 NATS 下发）
 id: jobsworld
 name: { zh: 乔布斯镇, en: Jobs Town }
-width: 1180
+width: 1356
 ground_depth: 40          # 地表以下保留的土层厚度（地铁隧道在其中）
 subway_line: { y: 22, h: 8 }   # 贯穿全镇的地铁隧道（相对地面向下）
 
@@ -20,7 +20,9 @@ places:
   - { id: library,    kind: library,    name: { zh: 城市图书馆, en: City Library },         x: 830,  w: 56,  floors: 3, floor_h: 9, style: marble }
   - { id: hospital,   kind: hospital,   name: { zh: 市第一医院, en: City Hospital },        x: 896,  w: 92,  floors: 5, floor_h: 8, style: white }
   - { id: factory,    kind: factory,    name: { zh: 电子厂, en: Electronics Plant },       x: 998,  w: 84,  floors: 2, floor_h: 12, style: metal }
-  - { id: home_c,     kind: home,       name: { zh: 河畔小区, en: Riverside Homes },        x: 1092, w: 76,  floors: 3, floor_h: 9, style: wood }
+  - { id: home_c,     kind: home,       name: { zh: 河畔小区, en: Riverside Homes },        x: 1092, w: 76,  floors: 4, floor_h: 9, style: wood }
+  - { id: home_d,     kind: home,       name: { zh: 锦绣花园, en: Garden Heights },          x: 1178, w: 80,  floors: 10, floor_h: 8, style: brick }
+  - { id: home_e,     kind: home,       name: { zh: 学府里, en: Scholars' Row },             x: 1268, w: 76,  floors: 9, floor_h: 8, style: stucco }
 
 # 世界模板中的地点描述 → 地点类型（按顺序匹配，第一个命中生效；中英文关键词）
 place_match:

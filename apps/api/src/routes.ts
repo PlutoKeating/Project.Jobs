@@ -6,7 +6,7 @@ import { memoryCounts } from '@pux/memory';
 import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, observations, sessions, steps, studies, worldStates } from '@pux/db';
 import { blobs } from '@pux/storage';
 import * as E from '@pux/engine';
-import { computeLayout, kvGetJson, latestPersonas, loadAgenda, personaById, personaMemoryList, personaSessions, personaTrust, SUBJ, type Snapshot } from '@pux/jobsworld';
+import { computeLayout, kvGetJson, latestPersonas, liveContextFor, loadAgenda, personaById, personaMemoryList, personaSessions, personaTrust, residentOf, tiesOf, SUBJ, type Snapshot } from '@pux/jobsworld';
 import { login, logout, requireAdmin, roleOf, authEnabled } from './auth.ts';
 import { avatarFor } from './avatars.ts';
 import { autoProject, createAndRun, running } from './jobs.ts';
@@ -56,7 +56,8 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
         digital_literacy: r.spec.capability.digital_literacy, ai_familiarity: r.spec.capability.ai_familiarity,
         sessions: mine.length, apps: [...new Set(mine.map((s) => s.app))], last_seen: mine.reduce<Date | null>((m, s) => (s.started_at && (!m || s.started_at > m) ? s.started_at : m), null),
         memories: memN.get(r.id) ?? 0,
-        live: live ? { place_id: live.place_id, activity: live.activity, mode: live.mode, app: live.session?.app } : null,
+        live: live ? { place_id: live.place_id, activity: live.activity, mode: live.mode, app: live.session?.app, needs: live.needs ?? null, phone: live.phone ?? null } : null,
+        household_id: live?.household_id ?? null,
       };
     });
   });
@@ -71,6 +72,10 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
       id: p.id, version: p.version, kind: p.kind, locale: p.locale, segment: p.segment, target_user: p.target_user, source: p.source, frozen: p.frozen, created_at: p.created_at,
       spec: p.spec, agenda: await loadAgenda(id, date), memories: await personaMemoryList(id, 120), sessions: await personaSessions(id, 80), trust: await personaTrust(id),
       live: snap?.personas.find((x) => x.id === id) ?? null, clock: snap?.clock ?? null,
+      // 世界里的人：家庭、工作地点、钱包、关系网，以及此时此地的处境（合并世界：这就是他使用产品时的上下文）
+      resident: await residentOf(id).then((x) => (x ? { household_id: x.household_id, role: x.role, work_group: x.work_group, workplace_id: x.workplace_id, income_month: x.income_month, currency: x.currency, wallet: x.wallet, life_event: x.life_event } : null)),
+      ties: (await tiesOf(id)).slice(0, 24),
+      here: await liveContextFor(id).then((c) => (c ? { clock: c.clock, name: c.name, scenario: c.scenario, place_id: c.place_id, device: c.ctx.device, posture: c.ctx.posture, needs: c.needs, phone_affinity: c.phone_affinity, available: c.available, unavailable_reason: c.unavailable_reason ?? null, time_left_min: c.time_left_min, companions: c.companions.map((t) => ({ id: t.id, name: t.name, kind: t.kind })) } : null)).catch(() => null),
     };
   });
 
@@ -83,9 +88,10 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
 
   app.post('/api/v1/personas/generate', async (q, r) => {
     if (!requireAdmin(q, r)) return;
-    const b = (q.body ?? {}) as { n?: number; locale?: 'zh-CN' | 'en-US' };
+    const b = (q.body ?? {}) as { n?: number; locale?: 'zh-CN' | 'en-US' | 'mixed' };
     const n = Math.max(1, Math.min(12, Number(b.n ?? 4)));
-    const out = await E.generatePersonas({ n, locale: b.locale === 'en-US' ? 'en-US' : 'zh-CN' });
+    // 新居民：统计骨架 + 规则推导 + 模型写叙事，并住进城里（locale 决定这批人来自中国还是英语区）
+    const out = await E.generatePopulation({ n, zhShare: b.locale === 'en-US' ? 0 : b.locale === 'mixed' ? 0.5 : 1, seed: Date.now() % 1_000_000 });
     return { ok: true, result: out };
   });
 

@@ -72,6 +72,7 @@ namespace JobsWorld.Shared.Personas
             yield return T("位置：", "Where: ") + Place(p.PlaceId) + (p.Floor != 0 ? T($" {p.Floor}层", $" floor {p.Floor}") : "");
             yield return T("正在：", "Doing: ") + p.Activity;
             if (!string.IsNullOrEmpty(p.Intent)) yield return T("打算：", "Intent: ") + FakePlayerDirector.Shorten(p.Intent, 120);
+            if (p.Needs != null) yield return T("状态：", "State: ") + p.Needs.Describe(!En) + (p.Phone.HasValue && p.Phone.Value >= 0.5 ? T("，手机在手边", ", phone at hand") : "");
             if (p.Prev != null) yield return T("之前：", "Before: ") + $"{p.Prev.From}-{p.Prev.To} {p.Prev.Activity} @{Place(p.Prev.PlaceId)}";
             if (p.Next != null) yield return T("接下来：", "Next: ") + $"{p.Next.From}-{p.Next.To} {p.Next.Activity} @{Place(p.Next.PlaceId)}";
             var s = p.Session;
