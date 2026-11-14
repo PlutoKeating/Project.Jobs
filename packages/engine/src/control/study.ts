@@ -28,7 +28,7 @@ export async function createStudy(raw: Partial<StudyInput> & { app_version_id: s
     if (ex) return { id: ex.id, existing: true, isolation_warning: ex.isolation_warning ?? undefined };
   }
   const cfg = loadConfig();
-  const iso = checkVendorIsolation(['judge_0', 'judge_1', 'judge_2'].slice(0, input.judges));
+  const iso = await checkVendorIsolation();
   if (!iso.ok && cfg.vendor_isolation === 'strict') throw new Error(`厂商隔离校验未通过（strict）：${iso.warnings.join('；')}`);
   const id = newId('std');
   const warning = iso.ok ? undefined : `未做到厂商隔离：${iso.warnings.join('；')}。评审与 Persona Mind 可能共享偏见，相关结论可信度已自动降一级。`;
@@ -188,7 +188,7 @@ export async function waitForModelGateway(progress: Progress, maxWaitMin = 60): 
     const r = await gateway().ping();
     if (r.ok) { if (warned) progress('✅ 模型网关已恢复，继续运行'); return; }
     const auth = /reauth|credential|401|403|permission|token/i.test(r.detail);
-    if (!warned) { progress(`⏸ 模型网关不可用${auth ? '（凭据过期：请执行 gcloud auth application-default login，然后 docker compose restart litellm）' : ''}：${r.detail.slice(0, 160)}。最多等待 ${maxWaitMin} 分钟后自动继续。`); execFile('notify-send', ['AI 产品体验官：模型网关不可用', auth ? '请重新执行 gcloud auth application-default login' : r.detail.slice(0, 100)], () => {}); warned = true; }
+    if (!warned) { progress(`⏸ 模型网关不可用${auth ? '（凭证失效：到网页的「模型」里更新凭证）' : ''}：${r.detail.slice(0, 160)}。最多等待 ${maxWaitMin} 分钟后自动继续。`); execFile('notify-send', ['AI 产品体验官：模型网关不可用', auth ? '请重新执行 gcloud auth application-default login' : r.detail.slice(0, 100)], () => {}); warned = true; }
     if (Date.now() > deadline) throw new Error(`模型网关在 ${maxWaitMin} 分钟内未恢复：${r.detail.slice(0, 200)}`);
     await new Promise((res) => setTimeout(res, 30_000));
   }

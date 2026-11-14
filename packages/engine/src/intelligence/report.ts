@@ -87,7 +87,7 @@ export async function collectReportData(studyId: string, dir: string) {
     const cmp = (dim: string) => ({ dim, prev: prevScores.find((s) => s.segment === '*' && s.scenario_class === '*' && s.dimension === dim)?.mean ?? null, cur: sc.find((s) => s.segment === '*' && s.scenario_class === '*' && s.dimension === dim)?.mean ?? null });
     trend = { prev_study: prevReport.reports.study_id, prev_version: prevReport.app_versions.version, new_issues: [...curFp].filter((f) => !prevFp.has(f)).length, resolved_issues: [...prevFp].filter((f) => !curFp.has(f)).length, persisting: [...curFp].filter((f) => prevFp.has(f)).length, metrics: ['task_completion', 'steps', 'expectation_violations', 'satisfaction', 'sus'].map(cmp) };
   }
-  return { study, av, app, sessions: sessData, issues: issueData, hypotheses: hyps, scores: sc, calibration: card, coverage: cov, simq, cost: byRole, trend, isolation: checkVendorIsolation(['judge_0', 'judge_1', 'judge_2'].slice(0, (study.config as { judges?: number }).judges ?? 2)), severityDefs: loadConfig().severity };
+  return { study, av, app, sessions: sessData, issues: issueData, hypotheses: hyps, scores: sc, calibration: card, coverage: cov, simq, cost: byRole, trend, isolation: await checkVendorIsolation(), severityDefs: loadConfig().severity };
 }
 
 type RD = Awaited<ReturnType<typeof collectReportData>>;

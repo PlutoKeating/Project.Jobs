@@ -9,6 +9,7 @@
     "@pux/db": "workspace:*",
     "@pux/engine": "workspace:*",
     "@pux/jobsworld": "workspace:*",
+    "@pux/llm": "workspace:*",
     "drizzle-orm": "^0.45.4"
   }
 }

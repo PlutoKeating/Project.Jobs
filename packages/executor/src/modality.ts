@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { dataPath, logger } from '@pux/core';
-import { gateway } from '@pux/llm';
+import { gateway, vertexAccess } from '@pux/llm';
 
 const run = promisify(execFile);
 
@@ -32,7 +32,7 @@ export class ModalityFiles {
     let engine = 'gemini-tts';
     try { const buf = await vertexTts(text); writeFileSync(raw, buf); }
     catch (e) {
-      logger.warn({ err: String(e).slice(0, 200) }, 'Gemini TTS 失败，改用 espeak');
+      logger.debug({ err: String(e).slice(0, 200) }, '没有可用的 Gemini 语音合成，改用 espeak');
       engine = 'espeak';
       await run('espeak', ['-v', locale.startsWith('zh') ? 'zh' : 'en', '-w', raw, text]).catch(() => run('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'lavfi', '-i', 'sine=f=440:d=2', raw]));
     }
@@ -54,20 +54,12 @@ export class ModalityFiles {
   }
 }
 
-let tokenCache: { token: string; at: number } | undefined;
-async function adcToken(): Promise<string> {
-  if (tokenCache && Date.now() - tokenCache.at < 30 * 60_000) return tokenCache.token;
-  const { stdout } = await run('gcloud', ['auth', 'application-default', 'print-access-token']);
-  tokenCache = { token: stdout.trim(), at: Date.now() };
-  return tokenCache.token;
-}
-
-/** Gemini TTS（Vertex 直连；LiteLLM 尚不稳定支持 Vertex 音频输出） */
+/** Gemini 语音合成：借用「模型」里接入的 Vertex 连接。没有接入 Vertex 时抛错，由调用方改用本机的 espeak */
 export async function vertexTts(text: string): Promise<Buffer> {
-  const project = process.env.VERTEX_PROJECT; if (!project) throw new Error('VERTEX_PROJECT 未设置');
+  const v = await vertexAccess(); if (!v) throw new Error('没有接入 Vertex 连接');
   const model = process.env.PUX_TTS_MODEL ?? 'gemini-3.8-flash-tts';
-  const r = await fetch(`https://aiplatform.googleapis.com/v1/projects/${project}/locations/global/publishers/google/models/${model}:generateContent`, {
-    method: 'POST', headers: { Authorization: `Bearer ${await adcToken()}`, 'Content-Type': 'application/json' },
+  const r = await fetch(`${v.base}/publishers/google/models/${model}:generateContent`, {
+    method: 'POST', headers: { Authorization: `Bearer ${v.token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text }] }], generationConfig: { responseModalities: ['AUDIO'] } }),
   });
   if (!r.ok) throw new Error(`TTS HTTP ${r.status}`);

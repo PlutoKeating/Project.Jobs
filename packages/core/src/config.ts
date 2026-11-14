@@ -3,10 +3,7 @@ import { z } from 'zod';
 import { configPath } from './paths.ts';
 import { readYaml } from './yamlio.ts';
 
-const RoleSchema = z.object({ alias: z.string(), family: z.string(), model: z.string(), tier: z.string().optional(), perspective: z.string().optional() });
-
 export const PuxConfigSchema = z.object({
-  roles: z.record(z.string(), RoleSchema),
   vendor_isolation: z.enum(['strict', 'warn']).default('warn'),
   budgets: z.object({ max_steps_per_session: z.number(), max_sessions: z.number(), concurrency: z.number(), round_size: z.number() }),
   guards: z.object({

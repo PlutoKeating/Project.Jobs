@@ -57,6 +57,13 @@
       "when": 1794689530552,
       "tag": "0007_launches",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794692706624,
+      "tag": "0008_llm_config",
+      "breakpoints": true
     }
   ]
 }

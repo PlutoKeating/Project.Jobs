@@ -466,8 +466,60 @@ export const llmTraces = pgTable('llm_traces', {
   cost_usd: doublePrecision('cost_usd').notNull().default(0),
   status: text('status').notNull(),                      // ok|error|retry
   error: text('error'),
+  config_version: integer('config_version'),             // 这次调用采用的模型配置版本
+  target: text('target'),                                // 实际调用的目标（连接 / 上游模型标识）
+  cred: text('cred'),                                    // 凭证的脱敏标识（末几位）
+  attempt: integer('attempt'),                           // 同一次业务请求里的第几次尝试
+  error_class: text('error_class'),                      // auth|not_found|rate_limit|transient|context|capability|content|bad_request
   created_at: createdAt(),
 }, (t) => [index('trace_study').on(t.study_id), index('trace_session').on(t.session_id)]);
+
+// ---- 模型接入：多供应商、多凭证、多模型的运行时配置 ----
+// 每次发布是一个不可变的完整版本（供应商连接、凭证引用、已选模型、全局顺序）；当前配置 = 版本号最大的那一行
+export const llmConfigVersions = pgTable('llm_config_versions', {
+  version: integer('version').primaryKey(),
+  parent: integer('parent'),
+  content: jsonb('content').notNull(),
+  digest: text('digest').notNull(),
+  submit_id: text('submit_id').unique(),                 // 客户端的提交标识：回执丢了再提交不会重复发布
+  author: text('author'),
+  note: text('note'),
+  created_at: createdAt(),
+});
+
+// 凭证正文只在这里（AES-256-GCM 密文，绑定所属连接）；配置版本里只有引用和脱敏提示
+export const llmSecrets = pgTable('llm_secrets', {
+  id: text('id').primaryKey(),
+  provider_id: text('provider_id').notNull(),
+  hint: text('hint').notNull(),
+  cipher: text('cipher').notNull(),
+  created_at: createdAt(),
+  revoked_at: ts('revoked_at'),
+});
+
+// 各运行实例（世界服务、API…）此刻采用的配置版本，用于在界面上显示生效进度
+export const llmInstances = pgTable('llm_instances', {
+  id: text('id').primaryKey(),
+  kind: text('kind').notNull(),
+  version: integer('version').notNull(),
+  health: jsonb('health'),                               // 这个实例里暂时被跳过的目标与凭证（原因、到什么时候）
+  seen_at: ts('seen_at').notNull().default(sql`now()`),
+});
+
+// 单目标测试的结果：绑定配置版本、具体凭证、测试的能力
+export const llmTests = pgTable('llm_tests', {
+  id: text('id').primaryKey(),
+  version: integer('version').notNull(),
+  target_id: text('target_id').notNull(),
+  credential_id: text('credential_id'),
+  cred: text('cred'),
+  capability: text('capability').notNull(),              // text|vision|json|locate|embed
+  ok: boolean('ok').notNull(),
+  latency_ms: integer('latency_ms').notNull().default(0),
+  error_class: text('error_class'),
+  detail: text('detail'),
+  created_at: createdAt(),
+}, (t) => [index('llm_tests_target').on(t.target_id)]);
 
 export const executorComparisons = pgTable('executor_comparisons', {
   id: text('id').primaryKey(),

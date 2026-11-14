@@ -1,20 +1,6 @@
-# AI 产品体验官 · 全局配置。可在 config/pux.config.local.yaml 中覆盖（该文件不入库）。
+# Jobs · 全局配置。可在 config/pux.config.local.yaml 中覆盖（该文件不入库）。
 
-# 角色别名 → LiteLLM model_name。family 用于厂商隔离校验（§12.2、§17）。
-roles:
-  mind_fast:      { alias: mind.fast,       family: google, model: gemini-4-hydrogen, tier: flash }
-  mind_slow:      { alias: mind.slow,       family: google, model: gemini-4-argon,    tier: pro }
-  operator_locate: { alias: operator.locate, family: google, model: gemini-4-hydrogen, tier: flash }
-  world_sim:      { alias: world.sim,       family: google, model: gemini-4-hydrogen, tier: flash }
-  judge_0:        { alias: judge.panel.0,   family: google, model: gemini-4-argon,    tier: pro,   perspective: objective_first }
-  judge_1:        { alias: judge.panel.1,   family: google, model: gemini-4-carbon,   tier: ultra, perspective: adversarial_review }
-  judge_2:        { alias: judge.panel.2,   family: google, model: gemini-4-hydrogen, tier: flash, perspective: user_advocate }
-  judge_meta:     { alias: judge.meta,      family: google, model: gemini-4-carbon,   tier: ultra }
-  interview:      { alias: interview,       family: google, model: gemini-4-argon,    tier: pro }
-  gen_persona:    { alias: gen.persona,     family: google, model: gemini-4-argon,    tier: pro }
-  product_induce: { alias: product.induce,  family: google, model: gemini-4-argon,    tier: pro }
-  embed:          { alias: embed,           family: google, model: gemini-embedding-2 }
-  image_gen:      { alias: image.gen,       family: google, model: gemini-3.1-flash-image }
+# 模型不在这里配置：在网页的「模型」里接入供应商、勾选模型、排好顺序后发布（见 docs/MODELS.md）。
 
 # strict：judge 与 mind 同厂商时拒绝启动 Study；warn：放行但在报告中标注「未隔离」并把可信度降一级
 vendor_isolation: warn

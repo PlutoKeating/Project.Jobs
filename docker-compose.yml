@@ -36,21 +36,6 @@ services:
     volumes:
       - s3data:/data
 
-  litellm:
-    image: ghcr.io/berriai/litellm:main-stable
-    restart: unless-stopped
-    command: ["--config", "/app/config.yaml", "--port", "4000"]
-    environment:
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-pux-local}
-      VERTEX_PROJECT: ${VERTEX_PROJECT:?请在 .env 中设置 VERTEX_PROJECT}
-      VERTEX_LOCATION: ${VERTEX_LOCATION:-global}
-      GOOGLE_APPLICATION_CREDENTIALS: /secrets/adc.json
-    ports:
-      - "127.0.0.1:${LITELLM_PORT:-54000}:4000"
-    volumes:
-      - ./infra/litellm/config.yaml:/app/config.yaml:ro
-      - ${GOOGLE_ADC_FILE:?请在 .env 中设置 GOOGLE_ADC_FILE}:/secrets/adc.json:ro
-
   nats:
     # JobsWorld 事件总线（JetStream 持久化；只监听本机）
     image: nats:2.12-alpine

@@ -1,0 +1,165 @@
+// 上游协议适配：OpenAI 兼容（绝大多数供应商）、Anthropic Messages、Vertex AI（Google 凭证 JSON 换访问令牌后走 OpenAI 兼容入口）。
+// 这一层只管「把一次请求发给一个目标」，不做重试与换目标（那是路由的事）。
+import { createSign } from 'node:crypto';
+import { lookup } from 'node:dns/promises';
+import type { ModelEntry, ProviderConn } from './config.ts';
+
+export type ContentPart = { type: 'text'; text: string } | { type: 'image'; data: Buffer | string; mime?: string };
+export interface Msg { role: 'system' | 'user' | 'assistant'; content: string | ContentPart[] }
+export interface ChatReq { messages: Msg[]; temperature?: number; maxTokens?: number; reasoning?: 'low' | 'medium' | 'high'; json?: { name: string; schema: Record<string, unknown> }; timeoutMs?: number }
+export interface ChatRes { text: string; usage: { prompt: number; completion: number; reasoning: number } }
+
+export class UpstreamError extends Error {
+  constructor(message: string, public status?: number, public retryAfterMs?: number) { super(message); }
+}
+
+// ---- 出站地址检查：凭证只发往管理员保存的地址；不跟随跳转；不碰云主机的元数据地址 ----
+const META = /^(169\.254\.|fd00:ec2:|fe80:)/i;
+const checked = new Map<string, number>();
+export async function assertAllowed(url: string) {
+  const u = new URL(url);
+  if (!['http:', 'https:'].includes(u.protocol)) throw new UpstreamError('地址必须是 http 或 https');
+  const host = u.hostname.replace(/^\[|\]$/g, '');
+  if ((checked.get(host) ?? 0) > Date.now()) return;
+  if (/^metadata\.|\.internal$/i.test(host) || META.test(host)) throw new UpstreamError('不允许访问这个地址（云主机的元数据服务）');
+  try { for (const a of await lookup(host, { all: true })) if (META.test(a.address)) throw new UpstreamError('不允许访问这个地址（解析到了元数据服务）'); }
+  catch (e) { if (e instanceof UpstreamError) throw e; /* 解析失败交给后面的请求去报错 */ }
+  checked.set(host, Date.now() + 60_000);
+}
+
+async function post(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): Promise<unknown> {
+  await assertAllowed(url);
+  let r: Response;
+  try { r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), redirect: 'error', signal: AbortSignal.timeout(timeoutMs) }); }
+  catch (e) { throw new UpstreamError(String((e as Error).message ?? e)); }
+  const text = await r.text();
+  if (!r.ok) {
+    let msg = text.slice(0, 600);
+    try { const j = JSON.parse(text) as { error?: { message?: string } | string; message?: string } | { error?: { message?: string } }[]; const o = Array.isArray(j) ? j[0] : j; msg = (typeof o?.error === 'string' ? o.error : o?.error?.message) ?? (o as { message?: string })?.message ?? msg; } catch { /* 不是 JSON */ }
+    const ra = Number(r.headers.get('retry-after')); const ms = Number.isFinite(ra) && ra > 0 ? ra * 1000 : undefined;
+    throw new UpstreamError(String(msg).slice(0, 600), r.status, ms);
+  }
+  try { return JSON.parse(text); } catch { throw new UpstreamError('上游返回的不是 JSON'); }
+}
+
+// ---- Google 凭证 JSON → 访问令牌（服务账号或 gcloud 的 application default credentials）----
+interface GoogleCred { type?: string; client_id?: string; client_secret?: string; refresh_token?: string; client_email?: string; private_key?: string; token_uri?: string; project_id?: string; quota_project_id?: string }
+const tokens = new Map<string, { token: string; exp: number }>();
+const b64u = (b: Buffer | string) => Buffer.from(b).toString('base64url');
+export function googleProject(secret: string): string | undefined { try { const j = JSON.parse(secret) as GoogleCred; return j.quota_project_id ?? j.project_id; } catch { return undefined; } }
+
+export async function googleToken(secret: string): Promise<string> {
+  const hit = tokens.get(secret); if (hit && hit.exp > Date.now() + 60_000) return hit.token;
+  let j: GoogleCred; try { j = JSON.parse(secret) as GoogleCred; } catch { throw new UpstreamError('这里需要粘贴 Google 凭证的 JSON（服务账号密钥，或 gcloud auth application-default login 生成的文件内容）', 401); }
+  const tokenUri = 'https://oauth2.googleapis.com/token';
+  let form: URLSearchParams;
+  if (j.type === 'authorized_user' && j.refresh_token) form = new URLSearchParams({ grant_type: 'refresh_token', client_id: j.client_id ?? '', client_secret: j.client_secret ?? '', refresh_token: j.refresh_token });
+  else if (j.client_email && j.private_key) {
+    const now = Math.floor(Date.now() / 1000);
+    const head = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' })); const claim = b64u(JSON.stringify({ iss: j.client_email, scope: 'https://www.googleapis.com/auth/cloud-platform', aud: tokenUri, iat: now, exp: now + 3600 }));
+    const sig = createSign('RSA-SHA256').update(`${head}.${claim}`).sign(j.private_key);
+    form = new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: `${head}.${claim}.${b64u(sig)}` });
+  } else throw new UpstreamError('认不出这份 Google 凭证的类型', 401);
+  let r: Response;
+  try { r = await fetch(tokenUri, { method: 'POST', body: form, signal: AbortSignal.timeout(20_000) }); } catch (e) { throw new UpstreamError(String((e as Error).message)); }
+  const t = (await r.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: string; error_description?: string };
+  if (!r.ok || !t.access_token) throw new UpstreamError(`Google 凭证换不到访问令牌：${t.error_description ?? t.error ?? r.status}`, r.status === 400 ? 401 : r.status);
+  tokens.set(secret, { token: t.access_token, exp: Date.now() + (t.expires_in ?? 3000) * 1000 });
+  return t.access_token;
+}
+
+export function vertexBase(p: ProviderConn, secret: string): string {
+  const project = googleProject(secret);
+  if (p.base_url.includes('{project}') && !project) throw new UpstreamError('这份 Google 凭证里没有项目 ID（quota_project_id / project_id）', 401);
+  return p.base_url.replace('{project}', project ?? '');
+}
+
+/** 一个目标的请求地址、请求头、上游模型名（OpenAI 兼容的两种协议共用） */
+export async function openaiEndpoint(p: ProviderConn, m: ModelEntry, secret: string): Promise<{ base: string; headers: Record<string, string>; model: string }> {
+  if (p.protocol === 'vertex') return { base: `${vertexBase(p, secret)}/endpoints/openapi`, headers: { authorization: `Bearer ${await googleToken(secret)}` }, model: m.model.includes('/') ? m.model : `google/${m.model}` };
+  return { base: p.base_url, headers: { authorization: `Bearer ${secret}` }, model: m.model };
+}
+
+const dataUrl = (p: Extract<ContentPart, { type: 'image' }>) => `data:${p.mime ?? 'image/jpeg'};base64,${typeof p.data === 'string' ? p.data : p.data.toString('base64')}`;
+const jsonHint = (j: NonNullable<ChatReq['json']>) => `\n\n只输出一个 JSON 对象（不要解释、不要代码块），符合这个 JSON Schema：\n${JSON.stringify(j.schema)}`;
+function withJsonHint(msgs: Msg[], j: NonNullable<ChatReq['json']>): Msg[] {
+  const out = msgs.map((m) => ({ ...m })); const i = out.map((m) => m.role).lastIndexOf('user');
+  if (i < 0) return [...out, { role: 'user', content: jsonHint(j).trim() }];
+  const c = out[i].content;
+  out[i].content = typeof c === 'string' ? c + jsonHint(j) : [...c, { type: 'text', text: jsonHint(j).trim() }];
+  return out;
+}
+
+/** 某个目标不接受的可选参数（记在内存里，下次不再带上） */
+const dropped = new Map<string, Set<string>>();
+const OPTIONAL = ['temperature', 'reasoning_effort', 'response_format', 'max_tokens'] as const;
+
+async function chatOpenAI(p: ProviderConn, m: ModelEntry, secret: string, req: ChatReq): Promise<ChatRes> {
+  const ep = await openaiEndpoint(p, m, secret);
+  const skip = dropped.get(m.id) ?? new Set<string>();
+  for (let round = 0; ; round++) {
+    const native = req.json && m.caps.json && !skip.has('response_format');
+    const msgs = req.json && !native ? withJsonHint(req.messages, req.json) : req.messages;
+    const body: Record<string, unknown> = { model: ep.model, messages: msgs.map((x) => (typeof x.content === 'string' ? { role: x.role, content: x.content } : { role: x.role, content: x.content.map((c) => (c.type === 'text' ? { type: 'text', text: c.text } : { type: 'image_url', image_url: { url: dataUrl(c) } })) })) };
+    if (req.temperature !== undefined && !skip.has('temperature')) body.temperature = req.temperature;
+    if (req.maxTokens) body[skip.has('max_tokens') ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens;
+    if (req.reasoning && !skip.has('reasoning_effort')) body.reasoning_effort = req.reasoning;
+    if (native) body.response_format = { type: 'json_schema', json_schema: { name: req.json!.name, schema: req.json!.schema } };
+    try {
+      const r = (await post(`${ep.base}/chat/completions`, ep.headers, body, req.timeoutMs ?? 180_000)) as { choices?: { message?: { content?: string | { type?: string; text?: string }[] | null; refusal?: string }; finish_reason?: string }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } }; error?: { message?: string } };
+      if (r.error?.message) throw new UpstreamError(r.error.message, 400);                 // 有的上游把错误放在 200 的正文里
+      const c = r.choices?.[0]?.message?.content;
+      const text = typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text ?? '').join('') : '';
+      if (!text && r.choices?.[0]?.finish_reason === 'content_filter') throw new UpstreamError('content filter', 400);
+      return { text, usage: { prompt: r.usage?.prompt_tokens ?? 0, completion: r.usage?.completion_tokens ?? 0, reasoning: r.usage?.completion_tokens_details?.reasoning_tokens ?? 0 } };
+    } catch (e) {
+      // 可选参数被拒：去掉它再试（温度、推理强度是提示性的；结构化输出改成在提示里给 schema，结果仍由调用方校验）
+      const msg = e instanceof UpstreamError && e.status === 400 ? e.message.toLowerCase() : '';
+      const bad = round < 3 ? OPTIONAL.find((k) => !skip.has(k) && k in { ...body, max_tokens: body.max_tokens } && (msg.includes(k) || (k === 'response_format' && /json_schema|structured|response format/.test(msg)) || (k === 'reasoning_effort' && /reasoning|thinking/.test(msg)) || (k === 'max_tokens' && msg.includes('max_completion_tokens')))) : undefined;
+      if (!bad) throw e;
+      skip.add(bad); dropped.set(m.id, skip);
+    }
+  }
+}
+
+async function chatAnthropic(p: ProviderConn, m: ModelEntry, secret: string, req: ChatReq): Promise<ChatRes> {
+  const msgs = req.json ? withJsonHint(req.messages, req.json) : req.messages;
+  const system = msgs.filter((x) => x.role === 'system').map((x) => (typeof x.content === 'string' ? x.content : x.content.map((c) => (c.type === 'text' ? c.text : '')).join('\n'))).join('\n\n');
+  const messages = msgs.filter((x) => x.role !== 'system').map((x) => ({ role: x.role, content: typeof x.content === 'string' ? x.content : x.content.map((c) => (c.type === 'text' ? { type: 'text', text: c.text } : { type: 'image', source: { type: 'base64', media_type: c.mime ?? 'image/jpeg', data: typeof c.data === 'string' ? c.data : c.data.toString('base64') } })) }));
+  const body: Record<string, unknown> = { model: m.model, max_tokens: req.maxTokens ?? Math.min(m.caps.output ?? 8192, 8192), messages };
+  if (system) body.system = system;
+  if (req.temperature !== undefined) body.temperature = Math.min(1, req.temperature);
+  const r = (await post(`${p.base_url}/messages`, { 'x-api-key': secret, 'anthropic-version': '2023-06-01' }, body, req.timeoutMs ?? 180_000)) as { content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number }; stop_reason?: string };
+  return { text: (r.content ?? []).filter((c) => c.type === 'text').map((c) => c.text ?? '').join(''), usage: { prompt: r.usage?.input_tokens ?? 0, completion: r.usage?.output_tokens ?? 0, reasoning: 0 } };
+}
+
+export const chat = (p: ProviderConn, m: ModelEntry, secret: string, req: ChatReq) => (p.protocol === 'anthropic' ? chatAnthropic(p, m, secret, req) : chatOpenAI(p, m, secret, req));
+
+export async function embed(p: ProviderConn, m: ModelEntry, secret: string, text: string, dims: number): Promise<number[]> {
+  if (p.protocol === 'anthropic') throw new UpstreamError('这个协议没有向量接口', 400);
+  if (p.protocol === 'vertex') {
+    const base = `${vertexBase(p, secret)}/publishers/google/models/${m.model}`; const headers = { authorization: `Bearer ${await googleToken(secret)}` };
+    try { const r = (await post(`${base}:embedContent`, headers, { content: { parts: [{ text }] }, outputDimensionality: dims }, 60_000)) as { embedding?: { values?: number[] } }; if (r.embedding?.values?.length) return r.embedding.values; }
+    catch (e) { if (!(e instanceof UpstreamError) || (e.status !== 404 && e.status !== 400)) throw e; }
+    const r = (await post(`${base}:predict`, headers, { instances: [{ content: text }], parameters: { outputDimensionality: dims } }, 60_000)) as { predictions?: { embeddings?: { values?: number[] } }[] };
+    const v = r.predictions?.[0]?.embeddings?.values; if (!v?.length) throw new UpstreamError('上游没有返回向量');
+    return v;
+  }
+  const r = (await post(`${p.base_url}/embeddings`, { authorization: `Bearer ${secret}` }, { model: m.model, input: text, dimensions: dims }, 60_000)) as { data?: { embedding?: number[] }[] };
+  const v = r.data?.[0]?.embedding; if (!v?.length) throw new UpstreamError('上游没有返回向量');
+  return v;
+}
+
+export async function image(p: ProviderConn, m: ModelEntry, secret: string, prompt: string): Promise<Buffer> {
+  if (p.protocol === 'vertex') {
+    const r = (await post(`${vertexBase(p, secret)}/publishers/google/models/${m.model}:generateContent`, { authorization: `Bearer ${await googleToken(secret)}` }, { contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { responseModalities: ['TEXT', 'IMAGE'] } }, 120_000)) as { candidates?: { content?: { parts?: { inlineData?: { data?: string } }[] } }[] };
+    const d = r.candidates?.[0]?.content?.parts?.find((x) => x.inlineData?.data)?.inlineData?.data;
+    if (!d) throw new UpstreamError('上游没有返回图片'); return Buffer.from(d, 'base64');
+  }
+  if (p.protocol === 'anthropic') throw new UpstreamError('这个协议没有画图接口', 400);
+  const r = (await post(`${p.base_url}/images/generations`, { authorization: `Bearer ${secret}` }, { model: m.model, prompt, n: 1, response_format: 'b64_json' }, 120_000)) as { data?: { b64_json?: string; url?: string }[] };
+  const x = r.data?.[0];
+  if (x?.b64_json) return Buffer.from(x.b64_json, 'base64');
+  if (x?.url) { await assertAllowed(x.url); return Buffer.from(await (await fetch(x.url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer()); }
+  throw new UpstreamError('上游没有返回图片');
+}

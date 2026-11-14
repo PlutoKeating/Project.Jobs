@@ -70,7 +70,7 @@ async function synthTrack(studyId: string, opts: { cleanReplay: boolean; lang: '
     // 模型遗漏的候选：各自成组（保留，交给归因复核）
     chunk.forEach((c, n) => { if (!assigned.has(n)) groups.push({ candidate_ids: [], key: `${c.source}_${(c.error_code ?? c.category).toLowerCase()}_${shortHash(c.title, 6)}`, title: c.title, title_en: c.title, description: c.description ?? c.title, category: c.category as never, heuristics: c.heuristics ?? [], severity: (c.severity_hint as never) ?? 'P2', recommendation: '', noise: false, members: expand(c) }); });
   }
-  const iso = checkVendorIsolation(['judge_0', 'judge_1', 'judge_2'].slice(0, (study.config as { judges?: number }).judges ?? 2));
+  const iso = await checkVendorIsolation();
   const experts = sess.filter((s) => s.is_expert_baseline);
   const created: string[] = [];
   for (const g of groups) {

@@ -7,6 +7,7 @@ import {
   type InviteCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type PublishCmd, type ResidentRow,
   type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type SessionLive, type Snapshot, type WorldEvent,
 } from '@pux/jobsworld';
+import { modelsReady, setInstanceKind } from '@pux/llm';
 import { WorldClock } from './clock.ts';
 import { loadSessionSteps, SessionTracker, stepToLive } from './tracker.ts';
 import { Placement, REACTIONS, shorten, toneOf } from './sim.ts';
@@ -273,6 +274,7 @@ sub(SUBJ.ask, async (d) => {
   return { answer: await askPersona(sid, String(question).slice(0, 500)), session_id: sid };
 });
 
+setInstanceKind('world');
 await loadRoster();
 
 // ---- 发布引擎：已发布的产品出现在人们面前 → 注意到的人自己决定 → 点开的人排队使用 → 用完留下评论与口碑 ----
@@ -289,8 +291,13 @@ async function launchesNow(): Promise<LaunchLive[]> {
 }
 let lastLaunchAbs = absMinute(clock.date, clock.minute);
 let launchBusy = false;
+let modelsWarned = false;
 async function launchTick() {
   if (!engine || !Engine || launchBusy || clock.paused) return;
+  // 还没接入模型时世界照常运转，只是没有人能做决定、也没有人能用产品；接入并发布后几秒内自动开始
+  const m = await modelsReady().catch(() => ({ ready: false, missing: [] as string[] }));
+  if (!m.ready) { if (!modelsWarned) { modelsWarned = true; logger.warn({ missing: m.missing }, '还没有接入可用的模型：发布引擎暂不运行（到网页的「模型」里接入）'); } lastLaunchAbs = absMinute(clock.date, clock.minute); return; }
+  if (modelsWarned) { modelsWarned = false; logger.info('模型已就绪，发布引擎开始运行'); }
   const abs = absMinute(clock.date, clock.minute); const minutes = abs - lastLaunchAbs;
   if (minutes < 1) return;
   launchBusy = true; lastLaunchAbs = abs;

@@ -12,9 +12,6 @@ export const env = {
   s3AccessKey: v('S3_ACCESS_KEY', 'puxadmin'),
   s3SecretKey: v('S3_SECRET_KEY', 'puxadmin-secret'),
   s3Bucket: v('S3_BUCKET', 'pux-evidence'),
-  litellmBaseUrl: v('LITELLM_BASE_URL', 'http://127.0.0.1:54000'),
-  litellmKey: v('LITELLM_MASTER_KEY', 'sk-pux-local'),
-  consolePort: Number(v('CONSOLE_PORT', '5300')),
   demoHost: v('DEMO_HOST', '127.0.0.1'),
   logLevel: v('PUX_LOG_LEVEL', 'info'),
 };

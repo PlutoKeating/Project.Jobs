@@ -6,9 +6,10 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { chromium, type Browser, type BrowserContext, type CDPSession, type Dialog, type Page, type Request } from 'playwright';
 import {
-  dataPath, env, logger, makeError, newId, shortHash,
+  dataPath, logger, makeError, newId, shortHash,
   type ActionRequest, type ActionResult, type Criterion, type Executor, type MotorProfile, type Observation, type Rng, type TargetRef, type UIElement, type UAPError,
 } from '@pux/core';
+import { candidates, health, locateFamily, noModelMessage, snapshot, startLocalEndpoint } from '@pux/llm';
 import { putEvidence, type EvidenceCtx } from './evidence.ts';
 import { checkPolicy, type SafetyPolicy } from './policy.ts';
 import { ModalityFiles } from './modality.ts';
@@ -177,10 +178,16 @@ export class BrowserSession implements Executor {
   /** Midscene：只用它「看截图找到目标在哪」；动作由本类按人物的手来注入 */
   private async midAgent(): Promise<MidAgent> {
     if (this.mid && this.midPage === this.page) return this.mid;
-    process.env.MIDSCENE_MODEL_BASE_URL = `${env.litellmBaseUrl}/v1`;
-    process.env.MIDSCENE_MODEL_API_KEY = env.litellmKey;
-    process.env.MIDSCENE_MODEL_NAME = 'operator.locate';
-    process.env.MIDSCENE_MODEL_FAMILY = 'gemini';
+    // Midscene 自己发请求：指到本进程的兼容入口，由它按已发布的模型配置路由到「在截图上定位」的目标。
+    // 提示与坐标格式按模型家族定，所以入口地址里带上家族：这次会话里只会转发给同一家族的目标
+    const { eligible, skipped } = candidates((await snapshot()).config, 'locate', {}, health);
+    if (!eligible.length) throw Object.assign(new Error(noModelMessage('locate', skipped)), { code: 'EXEC_UNSUPPORTED' });
+    const family = locateFamily(eligible[0].model.model)!;
+    const ep = await startLocalEndpoint();
+    process.env.MIDSCENE_MODEL_BASE_URL = ep.url('locate', family);
+    process.env.MIDSCENE_MODEL_API_KEY = ep.key;
+    process.env.MIDSCENE_MODEL_NAME = eligible[0].model.model;
+    process.env.MIDSCENE_MODEL_FAMILY = family;
     process.env.MIDSCENE_MODEL_REASONING_ENABLED = 'default';
     process.env.MIDSCENE_RUN_DIR = dataPath('runtime', this.opts.sessionId, 'midscene');
     const { PlaywrightAgent } = await import('@midscene/web/playwright/agent');
@@ -397,7 +404,7 @@ export class BrowserSession implements Executor {
     const motor = req.motor ?? DEFAULT_MOTOR;
     const result = (status: ActionResult['status'], extra: Partial<ActionResult> = {}): ActionResult => ({
       action_id: req.action_id, status, matched_criteria: [], started_at, ended_at: iso(), duration_ms: Date.now() - started,
-      executor: { name: this.name, version: this.name === 'midscene' ? MIDSCENE_VERSION : 'playwright', model_alias: this.name === 'midscene' ? 'operator.locate' : undefined },
+      executor: { name: this.name, version: this.name === 'midscene' ? MIDSCENE_VERSION : 'playwright', model_alias: this.name === 'midscene' ? (process.env.MIDSCENE_MODEL_NAME ?? 'locate') : undefined },
       before_obs, after_obs: '', effects: { url_changed: false, dom_changed: false, requests: 0, new_dialog: false }, evidence_ids: [], ...extra,
     });
 

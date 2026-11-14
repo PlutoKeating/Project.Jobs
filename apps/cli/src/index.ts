@@ -26,10 +26,9 @@ program.command('doctor').description('检查依赖服务、模型网关、数�
   const check = async (name: string, f: () => Promise<string>) => { try { console.log(`✅ ${name}: ${await f()}`); } catch (e) { console.log(`❌ ${name}: ${String((e as Error).message).slice(0, 160)}`); } };
   await check('Postgres', async () => { await getDb().execute('select 1' as never); return env.databaseUrl.replace(/:[^:@/]+@/, ':***@'); });
   await check('MinIO/S3', async () => { await blobs().ping(); return env.s3Endpoint; });
-  await check('LiteLLM', async () => { const r = await gateway().ping(); if (!r.ok) throw new Error(r.detail); return r.detail; });
+  await check('模型', async () => { const r = await gateway().ping(); if (!r.ok) throw new Error(r.detail); return r.detail; });
   await check('Chromium', async () => { const { chromium } = await import('playwright'); const b = await chromium.launch(); await b.close(); return 'ok'; });
   await check('ffmpeg', async () => execSync('ffmpeg -version').toString().split('\n')[0]);
-  await check('gcloud ADC', async () => { execSync('gcloud auth application-default print-access-token', { stdio: 'pipe' }); return 'ok（TTS 语音注入可用）'; });
 }));
 
 program.command('init').description('一键初始化：数据库迁移 + 导入人物与随包居民并让他们住进城里 + 注册内置 Demo').option('--no-demos', '不注册内置 Demo').action(wrap(async (o: { demos: boolean }) => {
