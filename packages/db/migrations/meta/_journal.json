@@ -22,6 +22,13 @@
       "when": 1794655390906,
       "tag": "0002_jobsworld",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794685371585,
+      "tag": "0003_issue_tracks",
+      "breakpoints": true
     }
   ]
 }

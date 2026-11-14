@@ -197,7 +197,7 @@ export const sessions = pgTable('sessions', {
   rng_seed: integer('rng_seed').notNull(),
   tokens: integer('tokens').notNull().default(0),
   cost_usd: doublePrecision('cost_usd').notNull().default(0),
-  executor: text('executor').notNull().default('stagehand'),
+  executor: text('executor').notNull().default('midscene'),
   path_signature: text('path_signature'),
   video_ev: text('video_ev'),
   har_ev: text('har_ev'),
@@ -316,6 +316,7 @@ export const issueCandidates = pgTable('issue_candidates', {
   session_id: text('session_id').notNull(),
   step_idx: integer('step_idx'),
   source: text('source').notNull(),                      // uap_error|expectation_violation|abandon|judge|axe|ai_quality|policy|stall
+  track: text('track').notNull().default('experience'),  // experience：虚拟人亲历；engineering：用户看不到的技术信号与专家检查（工程附录）
   title: text('title').notNull(),
   description: text('description'),
   category: text('category').notNull(),
@@ -335,6 +336,7 @@ export const issueCandidates = pgTable('issue_candidates', {
 export const issues = pgTable('issues', {
   id: text('id').primaryKey(),
   app_version_id: text('app_version_id').notNull(),
+  track: text('track').notNull().default('experience'),  // experience | engineering（见 issue_candidates.track）
   study_id: text('study_id'),
   title: text('title').notNull(),
   title_en: text('title_en'),

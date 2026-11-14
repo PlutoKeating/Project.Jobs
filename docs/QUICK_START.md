@@ -45,7 +45,7 @@ pnpm pux study run <study_id>                                # 进程内编排�
 
 ```bash
 pnpm pux auto --url https://your-test-env.example.com/ --name your-app --version v1 \
-  --sessions 8 --steps 40 [--form h5] [--prd prd.md] [--user test --password xxx] [--executor midscene] [--revisits 1,7]
+  --sessions 8 --steps 40 [--form h5] [--prd prd.md] [--user test --password xxx] [--revisits 1,7]
 ```
 
 或在工作台「评测 → 灌入新项目」填写 URL。流程：注册 → 爬取 → 归纳（自动确认）→ 多轮自适应采样 → 模拟 → 评估 → 校准 → 报告。
@@ -98,7 +98,6 @@ pnpm pux study run <study_id> --temporal      # 终端 B：提交工作流；进
 | `pnpm pux interview <session_id>` | 可追问访谈（交互式） |
 | `pnpm pux human list` / `pnpm pux human resolve <task>` | 人工接管（验证码等） |
 | `pnpm pux calibrate human <study> examples/calibration/human-benchmark.example.yaml` | 导入真人基准 |
-| `pnpm pux m0 --app demo-assistant@seeded` | M0：Stagehand vs Midscene 定位对比 |
 | `pnpm pux persona generate -n 5` | 生成 synthetic Persona |
 | `pnpm typecheck` / `pnpm test` | 类型检查 / 单元测试 |
 

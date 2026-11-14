@@ -144,7 +144,10 @@ export async function appRollup(appId: string) {
   const groups = groupStats(facts, people, new Set(targets.segments));
   const avIds = versions.map((v) => v.id);
   const iss = avIds.length ? await db.select().from(issues).where(inArray(issues.app_version_id, avIds)) : [];
-  const live = iss.filter((i) => i.status !== 'rejected' && i.status !== 'folded');
+  // 汇总结论只看虚拟人亲历的问题；工程附录（用户看不到的技术信号与专家检查）单独返回
+  const liveAll = iss.filter((i) => i.status !== 'rejected' && i.status !== 'folded');
+  const live = liveAll.filter((i) => i.track !== 'engineering');
+  const engineering = liveAll.filter((i) => i.track === 'engineering');
   const studyRows = avIds.length ? await db.select().from(studies).where(inArray(studies.app_version_id, avIds)).orderBy(studies.created_at) : [];
   const verOf = new Map(versions.map((v) => [v.id, v.version]));
   const subj = facts.filter((f) => !f.expert);
@@ -176,6 +179,7 @@ export async function appRollup(appId: string) {
     groups,
     used_by: usedBy,
     issues: live.sort((a, b) => sev(a.severity) - sev(b.severity)).slice(0, 40).map((i) => ({ id: i.id, title: i.title, title_en: i.title_en, severity: i.severity, category: i.category, attribution: i.attribution, trust: i.trust_level, status: i.status, segments: i.affected_segments ?? [], sessions: (i.session_ids ?? []).length, recommendation: i.recommendation, study_id: i.study_id })),
+    engineering: engineering.sort((a, b) => sev(a.severity) - sev(b.severity)).slice(0, 60).map((i) => ({ id: i.id, title: i.title, title_en: i.title_en, severity: i.severity, category: i.category, recommendation: i.recommendation, url: i.url_pattern })),
     trend,
     trust: await appTrust(appId),
     quotes: await feedbackWall(subj),

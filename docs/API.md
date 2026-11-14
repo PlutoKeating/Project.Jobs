@@ -20,7 +20,6 @@
 {
   "app_version_id": "av_xxx",
   "sessions": 6, "steps": 30, "concurrency": 3, "round": 4,
-  "executor": "stagehand",            // stagehand | midscene
   "locale": "zh-CN",                  // zh-CN | en-US | mixed
   "temporal": false,
   "config": { "revisits": [1, 7], "judges": 2, "mode_mix": { "goal": 0.4, "curiosity": 0.25, "stress": 0.2, "adversarial": 0.15 } }
@@ -33,7 +32,7 @@
 |---|---|
 | `GET /studies` | 最近 200 个 Study（含应用、Session 数、是否有报告、是否在本进程运行） |
 | `GET /studies/:id` | Study、Session（含人物名）、问题、运行日志（inline 模式） |
-| `POST /projects`（管理员） | 灌入新项目并全自动评测：`name`、`url`、`version`、`form`、`prd`、`user`/`password`、`sessions`、`steps`、`executor`、`temporal` → `{ study_id }` |
+| `POST /projects`（管理员） | 灌入新项目并全自动评测：`name`、`url`、`version`、`form`、`prd`、`user`/`password`、`sessions`、`steps`、`temporal` → `{ study_id }` |
 | `GET /app-versions` | 可发起评测的应用版本 |
 | `GET /sessions/:id` | Session、人物、软件、逐步时间线（截图证据、地点、资源、动作结果）、世界事件、访谈、评审 |
 | `POST /sessions/:id/ask` `{ q }` | 可追问访谈 → `{ answer }` |
@@ -70,7 +69,7 @@
 | 方法 路径 | 说明 |
 |---|---|
 | `GET /apps` | 全部软件的简要汇总（用过的人数、Session 数、完成率、SUS 模拟估计、P0/P1） |
-| `GET /apps/:id/report` | 汇总报告：概览、原本的目标客户、按人群/年龄/数字素养/AI 熟悉度/场景/模式/目标与否分组的适配度、用过的人、典型反馈（吐槽/称赞/访谈，带截图与 Session 链接）、问题、走势、可信度 |
+| `GET /apps/:id/report` | 汇总报告：概览、原本的目标客户、按人群/年龄/数字素养/AI 熟悉度/场景/模式/目标与否分组的适配度、用过的人、典型反馈（吐槽/称赞/访谈，带截图与 Session 链接）、问题（`issues`：只含虚拟人亲历的；`engineering`：工程附录）、走势、可信度 |
 | `GET /apps/:id/verdict?lang=zh\|en` | 最近一次一句话总评 |
 | `POST /apps/:id/verdict`（管理员） `{ lang }` | 用 `judge.meta` 基于汇总数据生成总评（缓存到 `app_verdicts`） |
 
@@ -90,7 +89,7 @@
 
 ## 3. UAP v0.2（执行层接口）
 
-定义：`packages/core/src/types/uap.ts`（与 spec §10 一致，扩展了 `ref` 定位方式、`risk_tags`、`injected`、`content_appeared`/`viewport_changed`/`file_attached` 成功标准，以及 `PRODUCT_SMALL_TARGET`、`SIM_MOTOR_MISS` 错误码）。
+定义：`packages/core/src/types/uap.ts`（在 spec §10 基础上扩展了 `visual` 定位方式（`TargetRef.text` + `value`）、`risk_tags`、`injected`、`effects.visible_change`，以及 `PRODUCT_SMALL_TARGET`、`SIM_MOTOR_MISS` 错误码）。人物可用的动词不含 `navigate`。
 
 ```ts
 interface Executor {
@@ -99,9 +98,9 @@ interface Executor {
 }
 ```
 
-实现：`packages/executor/src/session.ts`（`BrowserSession`）。执行器名：`stagehand`（默认，DOM/a11y 元素 ref + Stagehand observe 兜底）、`midscene`（全部视觉定位）、`playwright`（只用于干净重放与 M0 真值，不调用模型）。
+实现：`packages/executor/src/session.ts`（`BrowserSession`）。执行器名：`midscene`（人物使用：目标是 `{ by: 'visual', text, value }`，看截图定位）、`playwright`（只用于干净重放，按选择器，不调用模型）。动作结果的 `status` 按屏幕上有没有肉眼可见的变化判定（`effects.visible_change`）。
 
-错误分层与默认归因（spec §10.2）：`product` → 产品问题候选；`environment` / `simulator` → 不计入产品问题；`executor` → 归因复核（目标存在但未被感知 → 可发现性问题候选）；`policy` → 记录并检查产品保护机制；`injected` → 只评估产品如何应对。
+错误分层与默认归因（spec §10.2）：`product` → 产品问题候选；`environment` / `simulator` → 不计入产品问题；`executor` → 不计入产品问题（人物眼里是「在屏幕上没找到想点的东西」）；`policy` → 记录并检查产品保护机制；`injected` → 只评估产品如何应对。
 
 ## 4. 模型角色（LiteLLM 别名）
 
@@ -109,7 +108,7 @@ interface Executor {
 |---|---|---|
 | mind_fast | mind.fast | Persona Mind 每一步 |
 | mind_slow | mind.slow | 记忆整理、生活目标、回访间生活 |
-| operator_plan / operator_locate | operator.plan / operator.locate | 意图 → UAP 动作；Stagehand/Midscene 定位 |
+| operator_locate | operator.locate | Midscene 看截图定位目标 |
 | world_sim | world.sim | LLM 补充世界事件（规则优先） |
 | judge_0..2 | judge.panel.0..2 | 主观模拟评估、AI 质量（不同档位 + 不同视角） |
 | judge_meta | judge.meta | 问题合成、归因复核、假设判定、校准匹配 |

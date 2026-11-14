@@ -93,7 +93,9 @@ type RD = Awaited<ReturnType<typeof collectReportData>>;
 
 export function renderMarkdown(d: RD, lang: Lang): string {
   const z = lang === 'zh'; const t = (zh: string, en: string) => L(lang, zh, en);
-  const mainIss = d.issues.filter((i) => i.status !== 'folded');
+  // 主清单只有虚拟人亲身遇到的问题；用户看不到的技术信号与专家检查单独放进工程附录
+  const mainIss = d.issues.filter((i) => i.status !== 'folded' && i.track !== 'engineering');
+  const engIss = d.issues.filter((i) => i.status !== 'folded' && i.track === 'engineering');
   const folded = d.issues.filter((i) => i.status === 'folded');
   const outcomes = d.sessions.reduce((a, s) => { a[s.outcome ?? '?'] = (a[s.outcome ?? '?'] ?? 0) + 1; return a; }, {} as Record<string, number>);
   const tok = d.sessions.reduce((a, s) => a + (s.tokens ?? 0), 0); const cost = Object.values(d.cost).reduce((a, r) => a + r.cost, 0);
@@ -105,7 +107,7 @@ export function renderMarkdown(d: RD, lang: Lang): string {
     `| ${t('项', 'Item')} | ${t('值', 'Value')} |`, '|---|---|',
     `| Study | \`${d.study.id}\` (${d.study.trigger}) |`, `| ${t('被测地址', 'Target URL')} | ${d.av.env_url} |`,
     `| ${t('Session 数', 'Sessions')} | ${d.sessions.length}（${Object.entries(outcomes).map(([k, v]) => `${k} ${v}`).join('，')}） |`,
-    `| ${t('问题', 'Issues')} | ${t('主清单', 'main')} ${mainIss.length} · ${t('附录', 'appendix')} ${folded.length} |`,
+    `| ${t('问题', 'Issues')} | ${t('亲历', 'experienced')} ${mainIss.length} · ${t('工程附录', 'engineering appendix')} ${engIss.length} · ${t('折叠', 'folded')} ${folded.length} |`,
     `| ${t('停止原因', 'Stop reason')} | ${d.study.stop_reason ?? '—'} |`,
     `| ${t('模型用量', 'Model usage')} | ${tok.toLocaleString()} tokens · ≈ $${cost.toFixed(2)}（${t('估算', 'estimate')}） |`,
     `| ${t('执行器', 'Executor')} | ${(d.study.config as { executor?: string }).executor} |`);
@@ -114,7 +116,7 @@ export function renderMarkdown(d: RD, lang: Lang): string {
   if (!d.calibration.length) lines.push(t('暂无校准数据：本报告所有结论的可信度均为「未校准」。可对植入缺陷版本运行 Study，或导入真人基准（pux calibrate human）。', 'No calibration data yet: all conclusions are "unknown". Run a study on a seeded-defect version or import a human benchmark (pux calibrate human).'));
   else { lines.push(`| ${t('人群', 'Segment')} | ${t('场景', 'Scenario')} | ${t('维度', 'Dimension')} | ${t('指标', 'Metric')} | ${t('值', 'Value')} | 95% CI | n | ${t('可信度', 'Trust')} |`, '|---|---|---|---|---|---|---|---|'); for (const c of d.calibration) lines.push(`| ${c.segment === '*' ? t('全部', 'all') : segmentLabel(c.segment, lang)} | ${c.scenario === '*' ? t('全部', 'all') : c.scenario} | ${c.dimension === '*' ? t('全部', 'all') : catLabel(c.dimension, lang)} | ${c.metric} | ${c.value === null ? '—' : Number(c.value).toFixed(2)} | ${c.ci[0] === null ? '—' : `[${Number(c.ci[0]).toFixed(2)}, ${Number(c.ci[1]).toFixed(2)}]`} | ${c.n} | ${trustBadge(c.trust, lang)} |`); }
   // 问题清单
-  lines.push('', `## ${t('3. 问题清单', '3. Issues')}`, '', `${t('严重度口径', 'Severity')}：${Object.entries(d.severityDefs).map(([k, v]) => `**${k}** ${v}`).join('；')}`, '');
+  lines.push('', `## ${t('3. 体验问题（虚拟人亲身遇到的）', '3. Experience issues (what the simulated people actually ran into)')}`, '', `${t('这里只列虚拟人自己看到、自己卡住、自己放弃的地方。无障碍扫描、接口与脚本错误、专家启发式检查等用户看不到的信号在「工程附录」。', 'Only what the simulated people saw, got stuck on, or gave up on. Signals a user cannot see (accessibility scans, API and script errors, expert heuristics) are in the engineering appendix.')}`, '', `${t('严重度口径', 'Severity')}：${Object.entries(d.severityDefs).map(([k, v]) => `**${k}** ${v}`).join('；')}`, '');
   mainIss.forEach((i, n) => {
     lines.push(`### ${n + 1}. [${i.severity}] ${z ? i.title : (i.title_en ?? i.title)}`, '',
       `- ${t('类别', 'Category')}：${catLabel(i.category, lang)} · ${t('归因', 'Attribution')}：${attrLabel(i.attribution, lang)} · ${t('可信度', 'Trust')}：${trustBadge(i.trust_level, lang)} · ${t('评审分歧度', 'Judge disagreement')}：${i.disagreement ?? 0}`,
@@ -126,7 +128,7 @@ export function renderMarkdown(d: RD, lang: Lang): string {
     if (i.screenshot) lines.push(`![${t('证据截图', 'evidence')}](${i.screenshot})`, '');
     lines.push(`<sub>${t('证据', 'Evidence')}：${i.evidence_count} ${t('条', 'items')}（${i.evidence_kinds.join(', ')}）· fingerprint \`${i.fingerprint}\`</sub>`, '');
   });
-  if (!mainIss.length) lines.push(t('本次没有进入主清单的问题。', 'No issues in the main list.'));
+  if (!mainIss.length) lines.push(t('这一轮虚拟人没有遇到进入主清单的问题。', 'The simulated people did not run into any main-list issue this round.'));
   // 热力矩阵
   lines.push('', `## ${t('4. 人群 × 页面 × 问题热力矩阵', '4. Segment × page × issue heatmap')}`, '');
   const segs = [...new Set(d.sessions.map((s) => s.persona?.segment).filter(Boolean))] as string[];
@@ -165,6 +167,14 @@ export function renderMarkdown(d: RD, lang: Lang): string {
     if (pi) { lines.push('', `**${t('事后访谈（模拟）', 'Post-session interview (simulated)')}**`, ...pi.qa.map((q) => `- ${q.q} — ${q.a}`)); const qn = pi.questionnaire as { sus_score_simulated?: number; umux_lite_simulated?: number } | null; if (qn) lines.push(`- SUS ${t('模拟估计', 'simulated')}：${qn.sus_score_simulated} · UMUX-Lite ${t('模拟估计', 'simulated')}：${qn.umux_lite_simulated}`); }
     lines.push('', '</details>', '');
   }
+  // 工程附录
+  lines.push('', `## ${t('工程附录：用户看不到的技术信号与专家检查', 'Engineering appendix: technical signals and expert checks users cannot see')}`, '', t('给开发者或 coding agent 看。来源：无障碍扫描（axe）、接口与脚本错误、评审模型的启发式检查、AI 回答核查。它们不代表某个虚拟人亲身遇到了问题。', 'For developers or a coding agent. Sources: accessibility scan (axe), API and script errors, heuristic review by judge models, AI answer checks. They do not mean a simulated person ran into the problem.'), '');
+  engIss.forEach((i) => {
+    lines.push(`- **[${i.severity}] ${z ? i.title : (i.title_en ?? i.title)}** · ${catLabel(i.category, lang)} · ${trustBadge(i.trust_level, lang)}${i.url_pattern ? ` · \`${i.url_pattern}\`` : ''}${i.seeded_match ? ` · ${t('命中已知缺陷', 'Seeded defect')} \`${i.seeded_match}\`` : ''}`);
+    const desc = (i.description ?? '').split('\n\n')[0].trim(); if (desc) lines.push(`  ${desc.replace(/\n/g, ' ')}`);
+    if (i.recommendation) lines.push(`  ${t('建议', 'Fix')}：${i.recommendation}`);
+  });
+  if (!engIss.length) lines.push('—');
   // 附录
   lines.push('', `## ${t('附录：折叠的问题（低严重度、归因不确定或模拟器问题）', 'Appendix: folded issues (low severity, uncertain or simulator-attributed)')}`, '');
   for (const i of folded) lines.push(`- [${i.severity}] ${z ? i.title : (i.title_en ?? i.title)} · ${catLabel(i.category, lang)} · ${attrLabel(i.attribution, lang)} · ${trustBadge(i.trust_level, lang)}`);
@@ -191,7 +201,7 @@ nav button{background:none;border:0;padding:6px 12px;margin-right:4px;border-rad
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const tabs={'问题清单':issues,'Session 回放':sessionsView,'指标与校准':metrics};let cur='问题清单';
 function nav(){document.getElementById('nav').innerHTML=Object.keys(tabs).map(k=>'<button class="'+(k===cur?'on':'')+'" onclick="cur=\\''+k+'\\';render()">'+k+'</button>').join('');}
-function issues(){const tr={high:'🟢 高可信',medium:'🟡 中可信',low:'🟠 低可信',unknown:'⚪ 未校准'};return D.issues.map(i=>'<div class="card" style="'+(i.status==='folded'?'opacity:.65':'')+'"><span class="sev '+i.severity+'">'+i.severity+'</span> <b>'+esc(i.title)+'</b> '+(i.status==='folded'?'<span class="tag">附录</span>':'')+'<div class="muted">'+esc(i.category)+' · 归因 '+esc(i.attribution)+' · '+(tr[i.trust_level]||i.trust_level)+' · 人群 '+(i.affected_segments||[]).map(esc).join('、')+' · '+(i.session_ids||[]).length+' 个 Session'+(i.seeded_match?' · 命中缺陷 '+esc(i.seeded_match):'')+'</div><p>'+esc(i.description).replace(/\\n/g,'<br>')+'</p>'+(i.repro.length?'<details><summary>复现步骤'+(i.repro_ok_rate!==null?'（重放成功率 '+Math.round(i.repro_ok_rate*100)+'%）':'')+'</summary><ol>'+i.repro.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ol></details>':'')+(i.recommendation?'<p><b>建议：</b>'+esc(i.recommendation)+'</p>':'')+(i.screenshot?'<img class="shot" loading="lazy" src="'+i.screenshot+'">':'')+'</div>').join('')||'<div class="card">无问题</div>';}
+function issues(){D.issues.sort((a,b)=>(a.track==='engineering')-(b.track==='engineering'));const tr={high:'🟢 高可信',medium:'🟡 中可信',low:'🟠 低可信',unknown:'⚪ 未校准'};return D.issues.map(i=>'<div class="card" style="'+(i.status==='folded'?'opacity:.65':'')+'"><span class="sev '+i.severity+'">'+i.severity+'</span> '+(i.track==='engineering'?'<span class="tag">工程附录</span> ':'')+'<b>'+esc(i.title)+'</b> '+(i.status==='folded'?'<span class="tag">附录</span>':'')+'<div class="muted">'+esc(i.category)+' · 归因 '+esc(i.attribution)+' · '+(tr[i.trust_level]||i.trust_level)+' · 人群 '+(i.affected_segments||[]).map(esc).join('、')+' · '+(i.session_ids||[]).length+' 个 Session'+(i.seeded_match?' · 命中缺陷 '+esc(i.seeded_match):'')+'</div><p>'+esc(i.description).replace(/\\n/g,'<br>')+'</p>'+(i.repro.length?'<details><summary>复现步骤'+(i.repro_ok_rate!==null?'（重放成功率 '+Math.round(i.repro_ok_rate*100)+'%）':'')+'</summary><ol>'+i.repro.map(r=>'<li>'+esc(r)+'</li>').join('')+'</ol></details>':'')+(i.recommendation?'<p><b>建议：</b>'+esc(i.recommendation)+'</p>':'')+(i.screenshot?'<img class="shot" loading="lazy" src="'+i.screenshot+'">':'')+'</div>').join('')||'<div class="card">无问题</div>';}
 let selS=0;
 function sessionsView(){const s=D.sessions[selS];if(!s)return '<div class="card">无 Session</div>';
  const opts=D.sessions.map((x,i)=>'<option value="'+i+'" '+(i===selS?'selected':'')+'>'+esc(x.persona?.identity?.name)+' · '+esc(x.mode)+' · '+esc(x.outcome)+' · '+x.steps+' 步</option>').join('');

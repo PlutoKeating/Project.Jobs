@@ -20,12 +20,27 @@ const MetaSchema = z.object({ attribution: z.enum(['product', 'simulator', 'unce
 
 const pathOf = (u?: string | null) => { if (!u) return ''; try { return urlTemplate(u).replace(/^[^/]*/, ''); } catch { return u; } };
 
-/** 把整个 Study 的候选聚合成 Issue，并做归因 */
+export type Track = 'experience' | 'engineering';
+
+/**
+ * 把整个 Study 的候选聚合成 Issue，并做归因。两路分开合成，互不合并：
+ * - experience：虚拟人亲身遇到的（预期落空、反复尝试、放弃、卡住），用用户的话描述；
+ * - engineering：用户看不到的技术信号与专家检查（无障碍扫描、接口与脚本错误、启发式评审、AI 回答核查），进工程附录。
+ */
 export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boolean; lang: 'zh' | 'en' }) {
+  const a = await synthTrack(studyId, opts, 'experience');
+  const b = await synthTrack(studyId, opts, 'engineering');
+  return [...a, ...b];
+}
+
+async function synthTrack(studyId: string, opts: { cleanReplay: boolean; lang: 'zh' | 'en' }, track: Track) {
   const db = getDb(); const cfg = loadConfig();
   const study = (await db.select().from(studies).where(eq(studies.id, studyId)))[0];
-  const cands = (await db.select().from(issueCandidates).where(eq(issueCandidates.study_id, studyId))).filter((c) => !c.issue_id && !c.attribution);
+  const allCands = await db.select().from(issueCandidates).where(eq(issueCandidates.study_id, studyId));
+  const cands = allCands.filter((c) => c.track === track && !c.issue_id && !c.attribution);
   if (!cands.length) return [];
+  // 幕后的技术信号：只用来帮助判断「亲历的问题是产品的错还是模拟器的错」
+  const techAt = (m: Cand) => allCands.filter((c) => c.track === 'engineering' && c.source === 'uap_error' && c.session_id === m.session_id && c.step_idx !== null && m.step_idx !== null && Math.abs((c.step_idx ?? 0) - (m.step_idx ?? 0)) <= 1).map((c) => `${c.error_code}: ${c.title}`);
   const sess = await db.select().from(sessions).where(eq(sessions.study_id, studyId));
   const sById = new Map(sess.map((s) => [s.id, s]));
   const segOf = new Map<string, string>(); const personaOf = new Map<string, string>();
@@ -44,7 +59,7 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
   for (let i = 0; i < repList.length; i += 40) {
     const chunk = repList.slice(i, i + 40);
     const list = chunk.map((c, k) => `c${k + 1} | ${c.source} | ${c.category} | ${segOf.get(c.session_id)} | ${pathOf(c.url)} | ${c.error_code ?? ''} | ${c.title} | ${(c.description ?? '').replace(/\s+/g, ' ').slice(0, 200)}${expand(c).length > 1 ? ` | (同类 ${expand(c).length} 处)` : ''}`).join('\n');
-    const r = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'system', content: `你是用户体验研究负责人。把同一个底层产品问题的候选合并为一组（不同人群、不同 Session 遇到同一问题要合并），每组给出：candidate_ids（使用 c1、c2 这样的编号）、key（稳定的英文短 slug，描述问题本质，例如 export_entry_hidden）、中文 title、英文 title_en、description（问题是什么、在哪里、影响谁）、category、heuristics（Nielsen 编号 H1–H10 或 dark_pattern/wcag/ai_hallucination/child_safety）、severity（${Object.entries(cfg.severity).map(([k, v]) => `${k}：${v}`).join('；')}）、recommendation（具体修复建议）。如果候选只是模拟用户自身的误操作、个人偏好或没有产品层面证据，noise=true；模拟世界的时钟与产品真实时间不同步造成的「时间显示不对」也是 noise。每个编号只能出现在一组中，所有编号都要分配。` }, { role: 'user', content: `候选（编号 | 来源 | 类别 | 人群 | 页面 | 错误码 | 标题 | 描述）：\n${list}` }], schema: GroupSchema, schemaName: 'issue_groups', reasoning: 'low', tags: { study_id: studyId, purpose: 'issue_synthesis' } });
+    const r = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'system', content: `你是用户体验研究负责人。${track === 'experience' ? '下面的候选都是模拟用户亲身遇到的事（预期落空、反复尝试、放弃）。title 和 description 用普通用户能听懂的话写：他想做什么、看到了什么、卡在哪；不要出现接口、DOM、HTTP、路由、状态码、CSS 这类技术词。' : '下面的候选是用户自己看不到的技术信号与专家检查（无障碍扫描、接口与脚本错误、启发式评审、AI 回答核查），写给开发者看，可以使用技术词。'}把同一个底层产品问题的候选合并为一组（不同人群、不同 Session 遇到同一问题要合并），每组给出：candidate_ids（使用 c1、c2 这样的编号）、key（稳定的英文短 slug，描述问题本质，例如 export_entry_hidden）、中文 title、英文 title_en、description（问题是什么、在哪里、影响谁）、category、heuristics（Nielsen 编号 H1–H10 或 dark_pattern/wcag/ai_hallucination/child_safety）、severity（${Object.entries(cfg.severity).map(([k, v]) => `${k}：${v}`).join('；')}）、recommendation（具体修复建议）。如果候选只是模拟用户自身的误操作、个人偏好或没有产品层面证据，noise=true；模拟世界的时钟与产品真实时间不同步造成的「时间显示不对」也是 noise。每个编号只能出现在一组中，所有编号都要分配。` }, { role: 'user', content: `候选（编号 | 来源 | 类别 | 人群 | 页面 | 错误码 | 标题 | 描述）：\n${list}` }], schema: GroupSchema, schemaName: 'issue_groups', reasoning: 'low', tags: { study_id: studyId, purpose: 'issue_synthesis' } });
     const assigned = new Set<number>();
     for (const g of r.data.groups) {
       const idx = g.candidate_ids.map((x) => Number(String(x).replace(/^c/i, '')) - 1).filter((n) => Number.isInteger(n) && n >= 0 && n < chunk.length && !assigned.has(n));
@@ -61,13 +76,13 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
     const members = g.members;
     if (!members.length) continue;
     const mainUrl = members.find((m) => m.url)?.url;
-    const fingerprint = `fp_${shortHash(`${g.category}|${pathOf(mainUrl).replace(/\?.*$/, '')}|${g.key.toLowerCase()}`, 14)}`;
+    const fingerprint = `fp_${shortHash(`${track === 'engineering' ? 'eng|' : ''}${g.category}|${pathOf(mainUrl).replace(/\?.*$/, '')}|${g.key.toLowerCase()}`, 14)}`;
     const sessIds = [...new Set(members.map((m) => m.session_id))];
     const segments = [...new Set(sessIds.map((s) => segOf.get(s)!))];
     // ② 干净重放（选第一个带步骤的候选）
     let replay: { reproduced: boolean; repro_path_id: string; evidence_id: string } | undefined;
     const rc = members.find((m) => m.step_idx !== null && m.step_idx !== undefined && ['uap_error', 'expectation_violation', 'abandon', 'stall', 'repeat'].includes(m.source));
-    if (opts.cleanReplay && rc && !g.noise) {
+    if (opts.cleanReplay && track === 'experience' && rc && !g.noise) {
       try {
         const s = sById.get(rc.session_id)!; const p = await getPersona(s.persona_id, s.persona_version);
         const path = await buildReproPath(rc.session_id, rc.step_idx!);
@@ -88,7 +103,7 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
         const ev = (await db.select().from(evidence).where(eq(evidence.id, eid)))[0];
         if (ev?.storage_ref && ev.mime?.startsWith('image/')) frames.push({ type: 'image', data: await blobs().get(ev.storage_ref), mime: ev.mime });
       }
-      const meta = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'system', content: '你负责归因复核：判断这是真实的产品问题（product），还是模拟用户/执行器自身造成的（simulator），证据不足则 uncertain。采信顺序：客观错误码与干净重放结果 > 专家对照 > 截图 > 模拟用户的主观描述。如果用户在同一处反复尝试，而界面没有给出可行动的反馈（例如失败原因、规则说明），应归因为产品交互问题；只有当界面已经清楚说明了怎么做、用户仍机械重复时，才归因为模拟器。干净重放能复现说明是产品层面的问题；专家也遇到倾向 bug；只有特定人群遇到倾向 ux（仍是 product）。' }, { role: 'user', content: [{ type: 'text', text: `问题：${g.title}\n${g.description}\n类别：${g.category}，建议严重度：${g.severity}\n受影响人群：${segments.join('、')}（${sessIds.length} 个 Session）\n候选证据：\n${members.slice(0, 8).map((m) => `- [${m.source}] ${m.error_code ?? ''} ${m.title} :: ${(m.description ?? '').slice(0, 200)}`).join('\n')}\n干净重放：${replay ? (replay.reproduced ? '复现成功' : '未复现') : '未执行'}\n专家对照：${expertRan ? (expertHit ? '专家也遇到了' : '专家未遇到') : '无专家 Session'}` }, ...frames] }], schema: MetaSchema, schemaName: 'attribution', reasoning: 'medium', tags: { study_id: studyId, purpose: 'attribution_meta' } });
+      const meta = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'system', content: '你负责归因复核：判断这是真实的产品问题（product），还是模拟用户/执行器自身造成的（simulator），证据不足则 uncertain。采信顺序：客观错误码与干净重放结果 > 专家对照 > 截图 > 模拟用户的主观描述。如果用户在同一处反复尝试，而界面没有给出可行动的反馈（例如失败原因、规则说明），应归因为产品交互问题；只有当界面已经清楚说明了怎么做、用户仍机械重复时，才归因为模拟器。干净重放能复现说明是产品层面的问题；专家也遇到倾向 bug；只有特定人群遇到倾向 ux（仍是 product）。' }, { role: 'user', content: [{ type: 'text', text: `问题：${g.title}\n${g.description}\n类别：${g.category}，建议严重度：${g.severity}\n受影响人群：${segments.join('、')}（${sessIds.length} 个 Session）\n候选证据：\n${members.slice(0, 8).map((m) => `- [${m.source}] ${m.error_code ?? ''} ${m.title} :: ${(m.description ?? '').slice(0, 200)}`).join('\n')}${track === 'experience' ? `\n同一步的幕后技术信号（用户看不到，仅供归因）：${[...new Set(members.flatMap(techAt))].slice(0, 6).join('；') || '无'}` : ''}\n干净重放：${replay ? (replay.reproduced ? '复现成功' : '未复现') : '未执行'}\n专家对照：${expertRan ? (expertHit ? '专家也遇到了' : '专家未遇到') : '无专家 Session'}` }, ...frames] }], schema: MetaSchema, schemaName: 'attribution', reasoning: 'medium', tags: { study_id: studyId, purpose: 'attribution_meta' } });
       attribution = meta.data.attribution; rationale = meta.data.rationale; severity = meta.data.severity;
       if (replay?.reproduced && attribution === 'uncertain') attribution = 'product';
       if (g.noise && attribution !== 'product') attribution = 'simulator';
@@ -106,9 +121,9 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
     const folded = attribution !== 'product' || severity === 'P3' || g.noise;
     const emb = await gateway().embed(`${g.title} ${g.description}`);
     // 跨轮/跨 Study 去重：同版本、同类别、语义相近（cosine ≥ 0.86）的已有问题视为同一问题
-    let existing = (await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.fingerprint, fingerprint))))[0];
+    let existing = (await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.fingerprint, fingerprint), eq(issues.track, track))))[0];
     if (!existing) {
-      const same = await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.category, g.category)));
+      const same = await db.select().from(issues).where(and(eq(issues.app_version_id, study.app_version_id), eq(issues.category, g.category), eq(issues.track, track)));
       let best: { i: typeof same[number]; c: number } | undefined;
       for (const i of same) { const e = i.embedding as unknown as number[] | null; if (!e?.length) continue; const c = cosine(e, emb); if (c >= 0.86 && (!best || c > best.c)) best = { i, c }; }
       if (best) existing = best.i;
@@ -116,7 +131,7 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
     const issueId = existing?.id ?? newId('iss');
     const fp = existing?.fingerprint ?? fingerprint;
     // 合并时以最新一轮的措辞为准（旧条目可能来自已修复的模拟器版本）
-    const row = { title: g.title, title_en: g.title_en, description: `${g.description}\n\n归因：${rationale}`, category: g.category, heuristics: g.heuristics, severity: existing && existing.severity < severity ? existing.severity as Severity : severity, attribution: existing?.attribution === 'product' ? 'product' : attribution, affected_segments: [...new Set([...(existing?.affected_segments ?? []), ...segments])], affected_personas: [...new Set([...(existing?.affected_personas ?? []), ...sessIds.map((s) => personaOf.get(s)!)])], session_ids: [...new Set([...(existing?.session_ids ?? []), ...sessIds])], fingerprint: fp, disagreement, trust_level: trust, status: existing && ['confirmed', 'rejected'].includes(existing.status) ? existing.status : folded ? 'folded' : 'open', recommendation: g.recommendation, url_pattern: pathOf(mainUrl) || existing?.url_pattern, repro_path_id: replay?.repro_path_id ?? existing?.repro_path_id, embedding: emb, study_id: studyId };
+    const row = { track, title: g.title, title_en: g.title_en, description: `${g.description}\n\n归因：${rationale}`, category: g.category, heuristics: g.heuristics, severity: existing && existing.severity < severity ? existing.severity as Severity : severity, attribution: existing?.attribution === 'product' ? 'product' : attribution, affected_segments: [...new Set([...(existing?.affected_segments ?? []), ...segments])], affected_personas: [...new Set([...(existing?.affected_personas ?? []), ...sessIds.map((s) => personaOf.get(s)!)])], session_ids: [...new Set([...(existing?.session_ids ?? []), ...sessIds])], fingerprint: fp, disagreement, trust_level: trust, status: existing && ['confirmed', 'rejected'].includes(existing.status) ? existing.status : folded ? 'folded' : 'open', recommendation: g.recommendation, url_pattern: pathOf(mainUrl) || existing?.url_pattern, repro_path_id: replay?.repro_path_id ?? existing?.repro_path_id, embedding: emb, study_id: studyId };
     if (existing) await db.update(issues).set(row).where(eq(issues.id, issueId));
     else await db.insert(issues).values({ id: issueId, app_version_id: study.app_version_id, ...row });
     await db.update(issueCandidates).set({ issue_id: issueId, attribution, attribution_detail: { replay: replay?.reproduced ?? null, expert_hit: expertHit, rationale } }).where(inArray(issueCandidates.id, members.map((m) => m.id)));
@@ -213,7 +228,7 @@ export async function dedupeIssues(appVersionId: string) {
     const a = all[i]; if (removed.has(a.id)) continue;
     const ea = a.embedding as unknown as number[] | null; if (!ea?.length) continue;
     for (let j = i + 1; j < all.length; j++) {
-      const b = all[j]; if (removed.has(b.id) || b.category !== a.category) continue;
+      const b = all[j]; if (removed.has(b.id) || b.category !== a.category || b.track !== a.track) continue;
       const eb = b.embedding as unknown as number[] | null; if (!eb?.length || cosine(ea, eb) < 0.86) continue;
       a.session_ids = [...new Set([...(a.session_ids ?? []), ...(b.session_ids ?? [])])];
       a.affected_segments = [...new Set([...(a.affected_segments ?? []), ...(b.affected_segments ?? [])])];

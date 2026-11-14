@@ -58,14 +58,18 @@ export async function objectiveMetrics(sessionId: string): Promise<ObjectiveMetr
   };
 }
 
-/** 从 UAP 结果、预期违背、放弃点、Policy、无障碍规则中提取问题候选（尚未归因） */
+/** 候选属于哪一路：experience = 虚拟人亲身遇到的；engineering = 用户看不到的技术信号与专家检查（工程附录） */
+export const trackOf = (source: string, errorCode?: string | null): 'experience' | 'engineering' =>
+  (['expectation_violation', 'abandon', 'stall', 'repeat'].includes(source) || (source === 'uap_error' && errorCode === 'PRODUCT_SMALL_TARGET') ? 'experience' : 'engineering');
+
+/** 从预期落空、放弃点、反复尝试（亲历）与 UAP 错误、Policy、无障碍规则（工程附录）中提取问题候选（尚未归因） */
 export async function extractCandidates(sessionId: string, studyId: string, metrics: ObjectiveMetrics, lang: 'zh' | 'en') {
   const db = getDb(); const zh = lang === 'zh';
   const st = await db.select().from(steps).where(eq(steps.session_id, sessionId)).orderBy(steps.idx);
   const obs = await db.select().from(observations).where(eq(observations.session_id, sessionId));
   const obsById = new Map(obs.map((o) => [o.id, o]));
   const out: (typeof issueCandidates.$inferInsert)[] = [];
-  const push = (c: Omit<typeof issueCandidates.$inferInsert, 'id' | 'study_id' | 'session_id'>) => out.push({ id: newId('cand'), study_id: studyId, session_id: sessionId, ...c });
+  const push = (c: Omit<typeof issueCandidates.$inferInsert, 'id' | 'study_id' | 'session_id' | 'track'>) => out.push({ id: newId('cand'), study_id: studyId, session_id: sessionId, track: trackOf(c.source, c.error_code), ...c });
   const shotAt = (idx: number) => { const o2 = obs.find((y) => y.step_idx === idx); return o2 ? (o2.data as { screenshot_ev?: string }).screenshot_ev : undefined; };
   for (const x of st) {
     const r = x.action_result as ActionResult | null; const o = x.observation_id ? obsById.get(x.observation_id) : undefined;
@@ -80,13 +84,12 @@ export async function extractCandidates(sessionId: string, studyId: string, metr
   }
   // 反复尝试：同一页面状态上连续 ≥3 次相同（或几乎相同）的动作。正常人不会机械重复，出现这种情况通常说明界面没有给出可行动的反馈
   for (let i = 0; i + 2 < st.length; i++) {
-    const key = (x: typeof st[number]) => { const q = x.action_request as ActionRequest | null; const o = x.observation_id ? obsById.get(x.observation_id) : undefined; return q?.verb ? `${o?.state_id}|${q.verb}|${q.target?.resolved?.a11y_name ?? (x.action_result as ActionResult | null)?.resolved_target?.resolved?.a11y_name ?? q.target?.value}` : ''; };
+    const key = (x: typeof st[number]) => { const q = x.action_request as ActionRequest | null; const o = x.observation_id ? obsById.get(x.observation_id) : undefined; return q?.verb ? `${o?.state_id}|${q.verb}|${q.target?.text || (x.action_result as ActionResult | null)?.resolved_target?.resolved?.a11y_name || q.target?.value}` : ''; };
     const k = key(st[i]); if (!k) continue;
     let j = i; while (j + 1 < st.length && key(st[j + 1]) === k) j++;
     if (j - i + 1 >= 3) {
       const o = st[i].observation_id ? obsById.get(st[i].observation_id!) : undefined;
-      const visible = ((o?.data as { visible_text_digest?: string } | undefined)?.visible_text_digest ?? '').replace(/\s+/g, ' ').slice(0, 300);
-      push({ step_idx: st[i].idx, source: 'repeat', title: zh ? `用户在同一处反复尝试 ${j - i + 1} 次：${st[i].intent?.slice(0, 40)}` : `User retried the same action ${j - i + 1} times: ${st[i].intent?.slice(0, 40)}`, description: `${zh ? '页面可见文字' : 'Visible text'}：${visible}\n${zh ? '独白' : 'Monologue'}：${st[j].monologue ?? ''}\n${zh ? '提示：正常用户不会机械重复相同操作；请检查界面是否给出了可行动的反馈（错误原因、规则说明、加载状态）。' : 'Hint: real users do not mechanically repeat; check whether the UI gave actionable feedback.'}`, category: 'ux', heuristics: ['H1', 'H9'], state_id: o?.state_id, url: o?.url, evidence_ids: [shotAt(j + 1), (o?.data as { screenshot_ev?: string } | undefined)?.screenshot_ev].filter(Boolean) as string[] });
+      push({ step_idx: st[i].idx, source: 'repeat', title: zh ? `用户在同一处反复尝试 ${j - i + 1} 次：${st[i].intent?.slice(0, 40)}` : `User retried the same action ${j - i + 1} times: ${st[i].intent?.slice(0, 40)}`, description: `${zh ? '当时的想法' : 'What they thought'}：${st[j].monologue ?? ''}`, category: 'ux', heuristics: ['H1', 'H9'], state_id: o?.state_id, url: o?.url, evidence_ids: [shotAt(j + 1), (o?.data as { screenshot_ev?: string } | undefined)?.screenshot_ev].filter(Boolean) as string[] });
       i = j;
     }
   }

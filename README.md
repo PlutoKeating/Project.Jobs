@@ -13,10 +13,12 @@
   → Product Intelligence：爬取页面、LLM 归纳功能/任务/假设（YAML 可人工确认）
   → Exploration：按覆盖缺口、未验证假设、低可信区域自适应采样「谁 × 在什么世界 × 带着什么生活目标 × 哪种模式」
   → Simulation：每个 Session 一个独立浏览器沙箱；World Simulator 推进时钟、制造打断/弱网/社交压力；
-                Persona Mind（第一人称、不知道自己在被测试）决定意图；Operator 把意图落成 UAP 动作；Policy Gate 拦截高风险动作
-  → Evidence：截图、感知过滤后截图、a11y、axe、rrweb、录像、网络日志、独白、世界事件，全部内容寻址入库
-  → Evaluation（Session 结束后）：客观指标 → 问题候选 → 两阶段评审团 → AI 回答质量 → 事后访谈（SUS/UMUX-Lite 模拟估计）
-                → 问题合成 → 干净重放 + 专家对照 + 复核归因 → 假设判定
+                虚拟人（第一人称、不知道自己在被测试）只看屏幕截图——经注意力、视力、识字量滤镜后的「这一眼」——决定手上的一个动作；
+                执行层用 Midscene 看截图定位，再按这个人的手注入点击、触屏滑动、长按、打字；Policy Gate 拦截高风险动作
+  → Evidence：截图、这一眼看到的画面、录像、独白、世界事件；a11y、axe、rrweb、网络日志作为工程证据。全部内容寻址入库
+  → Evaluation（Session 结束后）：问题分两路——虚拟人亲历的（预期落空、反复尝试、放弃）进体验问题；
+                用户看不到的技术信号与专家检查（无障碍扫描、接口与脚本错误、评审团、AI 回答核查）进工程附录
+                → 事后访谈（SUS/UMUX-Lite 模拟估计）→ 问题合成 → 干净重放 + 专家对照 + 复核归因 → 假设判定
   → Calibration：已知缺陷注入版本的检出率/误报率、真人基准、埋点漏斗、评论 → 可信度（high/medium/low/unknown）
   → Report：中英双语 Markdown + 离线 HTML 查看器（截图时间线、rrweb 回放、录像、校准卡、热力矩阵、版本对比）
 ```
@@ -55,7 +57,7 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | `packages/db` | Drizzle schema（spec §16 全部实体）与迁移 |
 | `packages/storage` | MinIO/S3 证据存储（内容寻址） |
 | `packages/llm` | LiteLLM 角色别名网关、结构化输出、trace、厂商隔离校验 |
-| `packages/executor` | UAP 执行层：浏览器沙箱、成功标准、错误分层、Policy Gate、模态注入、录像/rrweb/axe |
+| `packages/executor` | UAP 执行层：浏览器沙箱（桌面 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像/rrweb/axe |
 | `packages/engine` | Human / World / Exploration / Product / Runtime / Evaluation / Calibration / Report / Control |
 | `demos/kit` | 11 个被测 Demo（AI 助手、记账、待办、外卖、游戏、资讯、健身、笔记、天气、菜谱、儿童识字），每个都有干净版与植入缺陷版 |
 | `config/` | 全局配置、Persona、世界模板、人口分布、规则、JobsWorld 城镇布局与日程骨架（`config/jobsworld/`） |
@@ -65,7 +67,7 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 
 ## 本机模型
 
-本机只配置了 Vertex AI 上的 Gemini（经 LiteLLM 代理，ADC 鉴权）：`gemini-4-hydrogen`（≈flash，用于 Mind/Operator）、`gemini-4-argon`（≈pro，用于记忆整理/访谈/评审）、`gemini-4-carbon`（≈ultra，用于评审/归因复核）。由于只有一家厂商，厂商隔离为 `warn` 模式：报告会标注并把相关结论可信度降一级。新增厂商只需修改 `infra/litellm/config.yaml` 与 `config/pux.config.yaml` 的 `roles`。
+本机只配置了 Vertex AI 上的 Gemini（经 LiteLLM 代理，ADC 鉴权）：`gemini-4-hydrogen`（≈flash，用于虚拟人的想法与 Midscene 定位）、`gemini-4-argon`（≈pro，用于记忆整理/访谈/评审）、`gemini-4-carbon`（≈ultra，用于评审/归因复核）。由于只有一家厂商，厂商隔离为 `warn` 模式：报告会标注并把相关结论可信度降一级。新增厂商只需修改 `infra/litellm/config.yaml` 与 `config/pux.config.yaml` 的 `roles`。
 
 ## 定位声明
 
@@ -78,11 +80,11 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | 单元测试（`pnpm test`） | 18 项通过：UAP 抽象、Policy Gate、动作精度/状态规则、识字量、§7.2 因果链、任务信号、校准统计、schema |
 | 集成测试（`PUX_INTEGRATION=1 pnpm test`） | 6 项通过：TTS 语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、下载反馈与长文本粘贴、弱网注入 |
 | 端到端（inline） | 助手 / 记账 / 外卖（H5，中英混合，压力与对抗模式，第 1 天回访）/ 儿童识字（儿童 Persona + Policy Gate）/ 天气（REST API 创建） |
-| 端到端（Temporal） | 记账 Demo（Stagehand）、翻牌游戏（Midscene 纯视觉）；幂等键重复提交返回同一 Study |
+| 端到端（Temporal） | 记账 Demo、翻牌游戏；幂等键重复提交返回同一 Study（2026-11-14，重塑前的执行器） |
 | 全自动灌入新项目 | `pux auto`（CLI）与控制台 `POST /api/projects`：爬取 → 归纳 → 自动确认 → 多轮采样 → 评估 → 校准 → 报告 |
 | 人工接管 | 验证码检测 → 挂起 → DevTools 远程接管地址 → `pux human resolve` → 继续 |
-| M0 执行器对比 | Stagehand 100% / 2979ms，Midscene 100% / 3782ms（见 `docs/M0_EXECUTOR_COMPARISON.md`） |
 | 校准验收（助手 Demo 植入缺陷版，16 Session + D1/D7 回访） | 最终运行检出率 72.7%（8/11，CI 0.43–0.90）≥ 60% ✅，误报率 7.7%（CI 0.01–0.33）≤ 30% ✅；两次完整运行合计 72.7%，四次运行合计 65.9%，11 个缺陷均至少检出一次。详见 `docs/CALIBRATION_RECORD.md` |
-| JobsWorld 工作台 | 世界服务 + API + 网页 + 单端口网关 + TShock/tModLoader 游戏服，均在本机实测（详见 `docs/JOBSWORLD.md` §7） |
+| JobsWorld 工作台 | 世界服务 + API + 网页 + 单端口网关 + TShock/tModLoader 游戏服，均在本机实测（详见 `docs/JOBSWORLD.md` §7）；产品负责人已用真实 Terraria 客户端验证 |
+| 重塑阶段 ①「像人」（2026-11-15） | 单元测试 37 项、集成测试 6 项通过；笔记 Demo 植入缺陷版 3 人批次（`std_kcejshfmj6a5`）：虚拟人只看截图完成注册、登录失败后改去注册、新建并填写笔记；一人亲身遇到「显示已自动保存但内容丢失」并放弃（命中 NT-01，干净重放 100% 复现）；报告分为体验问题 2 条与工程附录 3 条 |
 
 已知局限：本机只有一家模型厂商（Gemini），评审与 Mind 未做到厂商隔离（报告已标注并降级）；单次 Study 的检出率存在抽样波动（n=11，置信区间较宽），需要较深使用才会暴露的缺陷（例如第 3 次提问才出现的弹窗）依赖留存回访与更多轮次；真人基准、埋点、评论校准需要导入真实数据才有意义（已提供示例与命令）；儿童 Persona 的安全 rubric 仍需人工审核后才能在正式环境开启。
