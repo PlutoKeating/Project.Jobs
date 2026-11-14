@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dataPath, logger, REPO_ROOT } from '@pux/core';
 import { connectBus, SUBJ, type Bus } from '@pux/jobsworld';
-import { roleOf } from './auth.ts';
+import { evidenceAllowed, roleOf } from './auth.ts';
 import { routes } from './routes.ts';
 import { warmAvatars } from './avatars.ts';
 
@@ -24,7 +24,7 @@ const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout',
 app.addHook('onRequest', async (q, r) => {
   const path = q.url.split('?')[0];
   const guarded = path.startsWith('/api/') || path.startsWith('/reports/') || path.startsWith('/evidence/');
-  if (guarded && !OPEN.has(path) && !roleOf(q).viewer) return r.code(401).send({ error: 'auth_required' });
+  if (guarded && !OPEN.has(path) && !roleOf(q).viewer && !evidenceAllowed(q)) return r.code(401).send({ error: 'auth_required' });
 });
 
 let bus: Bus | undefined;
