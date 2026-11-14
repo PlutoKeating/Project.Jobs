@@ -9,15 +9,16 @@
 ┌──────────────────────────────────────────┐        ┌──────────────────────────────┐
 │ apps/cli      jobs 命令行 + MCP 服务        │        │ postgres  pgvector/pg17      │ 55432
 │ apps/api      REST + WebSocket + 网页       │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
-│ apps/world    世界服务 + 发布引擎           │        │ litellm   模型网关（角色别名）│ 54000 ──▶ Vertex AI Gemini
-│ apps/gateway  单端口网关 0.0.0.0:7777       │        │ nats      事件总线            │ 54222/58222
-│ demos/kit     11 个示例产品（22 个实例）     │        │ tshock/tml 游戏服（profile game）│ 57777/57778
-└──────────────────────────────────────────┘        └──────────────────────────────┘
+│ apps/world    世界服务 + 发布引擎           │        │ nats      事件总线            │ 54222/58222
+│ apps/gateway  单端口网关 0.0.0.0:7777       │        │ tshock/tml 游戏服（profile game）│ 57777/57778
+│ demos/kit     11 个示例产品（22 个实例）     │        └──────────────────────────────┘
+│ packages/llm  应用内模型路由 ───────────────┼──▶ 各家模型供应商（管理员在网页里接入）
+└──────────────────────────────────────────┘
 ```
 
 - **唯一权威数据源**：Postgres（结构化数据）+ MinIO（截图、录像等大文件，按内容哈希寻址、只追加）。
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
-- **模型**：系统内部只引用角色别名（`mind.fast`、`judge.meta` …），角色到模型的映射在 `config/pux.config.yaml` 与 `infra/litellm/config.yaml`。
+- **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
 ## 1.1 发布主线（`packages/engine/src/launch/`）
 
@@ -106,12 +107,12 @@ sequenceDiagram
 | 执行器 | Playwright + Midscene（推荐） | Playwright 启动浏览器 + **Midscene**（唯一的定位方式，只用 `aiLocate` 看截图找位置）；`playwright` 执行器只用于干净重放 | 2026-11-15 决策：Midscene 全家桶，删除 Stagehand |
 | 感知 | Persona「看截图」，Operator 用 DOM/a11y | 人物只看截图；DOM 文字不进入想法；没有独立的 Operator 调用 | 2026-11-15 决策：想法纯视觉，落点可借 DOM |
 | 问题清单 | 以问题清单为主 | 分两路：虚拟人亲历的体验问题；用户看不到的技术信号与专家检查进工程附录 | 2026-11-15 决策 |
-| 厂商隔离 | 至少 2 家厂商 | 本机只有 Vertex Gemini：judge 用不同档位（argon/carbon/hydrogen）+ 不同审查视角；`vendor_isolation: warn` 时报告标注并降一级可信度 | 用户决定 |
+| 厂商隔离 | 至少 2 家厂商 | 由管理员接入的供应商决定：「每一步」与「归纳」的首选目标出自同一家厂商时，校准报告标注并降一级可信度（`vendor_isolation: warn`） | 用户决定 |
 | 录像 | Playwright 视频 | CDP screencast 帧 → ffmpeg 合成 mp4 | 沿用（帧率与体积可控） |
 | HAR | Playwright HAR | 自采集请求日志（HAR-lite JSON） | 沿用 |
 | MinIO 镜像 | — | `elestio/minio` | 官方镜像已停止在 Docker Hub 发布 |
-| 可观测 | Langfuse | Postgres `llm_traces` 表（角色、别名、token、延迟、成本估算、状态，按 study/session/step 打标签） | 用户决定（本地轻量） |
-| 语音注入 | TTS → fake audio | Vertex `gemini-3.8-flash-tts`（ADC 直连）→ ffmpeg 48k wav → `--use-file-for-fake-audio-capture`；失败回退 espeak | LiteLLM 暂不稳定支持 Vertex 音频输出 |
+| 可观测 | Langfuse | Postgres `llm_traces` 表：每一次尝试一行（角色、模型组、实际目标、配置版本、凭证脱敏标识、第几次、错误类别、token、延迟、费用估计），按 study/session/step 打标签 | 用户决定（本地轻量） |
+| 语音注入 | TTS → fake audio | 接入了 Vertex 连接时用 `gemini-3.8-flash-tts`，否则用本机的 espeak → ffmpeg 48k wav → `--use-file-for-fake-audio-capture` | 语音合成没有通用的兼容接口 |
 | 页面可见性打断 | 切标签页 | 注入脚本覆盖 `document.visibilityState` 并派发事件 + CDP `Page.setWebLifecycleState` 冻结 | headless 下切标签页不改变可见性 |
 
 ## 6. 关键机制补充

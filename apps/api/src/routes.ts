@@ -11,12 +11,14 @@ import { login, logout, requireAdmin, roleOf, authEnabled } from './auth.ts';
 import { avatarFor } from './avatars.ts';
 import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
+import { modelRoutes, modelsReady } from './models.ts';
 
 type P = { id: string };
 const layout = computeLayout();
 
 export function routes(app: FastifyInstance, bus: Bus | undefined) {
   launchRoutes(app, bus);
+  modelRoutes(app);
   const snapshot = async () => (bus ? await kvGetJson<Snapshot>(bus.kv, 'snapshot').catch(() => undefined) : undefined);
   const request = async (subject: string, data: unknown, timeout = 120_000) => {
     if (!bus) throw new Error('nats_unavailable');
@@ -25,7 +27,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   };
 
   // ---- 身份 ----
-  app.get('/api/v1/me', async (q) => ({ ...roleOf(q), auth_required: authEnabled(), game_port: Number(process.env.JW_PORT ?? 7777) }));
+  app.get('/api/v1/me', async (q) => ({ ...roleOf(q), auth_required: authEnabled(), game_port: Number(process.env.JW_PORT ?? 7777), models_ready: await modelsReady().then((m) => m.ready).catch(() => false) }));
   app.post('/api/v1/auth/login', async (q, r) => { const res = login(String((q.body as { passcode?: string })?.passcode ?? ''), r); return res.viewer ? res : r.code(401).send({ error: 'bad_passcode' }); });
   app.post('/api/v1/auth/logout', async (_q, r) => { logout(r); return { ok: true }; });
 

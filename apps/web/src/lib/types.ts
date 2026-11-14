@@ -37,7 +37,7 @@ export type Prim =
 export interface PlaceLayout { id: string; kind: string; name: { zh: string; en: string }; x: number; w: number; top: number; bottom: number; floors: number; floor_h: number }
 export interface TownLayout { id: string; name: { zh: string; en: string }; width: number; ground_depth: number; subway_line: { y: number; h: number }; places: PlaceLayout[]; prims: Prim[]; version: string }
 
-export interface Me { viewer: boolean; admin: boolean; auth_required: boolean; game_port: number }
+export interface Me { viewer: boolean; admin: boolean; auth_required: boolean; game_port: number; models_ready?: boolean }
 
 export interface PersonaListItem {
   id: string; kind: string; locale: string; segment: string; target_user: boolean; source: string; frozen: boolean; name: string; age: number; gender: string; occupation: string; region: string;
@@ -95,3 +95,22 @@ export interface SessionDetail {
   judgments: { id: string; evaluator_role: string; model_alias: string | null; phase: string | null; scores: Record<string, number>; rationale: string | null }[];
 }
 export interface HumanTask { id: string; session_id: string; study_id: string; reason: string; url: string | null; cdp_url: string | null; status: string; created_at: string }
+
+// ---- 模型接入（与 packages/llm/src/config.ts、apps/api/src/models.ts 保持一致）----
+export type MUse = 'step' | 'think' | 'locate' | 'embed' | 'image';
+export type MKind = 'chat' | 'embed' | 'image';
+export interface MCaps { vision: boolean; json: boolean; context?: number; output?: number }
+export interface MModel { id: string; model: string; name?: string; kind: MKind; uses: MUse[]; caps: MCaps; cost?: { input: number; output: number } | null; custom?: boolean }
+export interface MCred { id: string; label: string; enabled: boolean; hint: string; secret_id: string }
+export interface MProvider { id: string; name: string; catalog_id?: string; protocol: 'openai' | 'anthropic' | 'vertex'; base_url: string; enabled: boolean; credentials: MCred[]; models: MModel[] }
+export interface MConfig { providers: MProvider[]; order: string[] }
+export interface MCatalogLite { id: string; name: string; protocol: MProvider['protocol']; base_url: string; credential: 'api_key' | 'google_json'; doc?: string; models: number }
+export interface MCatalogModel { id: string; name: string; kind: MKind; caps: MCaps; cost: { input: number; output: number } | null; locate: boolean; released?: string }
+export interface MCatalogProvider extends Omit<MCatalogLite, 'models'> { models: MCatalogModel[] }
+export interface MTest { target_id: string; capability: string; ok: boolean; version: number; cred: string | null; latency_ms: number; error_class: string | null; detail: string | null; at: string }
+export interface MInstance { id: string; kind: string; version: number; health: { key: string; reason: string; until: number }[]; seen_at: string }
+export interface MState { version: number; config: MConfig; poll_ms: number; instances: MInstance[]; tests: MTest[]; catalog: { source: string; fetched_at: string; providers: MCatalogLite[] }; ready: boolean; missing: MUse[] }
+export interface MRoute { use: MUse; eligible: string[]; skipped: { id: string; reason: string }[] }
+export interface MDiff { providers_added: string[]; providers_removed: string[]; models_added: string[]; models_removed: string[]; order_changed: boolean; credentials: { before: number; after: number }; effective: Record<MUse, { before: number; after: number }> }
+export interface MPreview { routes: MRoute[]; diff: MDiff | null }
+export interface MVersion { version: number; parent: number | null; digest: string; author: string | null; note: string | null; created_at: string; providers: number; models: number }

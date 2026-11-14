@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Gamepad2, LogOut, Moon, Pause, Sun } from 'lucide-react';
+import { Gamepad2, LogOut, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
 import { post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
 import { setLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
@@ -22,7 +22,7 @@ function Clock() {
     <span className="inline-flex items-center gap-2 rounded-md border border-border px-2.5 py-1 text-xs text-fg-muted tabular" title={c ? `${c.date} · ×${c.speed}` : undefined}>
       <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-accent live-dot' : 'bg-fg-subtle'}`} />
       <span className="text-fg-display text-sm font-medium">{c?.clock ?? '--:--'}</span>
-      {c && c.speed !== 1 && <span>×{c.speed}</span>}
+      {c && c.speed !== 1 && <span className="hidden sm:inline">×{c.speed}</span>}
       {c?.paused && <Pause size={12} className="text-warning" aria-label="paused" />}
     </span>
   );
@@ -84,6 +84,10 @@ export function Shell() {
   const me = useMe(); const { t, lang } = useT(); const [theme, toggle] = useTheme();
   const path = useRouterState({ select: (s) => s.location.pathname });
   const pending = useOverview(!!me.data?.viewer).data?.human_pending ?? 0;
+  const nav = useNavigate();
+  // 还没接入模型的管理员，第一次打开时直接带到模型页（只带一次，之后由他自己决定去哪）
+  const needModels = !!me.data?.admin && me.data.models_ready === false;
+  useEffect(() => { if (!needModels || path !== '/') return; try { if (sessionStorage.getItem('jw.models-nudged')) return; sessionStorage.setItem('jw.models-nudged', '1'); } catch { /* */ } void nav({ to: '/models' }); }, [needModels, path, nav]);
   useEffect(() => { if (me.data?.viewer) startStream(); }, [me.data?.viewer]);
   useEffect(() => { const f = () => void queryClient.invalidateQueries({ queryKey: ['me'] }); window.addEventListener('jw:auth', f); return () => window.removeEventListener('jw:auth', f); }, []);
   if (me.isLoading) return <div className="min-h-dvh bg-bg" />;
@@ -93,20 +97,21 @@ export function Shell() {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b border-border bg-surface-glass backdrop-blur-[var(--blur-glass)]">
         <div className="mx-auto flex max-w-[var(--container-wide)] flex-wrap items-center gap-x-2 px-4 sm:h-[var(--ds-header-height)] sm:flex-nowrap sm:px-6">
-          <Wordmark className="mr-4 h-[var(--ds-header-height)]" />
+          <Wordmark className="mr-1 h-[var(--ds-header-height)] sm:mr-4" />
           <nav className="order-last -mx-1 flex w-full items-center gap-0.5 overflow-x-auto pb-2 sm:order-none sm:mx-0 sm:w-auto sm:pb-0">
             <NavLink to="/">{t('nav.world')}</NavLink>
             <NavLink to="/products">{t('nav.products')}</NavLink>
             <NavLink to="/people">{t('nav.people')}</NavLink>
             {(pending > 0 || path === '/human') && <NavLink to="/human">{t('nav.human')}{pending > 0 && <span className="tabular ml-1.5 rounded-xs bg-accent px-1 text-xs text-accent-fg">{pending}</span>}</NavLink>}
           </nav>
-          <div className="ml-auto flex items-center gap-1">
+          <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
             <Clock />
             {me.data && <JoinGame port={me.data.game_port} />}
-            <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} aria-label="language" className="w-9 tabular">{lang === 'zh' ? 'EN' : '中'}</Button>
-            <Button variant="ghost" size="sm" onClick={toggle} aria-label="theme" className="w-9">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</Button>
+            <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} aria-label="language" className="w-8 tabular sm:w-9">{lang === 'zh' ? 'EN' : '中'}</Button>
+            <Button variant="ghost" size="sm" onClick={toggle} aria-label="theme" className="w-8 sm:w-9">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</Button>
             {me.data?.auth_required && <Button variant="ghost" size="sm" aria-label={t('logout')} onClick={async () => { await post('/auth/logout'); await queryClient.invalidateQueries(); }}><LogOut size={15} /></Button>}
-            {me.data?.admin && <Button variant="primary" size="sm" className="ml-1.5 h-8 px-3.5 text-sm" onClick={openPublish}>{t('publish')}</Button>}
+            {me.data?.admin && <Link to="/models" aria-label={t('nav.models')} title={t('nav.models')} className="relative inline-flex h-7 w-9 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg data-[status=active]:text-fg-display"><SlidersHorizontal size={15} />{needModels && <span className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-accent live-dot" />}</Link>}
+            {me.data?.admin && !path.startsWith('/models') && <Button variant="primary" size="sm" className="ml-1.5 h-8 px-3.5 text-sm" onClick={openPublish}>{t('publish')}</Button>}
           </div>
         </div>
       </header>

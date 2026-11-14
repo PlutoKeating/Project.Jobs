@@ -4,7 +4,7 @@
 
 > 产品决策（2026-11-15，冲突时以它为准）：[`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md)
 >
-> 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · 架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 接口：[`docs/API.md`](docs/API.md) · 城与游戏：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 校准（内部）：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+> 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · 模型接入：[`docs/MODELS.md`](docs/MODELS.md) · 架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 接口：[`docs/API.md`](docs/API.md) · 城与游戏：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 校准（内部）：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
 
 ## 它怎么工作
 
@@ -62,7 +62,7 @@ claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agen
 | `packages/engine` | 发布主线（`launch/`）、人（记忆、感知、人口）、使用过程运行时、事后评估与问题合成、校准、报告 |
 | `packages/executor` | 浏览器沙箱（电脑 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像 |
 | `packages/memory` | 人物记忆：每人一棵 ewave 记忆树（`@plutokeating/ewave`）的适配层 |
-| `packages/llm` | 模型角色网关、结构化输出、花费记录 |
+| `packages/llm` | 应用内模型路由：多供应商、多凭证、多模型的运行时配置（目录、加密凭证、版本、全局顺序）、失败接替、OpenAI 兼容入口、花费记录 |
 | `packages/core` · `packages/db` · `packages/storage` | 类型与 schema · Drizzle 表与迁移 · 证据存储（MinIO/S3，内容寻址） |
 | `game/` · `infra/game/` | Terraria 两个游戏端的插件与模组（C#）· 游戏服镜像 |
 | `demos/kit` | 11 个示例产品（每个有干净版与植入缺陷版），用于演示与校准 |
@@ -83,11 +83,12 @@ claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agen
 
 | 验证项 | 结果 |
 |---|---|
-| 单元测试（`pnpm test`） | 65 项通过：感知与手、识字量、记忆与态度边界、人口与需求规则、曝光与注意、渠道常态、虚拟身份、命令行输出等 |
+| 单元测试（`pnpm test`） | 92 项通过：感知与手、识字量、记忆与态度边界、人口与需求规则、曝光与注意、渠道常态、虚拟身份、命令行输出、模型路由与故障模拟等 |
 | 集成测试（`PUX_INTEGRATION=1 pnpm test`） | 6 项通过：语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、下载与长文本粘贴、弱网注入 |
 | 发布主线（2026-11-15） | 发布笔记示例（植入缺陷版）：一个模拟日内 190 人看到、91 人注意到；受邀的 3 人全部亲身撞上「显示已自动保存但内容丢失」并放弃；结论页、命令行、MCP、网页与两个游戏端镜像均实测 |
 | 像人（2026-11-15） | 虚拟人只看截图完成注册、登录失败后改去注册、新建并填写笔记；问题分为体验问题与工程附录 |
 | 世界和人（2026-11-15） | 201 人、113 户、约 1287 条关系常驻运行；使用发生在人物此时此地的处境里 |
 | Terraria | TShock 与 tModLoader 镜像编译通过；产品负责人已用真实客户端验证进入同一座城 |
+| 模型接入（2026-11-15） | 应用内路由替换独立的模型网关容器：27 项规则与故障模拟测试；真实数据库上验证并发冲突、重复提交、凭证撤销与回滚；真实使用全程经新路由跑通。详见 `docs/MODELS.md` §6 |
 
-已知局限：本机只接了一家模型厂商；自然流量下的点开率取决于模型对「这个人此刻会不会点」的判断，未经真人数据校准；需要较深使用才暴露的问题依赖回访与更多人次。
+已知局限：真实调用只在 Vertex 上的 Gemini 验证过，其他供应商只有协议层的模拟测试；自然流量下的点开率取决于模型对「这个人此刻会不会点」的判断，未经真人数据校准；需要较深使用才暴露的问题依赖回访与更多人次。

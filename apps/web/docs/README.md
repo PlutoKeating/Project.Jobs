@@ -15,6 +15,7 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 | `/people`、`/people/:id` | 居民列表；一个人的画像、此刻、今天的日程、家人与熟人、记忆、用过的产品 |
 | `/sessions/:id` | 一次使用的逐步回看：截图、想法、动作、世界事件、事后追问 |
 | `/human` | 需要人介入的任务（有待处理时导航里才出现） |
+| `/models` | 模型接入（仅管理员；顶栏右侧的滑杆图标）：添加供应商、凭证、勾选模型与用途、全局顺序（拖动 / 按钮 / 键盘）、保存前差异、测试、版本与回滚。还没接入模型的管理员第一次打开会被带到这里 |
 
 ## 结构
 
@@ -23,7 +24,7 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 | `src/components/city/` | 侧视像素城市（PixiJS）：`draw.ts` 把 `TownLayout` 图元与人物外观画成像素，`palette.ts` 天空随模拟时钟变化，`CityCanvas.tsx` 负责拖拽、缩放、聚焦与 HTML 叠加层（气泡、名牌、地名）。`mode="horizon"` 是其他页面页脚的街道 |
 | `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、世界时钟、游戏地址、语言、明暗主题、「发布」）、登录页、页脚街道（跟在内容后面，不盖住内容） |
 | `src/components/Publish.tsx` | 发布对话框：网址、名字、一句话（`openPublish()` 可从任意页面打开） |
-| `src/pages/` | `World`、`Products`（含 `useLiveFunnel`：接口人数 + 实时帧）、`Launch`、`People`、`Person`、`Session`、`Human` |
+| `src/pages/` | `World`、`Products`（含 `useLiveFunnel`：接口人数 + 实时帧）、`Launch`、`People`、`Person`、`Session`、`Human`、`Models` |
 | `src/lib/` | API 客户端与查询（`useLaunches`、`useLaunch`、`useLaunchReport`、`useEngineering` …）、WebSocket 实时 store（`snapshot`、`live`、`say`、`launches`）、中英双语文案与标签 |
 | `src/design-system/tokens.css` | PlutoKeating design system token 副本（整体替换更新） |
 | `.impeccable/surfaces/apps-web.md` | 设计方向契约（开发用，不打包） |

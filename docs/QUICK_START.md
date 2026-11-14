@@ -2,27 +2,23 @@
 
 ## 0. 前置条件
 
-- Node ≥ 22（推荐 24）、pnpm ≥ 10、Docker（Compose v2）、ffmpeg、gcloud CLI
-- `gcloud auth application-default login`（ADC 凭据，模型网关与语音合成使用）
-- 能访问 Vertex AI 上 Gemini 的 GCP 项目
+- Node ≥ 22（推荐 24）、pnpm ≥ 10、Docker（Compose v2）、ffmpeg
+- 至少一家模型供应商的凭证（OpenAI、Anthropic、Google、OpenRouter、DeepSeek、通义、豆包…任何 OpenAI 兼容的入口都行）。其中要有一个能看图的模型；在截图上定位目前支持 Gemini、GPT-5、Qwen-VL、豆包、GLM-V、UI-TARS 这几个家族
 
 ## 1. 配置
 
 ```bash
-cp .env.example .env
-# 必填：VERTEX_PROJECT=<你的 GCP 项目 ID>
-#       GOOGLE_ADC_FILE=/home/<you>/.config/gcloud/application_default_credentials.json
+cp .env.example .env        # 默认值即可运行
 pnpm install
 npx playwright install chromium
 ```
 
-端口（除网关外均只绑定 127.0.0.1，可在 `.env` 覆盖）：Postgres 55432 · MinIO 59000/59001 · LiteLLM 54000 · NATS 54222（监控 58222）· API 5320 · 网页开发服务器 5321 · **网关 0.0.0.0:7777**（网页 + 游戏共用）· 示例产品 5401–5411（干净版）/ 5501–5511（植入缺陷版）。
+端口（除网关外均只绑定 127.0.0.1，可在 `.env` 覆盖）：Postgres 55432 · MinIO 59000/59001 · NATS 54222（监控 58222）· API 5320 · 网页开发服务器 5321 · **网关 0.0.0.0:7777**（网页 + 游戏共用）· 示例产品 5401–5411（干净版）/ 5501–5511（植入缺陷版）。
 
 ## 2. 启动依赖并初始化
 
 ```bash
-docker compose up -d       # Postgres+pgvector / MinIO / NATS / LiteLLM
-pnpm jobs doctor           # 全部 ✅ 再继续
+docker compose up -d       # Postgres+pgvector / MinIO / NATS
 pnpm jobs init             # 数据库迁移 + 导入手写人物与随包自带的 185 位居民（共 201 人住进城里）+ 注册示例产品
 ```
 
@@ -32,7 +28,11 @@ pnpm jobs init             # 数据库迁移 + 导入手写人物与随包自带
 pnpm jobsworld             # 世界服务 + API（含网页）+ 单端口网关；首次会自动构建网页
 ```
 
-浏览器打开 `http://<本机 IP>:7777/`（本机为 `http://127.0.0.1:7777/`）。第一眼是城：点人物看他此刻在做什么、在用什么、在想什么；点建筑看里面的人。
+浏览器打开 `http://<本机 IP>:7777/`（本机为 `http://127.0.0.1:7777/`）。
+
+**第一次打开会被带到「模型」页**：在「添加供应商」里选一家 → 粘贴凭证 → 勾选模型 → 「保存」。页面上方的「每一步 / 归纳 / 定位」三项都有了目标，城里的人才能做决定、才能用产品。之后可以随时增删供应商、调顺序，保存后几秒生效，不用重启。详见 [`MODELS.md`](MODELS.md)。`pnpm jobs doctor` 可以检查全部依赖。
+
+回到「城」。第一眼是城：点人物看他此刻在做什么、在用什么、在想什么；点建筑看里面的人。
 
 ## 4. 发布第一个产品
 
@@ -94,7 +94,8 @@ docker compose --profile game up -d --build --no-deps tml      # tModLoader（�
 
 ## 9. 故障排查
 
-- 模型报 401/403 或「Reauthentication is needed」：ADC 过期，重新 `gcloud auth application-default login` 后 `docker compose restart litellm`。
+- 城里一直没人用产品、世界服务日志里有「还没有接入可用的模型」：到「模型」页看上方三项哪一项标红。
+- 模型调用报凭证无效：到「模型」页给对应连接换一把凭证并保存（旧的删掉）。用 gcloud 的 ADC 文件做凭证时它会过期，过期后重新粘贴。
 - 世界页没有人在动 / 时钟显示 `--:--`：确认 `docker compose up -d nats` 且世界服务在运行。
 - 发布之后一直没人打开：看 `jobs status` 里路过的人怎么想；提高宣发强度、换一句话介绍，或 `jobs invite`。世界服务以 `JW_RUNNER=0` 启动时不会驱动发布引擎。
 - 浏览器启动失败：`npx playwright install chromium`。

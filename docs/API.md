@@ -99,19 +99,38 @@ interface Executor {
 
 错误分层与默认归因（spec §10.2）：`product` → 产品问题候选；`environment` / `simulator` → 不计入产品问题；`executor` → 不计入产品问题（人物眼里是「在屏幕上没找到想点的东西」）；`policy` → 记录并检查产品保护机制；`injected` → 只评估产品如何应对。
 
-## 4. 模型角色（LiteLLM 别名）
+## 4. 模型
 
-| 角色键（pux.config.yaml） | 别名 | 用途 |
+### 模型组与角色
+
+代码里的调用点用角色名调用网关（`gateway().chat(role, …)`），角色归到模型组；每个组实际用哪家的哪个模型，由已保存的模型配置决定（见 [`MODELS.md`](MODELS.md)）。
+
+| 模型组 | 角色 | 用途 |
 |---|---|---|
-| mind_fast | mind.fast | 人物使用时的每一步；注意到产品后要不要点开 |
-| mind_slow | mind.slow | 记忆整理、用完之后怎么评价与跟谁说、生活目标 |
-| operator_locate | operator.locate | Midscene 看截图定位目标 |
-| world_sim | world.sim | LLM 补充世界事件（规则优先） |
-| judge_0..2 | judge.panel.0..2 | 主观模拟评估、AI 质量（不同档位 + 不同视角） |
-| judge_meta | judge.meta | 一页结论的归纳、问题合成、归因复核、校准匹配 |
-| interview | interview | 事后访谈、可追问访谈 |
-| gen_persona / product_induce | gen.persona / product.induce | Persona 生成、产品理解 |
-| embed / image_gen | embed / image.gen | 记忆与去重向量 / 相机注入素材 |
+| `step` 每一步（必须能看图） | `mind_fast`、`world_sim`、`judge_2` | 人物使用时的每一步；注意到产品后要不要点开；补充世界事件 |
+| `think` 归纳与判断 | `mind_slow`、`judge_0`、`judge_1`、`judge_meta`、`interview`、`gen_persona`、`product_induce` | 记忆整理、用完之后怎么评价与跟谁说、一页结论、问题合成、访谈与追问、生成居民的叙事 |
+| `locate` 在截图上定位 | `operator_locate`（Midscene 经本地兼容入口） | 把人物说的目标换成屏幕坐标 |
+| `embed` 向量（可选） | `embed` | 记忆检索与问题去重；没接入时用本地哈希向量 |
+| `image` 画图（可选） | `image_gen` | 头像与相机素材；没接入时用像素头像 |
+
+### 管理接口（全部需要管理员）
+
+| 方法 路径 | 说明 |
+|---|---|
+| `GET /models` | 当前状态：`version`、`config`（连接、凭证的脱敏提示、已选模型、全局顺序；不含任何凭证正文）、`instances`（各在线实例用的是第几版、各自暂时跳过了谁）、`tests`（每个目标每项能力最近一次测试）、`catalog`（目录来源、更新时间、供应商清单）、`ready` / `missing`（每一步、归纳、定位是否各有可用目标）、`poll_ms` |
+| `GET /models/catalog/:id` | 目录里一家供应商的模型：标识、名字、类型、能力、价格、能否用于定位 |
+| `POST /models/catalog/refresh` | 重新拉取目录；失败返回 502，旧目录与已保存的配置不受影响 |
+| `POST /models/publish` `{ base_version, submit_id?, config, new_secrets?, note? }` | 保存一份完整配置。`base_version` 是编辑起点的版本，线上已经变了返回 409 `{ error: "conflict", version, config }`；`submit_id` 相同的重复提交返回同一结果（`replay: true`）；`new_secrets` 是 `凭证 id → 明文`，只在这一次请求里出现；校验不过返回 422 |
+| `GET /models/versions` | 最近 30 个版本 |
+| `POST /models/rollback` `{ version }` | 把旧版本的内容作为新版本保存；返回里的 `dropped_credentials` 是因已撤销而被去掉的凭证数 |
+| `POST /models/test` `{ target_id, credential_id?, capability? }` | 对已保存的配置测一个目标：`text` / `vision` / `json` / `embed` / `image`。返回 `ok`、`latency_ms`、`error_class`、`detail`、`version`、`cred` |
+| `POST /models/preview` `{ config?, use?, vision? }` | 路由预览（不发真实请求）：每个模型组按顺序会试哪些目标、哪些被跳过及原因。传 `config` 时预览草稿，并返回与线上配置的 `diff` |
+
+`GET /me` 的 `models_ready` 表示发布主线此刻是否跑得起来。
+
+### OpenAI 兼容入口
+
+`POST /llm/<step|think|locate>[/<定位家族>]/v1/chat/completions`（需登录；Bearer 口令即可）：请求体按 OpenAI 的 chat/completions 格式，`model` 字段会被换成实际目标的上游模型名，支持流式。示例产品里的 AI 功能用它。
 
 ## 5. 数据文件格式
 

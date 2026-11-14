@@ -7,4 +7,5 @@ Jobs 的 HTTP 接口（Fastify）。启动：`pnpm api`（`API_PORT`，默认 53
 - 托管网页构建产物 `apps/web/dist`（SPA 回退到 `index.html`）。
 - 访问控制（`src/auth.ts`）：`JW_PASSCODE` 共享口令、`JW_ADMIN_PASSCODE` 管理员口令；网页用 HMAC 签名 Cookie，命令行与 MCP 用 `Authorization: Bearer <口令>`；未设置时对应限制关闭。`/inbox/email`、`/inbox/sms` 免登录（供被测产品的测试环境投递验证邮件与短信）。
 - 头像（`src/avatars.ts`）：启动后为没有头像的人物排队调用 `image.gen`（`JW_AVATAR_GEN=0` 关闭），存 MinIO 与 `persona_avatars`。
+- 模型接入（`src/models.ts`）：目录、整份草稿一次保存（版本冲突保护）、单目标测试、路由预览、版本与回滚；`/api/v1/llm/*` 是 OpenAI 兼容入口。见 `docs/MODELS.md`。
 - 发布、调宣发直接写库；「把手机递给人」经 NATS（`jw.cmd.invite`）交给世界服务，因为使用过程在世界服务里运行。
