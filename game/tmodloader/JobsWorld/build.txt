@@ -1,0 +1,5 @@
+displayName = JobsWorld
+author = pux
+version = 0.1.0
+side = Both
+buildIgnore = *.csproj, *.md, bin/*, obj/*, .vs/*

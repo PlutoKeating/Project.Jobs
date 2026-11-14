@@ -138,3 +138,16 @@ npx tsx scripts/jw-probe.ts --port 57777 --secs 25 --cmd "/jw who" --cmd "/jw in
 | 看不到人物 | `/jw status` 看假玩家数量；世界服务的 `jw.snapshot` 是否在发（`nats sub jw.snapshot`） |
 | 想换新世界 | `docker compose --profile game rm -sf tshock` 后 `docker volume rm pux_tshockdata` 再启动 |
 | 城镇被改坏 | 管理员 `/jw rebuild` |
+
+---
+
+## tModLoader 端（game/tmodloader）
+
+> 本节由 tModLoader 端维护，详细说明见 [`tmodloader/README.md`](tmodloader/README.md)。
+
+- **版本**：tModLoader 稳定版 `v2026.09.3.1`（Terraria 1.4.4.9），握手版本串 **`tModLoader v2026.9.3.1!2026.9.3`**（gateway 按 `tModLoader` 前缀分流）。
+- **构建**：`docker compose --profile game up -d --build --no-deps tml`。镜像构建时把 `game/shared` 复制到 `tmodloader/JobsWorld/Shared/`，再用 tModLoader 自带的 Roslyn（`dotnet tModLoader.dll -server -build`）编译出 `JobsWorld.tmod`，不需要 .NET SDK；共享源码不在 mod 目录里重复入库。
+- **端口与数据**：`127.0.0.1:${TML_PORT:-57778}`，命名卷 `pux_tmldata`。
+- **适配实现**：`Server/TmlTileWriter.cs`（`ITileWriter`，tML `Tile` 结构体 API）、`Server/TmlFakePlayers.cs`（`IFakePlayerHost`，与 TShock 端同样只向真实客户端同步非活动槽位）；建镇、假玩家调度、命令文本全部复用 `shared/`。
+- **相对 TShock 端的差异**：平坦世界生成（`ModifyWorldGenTasks`）；客户端可悬停 / 点击人物打开面板（软件、步骤、在想、动作、实时截图、日程、跟随、追问、主页）和右上角 HUD（时钟、在用软件人数）；服务端逻辑挂在 `Main.OnTickForThirdPartySoftwareOnly`（无人在线时原版不跑 `Main.Update`）。
+- **验证**：`node game/tmodloader/tools/tml-probe.mjs 127.0.0.1 57778`（完整走 tML 握手、进入世界，解析假玩家、气泡与 JobsWorld ModPacket）。

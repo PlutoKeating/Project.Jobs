@@ -1,0 +1,2 @@
+JobsWorld：pux 的可视化世界。城镇里的每个人物都是一个真实的“假玩家”，点击人物可查看他正在使用的软件、当前步骤、心里在想什么、截图与日程，还可以跟随或向他提问。
+JobsWorld: every persona in town is a fake player. Click one to see the app they're using, their thoughts, a live screenshot and their agenda; follow them or ask them questions.

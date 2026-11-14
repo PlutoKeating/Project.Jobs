@@ -96,8 +96,35 @@ services:
     volumes:
       - tshockdata:/data
 
+  tml:
+    # JobsWorld 游戏服（tModLoader 稳定版，mod 在构建镜像时编译）。按需启动：
+    #   docker compose --profile game up -d --build --no-deps tml
+    profiles: [game]
+    build:
+      context: .
+      dockerfile: infra/game/tmodloader/Dockerfile
+      args:
+        TML_VERSION: ${TML_VERSION:-v2026.09.3.1}
+    image: pux-tml:latest
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      NATS_URL: nats://nats:4222
+      JW_GAME_PASSWORD: ${JW_GAME_PASSWORD:-}
+      JW_ADMIN_PASSCODE: ${JW_ADMIN_PASSCODE:-}
+      JW_WORLD_NAME: ${JW_WORLD_NAME:-JobsWorld}
+      JW_MAX_PLAYERS: ${JW_MAX_PLAYERS:-16}
+      JW_API_BASE: ${JW_API_BASE:-}
+      JW_PASSCODE: ${JW_PASSCODE:-}
+    ports:
+      - "127.0.0.1:${TML_PORT:-57778}:7777"
+    volumes:
+      - tmldata:/data
+
 volumes:
   tshockdata:
+  tmldata:
   natsdata:
   pgdata:
   s3data:
