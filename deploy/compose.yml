@@ -1,0 +1,103 @@
+# Jobs 的运行编排。由安装脚本放到 ~/.jobs/ 下，配合同目录的 .env 使用；不要直接改这里，改 .env。
+# 我们自己的代码只有 jobs 这一个镜像；postgres / minio / nats 是各自的标准镜像。
+name: jobs
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jobs
+      POSTGRES_PASSWORD: ${PG_PASSWORD:?缺少 PG_PASSWORD}
+      POSTGRES_DB: jobs
+    ports:
+      - "127.0.0.1:${PG_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jobs"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    # 官方 minio/minio 已停止在 Docker Hub 发布，这里用 elestio 重新打包的 MinIO
+    image: elestio/minio:latest
+    restart: unless-stopped
+    entrypoint: ["minio"]
+    command: ["server", "/data"]
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:-jobs}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?缺少 S3_SECRET_KEY}
+    ports:
+      - "127.0.0.1:${S3_PORT:-59000}:9000"
+    volumes:
+      - s3data:/data
+
+  nats:
+    image: nats:2.12-alpine
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data"]
+    ports:
+      - "127.0.0.1:${NATS_PORT:-54222}:4222"
+    volumes:
+      - natsdata:/data
+
+  jobs:
+    image: ${JOBS_IMAGE:-ghcr.io/plutokeating/jobs:latest}
+    restart: unless-stopped
+    init: true
+    shm_size: 1gb
+    depends_on:
+      postgres: { condition: service_healthy }
+      minio: { condition: service_started }
+      nats: { condition: service_started }
+    env_file: .env
+    environment:
+      S3_BUCKET: jobs-evidence
+      JOBS_DEMOS: ${JOBS_DEMOS:-1}
+    volumes:
+      - jobsdata:/data
+      - ./control:/data/control
+
+  # 游戏服默认不装。网页右上角的手柄里一键开启，或 jobs game on tshock / jobs game on tml
+  tshock:
+    profiles: [game]
+    image: ${JOBS_TSHOCK_IMAGE:-ghcr.io/plutokeating/jobs-tshock:latest}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      NATS_URL: nats://nats:4222
+      JW_GAME_PASSWORD: ${JW_GAME_PASSWORD:-}
+      JW_ADMIN_PASSCODE: ${JW_ADMIN_PASSCODE:-}
+      JW_WORLD_NAME: JobsWorld
+    ports:
+      - "127.0.0.1:${TSHOCK_PORT:-57777}:7777"
+    volumes:
+      - tshockdata:/data
+
+  tml:
+    profiles: [game]
+    image: ${JOBS_TML_IMAGE:-ghcr.io/plutokeating/jobs-tml:latest}
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      NATS_URL: nats://nats:4222
+      JW_GAME_PASSWORD: ${JW_GAME_PASSWORD:-}
+      JW_ADMIN_PASSCODE: ${JW_ADMIN_PASSCODE:-}
+      JW_PASSCODE: ${JW_PASSCODE:-}
+      JW_WORLD_NAME: JobsWorld
+    ports:
+      - "127.0.0.1:${TML_PORT:-57778}:7777"
+    volumes:
+      - tmldata:/data
+
+volumes:
+  pgdata:
+  s3data:
+  natsdata:
+  jobsdata:
+  tshockdata:
+  tmldata:

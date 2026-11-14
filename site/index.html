@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jobs — 发布之前，先让一座城的人用用看</title>
+<meta name="description" content="把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、留不留、跟谁说。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%230e0f11'/%3E%3Crect x='2' y='6' width='4' height='8' fill='%237d8f8a'/%3E%3Crect x='7' y='3' width='4' height='11' fill='%23c2cfcb'/%3E%3Crect x='12' y='8' width='2' height='6' fill='%237d8f8a'/%3E%3Crect x='8' y='5' width='1' height='1' fill='%23f0a35e'/%3E%3Crect x='9' y='8' width='1' height='1' fill='%23f0a35e'/%3E%3Crect y='14' width='16' height='2' fill='%23f0a35e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0e0f11; --raised: #131417; --line: rgb(232 228 221 / 0.08); --line-strong: rgb(232 228 221 / 0.18);
+    --fg: #e8e4dd; --muted: #a9a49c; --accent: #f0a35e; --slate: #7d8f8a; --slate-fg: #c2cfcb; --code: #111215;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { color-scheme: light; --bg: #f6f2ea; --raised: #fbf8f2; --line: rgb(40 34 26 / 0.1); --line-strong: rgb(40 34 26 / 0.22); --fg: #1d1a16; --muted: #5d564c; --accent: #b0602e; --slate: #5f746e; --slate-fg: #3f524d; --code: #efe9df; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-font-smoothing: antialiased; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 450 1rem/1.7 "Inter", "Noto Sans SC Variable", "Noto Sans SC", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif; }
+  ::selection { background: rgb(240 163 94 / 0.28); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
+  header { display: flex; align-items: center; height: 3.75rem; }
+  .mark { display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; letter-spacing: -0.01em; }
+  main { padding: clamp(2.5rem, 8vw, 6rem) 0 4rem; }
+  h1 { margin: 0; max-width: 16em; font-size: clamp(2rem, 5.4vw, 3.5rem); line-height: 1.16; letter-spacing: -0.02em; font-weight: 700; text-wrap: balance; word-break: keep-all; }
+  .lede { margin: 1.5rem 0 0; max-width: 40em; color: var(--muted); font-size: 1.0625rem; }
+  .install { margin-top: 2.5rem; display: flex; align-items: stretch; max-width: 42rem; border: 1px solid var(--line-strong); border-radius: .625rem; background: var(--code); }
+  .install code { flex: 1; min-width: 0; padding: .9rem 1rem; overflow-x: auto; white-space: nowrap; font: 500 .9375rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC", monospace; }
+  .install button { flex: none; padding: 0 1.1rem; border: 0; border-left: 1px solid var(--line-strong); background: transparent; color: var(--muted); font: inherit; font-size: .875rem; font-weight: 500; cursor: pointer; border-radius: 0 .625rem .625rem 0; transition: color .15s; }
+  .install button:hover { color: var(--accent); }
+  .need { margin: .75rem 0 0; color: var(--muted); font-size: .875rem; }
+  figure { margin: clamp(3rem, 7vw, 5rem) 0 0; }
+  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: .875rem; }
+  .how { margin: clamp(3rem, 7vw, 5rem) 0 0; padding: 0; list-style: none; display: grid; gap: 2.5rem 3rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); counter-reset: s; }
+  .how li { counter-increment: s; border-top: 1px solid var(--line-strong); padding-top: 1.1rem; }
+  .how li::before { content: counter(s); display: block; margin-bottom: .6rem; color: var(--slate); font-size: .875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .how h2 { margin: 0 0 .5rem; font-size: 1.1875rem; line-height: 1.4; letter-spacing: -0.01em; }
+  .how p { margin: 0; color: var(--muted); font-size: .9375rem; }
+  .also { margin-top: clamp(3rem, 7vw, 5rem); display: grid; gap: 1.25rem 3rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); align-items: start; }
+  .also h2 { margin: 0 0 .5rem; font-size: 1.1875rem; letter-spacing: -0.01em; }
+  .also p { margin: 0; color: var(--muted); font-size: .9375rem; }
+  pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: .625rem; background: var(--code); font: 450 .8125rem/1.75 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC", monospace; }
+  pre .c { color: var(--slate); }
+  footer { border-top: 1px solid var(--line); padding: 1.5rem 0 3rem; color: var(--muted); font-size: .875rem; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <span class="mark">
+      <svg width="22" height="22" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="6" width="4" height="8" fill="var(--slate)"/><rect x="7" y="3" width="4" height="11" fill="var(--slate-fg)"/><rect x="12" y="8" width="2" height="6" fill="var(--slate)"/><rect x="8" y="5" width="1" height="1" fill="var(--accent)"/><rect x="9" y="8" width="1" height="1" fill="var(--accent)"/><rect x="0" y="14" width="16" height="2" fill="var(--accent)"/></svg>
+      Jobs
+    </span>
+  </header>
+
+  <main>
+    <h1>发布之前，<wbr>先让一座城的人<wbr>用用看。</h1>
+    <p class="lede">把网址交给 Jobs。JobsWorld 里住着两百个各不相同的人：他们过着自己的日子，在应用商店、广告和朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。</p>
+
+    <div class="install">
+      <code id="cmd">curl -fsSL https://jobs.plutokeating.beer/install | bash</code>
+      <button type="button" id="copy" aria-label="复制安装命令">复制</button>
+    </div>
+    <p class="need">需要一台装了 Docker 的机器。装好后打开网页，接入你自己的模型供应商。</p>
+
+    <figure><img src="/city.webp" width="1600" height="900" alt="Jobs 的首屏：一座侧视的像素小城，右侧是已发布的产品和城里的人此刻在做什么"></figure>
+
+    <ol class="how">
+      <li><h2>发布</h2><p>粘贴网址、名字、一句话。本机上的开发服务器也行。</p></li>
+      <li><h2>他们自己决定</h2><p>没有人被指派去测试。地铁上单手拿着手机的人、带着孩子的人、只剩五分钟的人，各自遇到它，各自决定点不点开。用的时候他们只看得到屏幕。</p></li>
+      <li><h2>读一页人话</h2><p>好不好用，哪里最让人难受，谁会留下谁会走，看到的人为什么没点开，最该改的一件事。每一句都能点开看是谁说的、原话和当时的屏幕。</p></li>
+    </ol>
+
+    <div class="also">
+      <div>
+        <h2>也在终端和 coding agent 里</h2>
+        <p>写完代码就发布，取回结论和带复现步骤的问题清单，接着改。同一座城还能用 Terraria 走进去，或者接到飞书里。</p>
+      </div>
+      <pre><span class="c"># 发布、看状况、要结论</span>
+jobs publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
+jobs status 闪念笔记
+jobs report 闪念笔记 --eng
+
+<span class="c"># 接进 Claude Code（其他支持 MCP 的 agent 同理）</span>
+claude mcp add jobs -- jobs mcp</pre>
+    </div>
+  </main>
+
+  <footer>人数是这座城里实际发生的人数，是模拟，不是对真实市场的预测。它不取代真人用户研究。</footer>
+</div>
+<script>
+  document.getElementById('copy').addEventListener('click', function () {
+    var b = this;
+    navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(function () { b.textContent = '已复制'; setTimeout(function () { b.textContent = '复制'; }, 1600); });
+  });
+</script>
+</body>
+</html>

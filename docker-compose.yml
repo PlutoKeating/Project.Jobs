@@ -1,4 +1,4 @@
-# 本地依赖服务（应用、worker、控制台、Demo 均在宿主机用 pnpm 原生运行）
+# 从源码开发时用的依赖服务（世界服务、接口、网关、示例产品在宿主机用 pnpm 运行）。装好的 Jobs 用的是 deploy/compose.yml
 # 端口统一放在 5xxxx 段，避免与本机其他服务冲突；可在 .env 中覆盖。
 name: pux
 

@@ -1,6 +1,7 @@
 import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import pg from 'pg';
+import { sql } from 'drizzle-orm';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { env } from '@pux/core';
@@ -26,6 +27,9 @@ export async function closeDb() { await pool?.end(); pool = undefined; instance 
 
 export async function runMigrations() {
   const folder = join(dirname(fileURLToPath(import.meta.url)), '..', 'migrations');
+  // 标准的 pgvector 镜像不带我们的初始化脚本：需要的扩展在这里建（已存在则跳过）
+  await getDb().execute(sql`CREATE EXTENSION IF NOT EXISTS vector`);
+  await getDb().execute(sql`CREATE EXTENSION IF NOT EXISTS pg_trgm`);
   await migrate(getDb(), { migrationsFolder: folder });
 }
 

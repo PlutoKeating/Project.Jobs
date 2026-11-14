@@ -1,0 +1,12 @@
+# Linux：jobs 容器直接用宿主机的网络。这样你在本机 127.0.0.1 上跑的开发服务器，城里的人原样就能打开。
+services:
+  jobs:
+    network_mode: host
+    environment:
+      DATABASE_URL: postgres://jobs:${PG_PASSWORD}@127.0.0.1:${PG_PORT:-55432}/jobs
+      S3_ENDPOINT: http://127.0.0.1:${S3_PORT:-59000}
+      NATS_URL: nats://127.0.0.1:${NATS_PORT:-54222}
+      JW_PORT: ${JOBS_PORT:-7777}
+      JW_HOST: ${JOBS_BIND:-0.0.0.0}
+      TSHOCK_PORT: ${TSHOCK_PORT:-57777}
+      TML_PORT: ${TML_PORT:-57778}

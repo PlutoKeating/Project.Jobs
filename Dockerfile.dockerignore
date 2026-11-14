@@ -1,0 +1,16 @@
+# 只对根目录的 Dockerfile（Jobs 主镜像）生效；游戏服镜像用仓库根的 .dockerignore
+node_modules
+**/node_modules
+data
+.git
+.env
+.env.*
+!.env.example
+apps/web/dist
+midscene_run
+game
+infra
+tests
+docs/SPEC_v0.2.md
+.impeccable
+**/.impeccable

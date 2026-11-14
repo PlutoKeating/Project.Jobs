@@ -36,9 +36,20 @@ async function captureShots(url: string, ctx: { study_id: string }): Promise<str
   return out;
 }
 
+/**
+ * 装在容器里、又不能用宿主机网络时（macOS / Windows），用户说的「本机地址」指的是他的电脑，不是容器自己。
+ * 设置了 JOBS_LOCALHOST_ALIAS 就把 localhost / 127.0.0.1 换成它（Docker 提供的 host.docker.internal）
+ */
+export function reachableUrl(url: string, alias = process.env.JOBS_LOCALHOST_ALIAS): string {
+  if (!alias) return url;
+  try { const u = new URL(url); if (['localhost', '127.0.0.1', '[::1]', '0.0.0.0'].includes(u.hostname)) { u.hostname = alias; return u.toString(); } } catch { /* 交给后面的校验去报错 */ }
+  return url;
+}
+
 /** 发布一个产品。同名产品再次发布视为新版本，之前的发布自动结束 */
-export async function publishProduct(input: PublishInput): Promise<LaunchRow> {
+export async function publishProduct(raw: PublishInput): Promise<LaunchRow> {
   const db = getDb();
+  const input = { ...raw, url: reachableUrl(raw.url.trim()), landing_url: raw.landing_url ? reachableUrl(raw.landing_url.trim()) : raw.landing_url };
   if (!/^https?:\/\//i.test(input.url)) throw new Error('产品地址必须以 http:// 或 https:// 开头');
   const name = input.name.trim(); const tagline = input.tagline.trim();
   if (!name || !tagline) throw new Error('需要产品名和一句话介绍');
