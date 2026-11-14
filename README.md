@@ -70,7 +70,7 @@ pnpm console                       # http://127.0.0.1:5300/
 | 验证项 | 结果 |
 |---|---|
 | 单元测试（`pnpm test`） | 18 项通过：UAP 抽象、Policy Gate、动作精度/状态规则、识字量、§7.2 因果链、任务信号、校准统计、schema |
-| 集成测试（`PUX_INTEGRATION=1 pnpm test`） | 5 项通过：TTS 语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、弱网注入 |
+| 集成测试（`PUX_INTEGRATION=1 pnpm test`） | 6 项通过：TTS 语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、下载反馈与长文本粘贴、弱网注入 |
 | 端到端（inline） | 助手 / 记账 / 外卖（H5，中英混合，压力与对抗模式，第 1 天回访）/ 儿童识字（儿童 Persona + Policy Gate）/ 天气（REST API 创建） |
 | 端到端（Temporal） | 记账 Demo（Stagehand）、翻牌游戏（Midscene 纯视觉）；幂等键重复提交返回同一 Study |
 | 全自动灌入新项目 | `pux auto`（CLI）与控制台 `POST /api/projects`：爬取 → 归纳 → 自动确认 → 多轮采样 → 评估 → 校准 → 报告 |
