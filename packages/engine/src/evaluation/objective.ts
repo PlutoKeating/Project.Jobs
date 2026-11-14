@@ -78,6 +78,18 @@ export async function extractCandidates(sessionId: string, studyId: string, metr
       else if (layer === 'policy') push({ step_idx: x.idx, source: 'policy', title: zh ? `高风险动作被拦截：${r.error.message.slice(0, 60)}` : `High-risk action blocked: ${r.error.message.slice(0, 60)}`, description: `${x.intent}\n${r.error.message}\n${zh ? '需检查产品自身是否有家长确认/二次确认等保护机制' : 'Check whether the product itself has parental gate / confirmation'}`, category: 'safety', state_id: o?.state_id, url: o?.url, error_code: r.error.code, error_layer: layer, evidence_ids: ev });
     }
   }
+  // 反复尝试：同一页面状态上连续 ≥3 次相同（或几乎相同）的动作。正常人不会机械重复，出现这种情况通常说明界面没有给出可行动的反馈
+  for (let i = 0; i + 2 < st.length; i++) {
+    const key = (x: typeof st[number]) => { const q = x.action_request as ActionRequest | null; const o = x.observation_id ? obsById.get(x.observation_id) : undefined; return q?.verb ? `${o?.state_id}|${q.verb}|${q.target?.resolved?.a11y_name ?? (x.action_result as ActionResult | null)?.resolved_target?.resolved?.a11y_name ?? q.target?.value}` : ''; };
+    const k = key(st[i]); if (!k) continue;
+    let j = i; while (j + 1 < st.length && key(st[j + 1]) === k) j++;
+    if (j - i + 1 >= 3) {
+      const o = st[i].observation_id ? obsById.get(st[i].observation_id) : undefined;
+      const visible = ((o?.data as { visible_text_digest?: string } | undefined)?.visible_text_digest ?? '').replace(/\s+/g, ' ').slice(0, 300);
+      push({ step_idx: st[i].idx, source: 'repeat', title: zh ? `用户在同一处反复尝试 ${j - i + 1} 次：${st[i].intent?.slice(0, 40)}` : `User retried the same action ${j - i + 1} times: ${st[i].intent?.slice(0, 40)}`, description: `${zh ? '页面可见文字' : 'Visible text'}：${visible}\n${zh ? '独白' : 'Monologue'}：${st[j].monologue ?? ''}\n${zh ? '提示：正常用户不会机械重复相同操作；请检查界面是否给出了可行动的反馈（错误原因、规则说明、加载状态）。' : 'Hint: real users do not mechanically repeat; check whether the UI gave actionable feedback.'}`, category: 'ux', heuristics: ['H1', 'H9'], state_id: o?.state_id, url: o?.url, evidence_ids: [shotAt(j + 1), (o?.data as { screenshot_ev?: string } | undefined)?.screenshot_ev].filter(Boolean) as string[] });
+      i = j;
+    }
+  }
   // 预期违背（看下一步的独白中的意外）
   for (let i = 0; i < st.length; i++) {
     const x = st[i]; if (!x.expectation_violated) continue;

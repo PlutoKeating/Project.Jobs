@@ -66,7 +66,7 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
     const segments = [...new Set(sessIds.map((s) => segOf.get(s)!))];
     // ② 干净重放（选第一个带步骤的候选）
     let replay: { reproduced: boolean; repro_path_id: string; evidence_id: string } | undefined;
-    const rc = members.find((m) => m.step_idx !== null && m.step_idx !== undefined && ['uap_error', 'expectation_violation', 'abandon', 'stall'].includes(m.source));
+    const rc = members.find((m) => m.step_idx !== null && m.step_idx !== undefined && ['uap_error', 'expectation_violation', 'abandon', 'stall', 'repeat'].includes(m.source));
     if (opts.cleanReplay && rc && !g.noise) {
       try {
         const s = sById.get(rc.session_id)!; const p = await getPersona(s.persona_id, s.persona_version);
@@ -88,7 +88,7 @@ export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boo
         const ev = (await db.select().from(evidence).where(eq(evidence.id, eid)))[0];
         if (ev?.storage_ref && ev.mime?.startsWith('image/')) frames.push({ type: 'image', data: await blobs().get(ev.storage_ref), mime: ev.mime });
       }
-      const meta = await gateway().chat('judge_meta', { messages: [{ role: 'system', content: '你负责归因复核：判断这是真实的产品问题（product），还是模拟用户/执行器自身造成的（simulator），证据不足则 uncertain。采信顺序：客观错误码与干净重放结果 > 专家对照 > 截图 > 模拟用户的主观描述。干净重放能复现说明是产品层面的问题；专家也遇到倾向 bug；只有特定人群遇到倾向 ux（仍是 product）。' }, { role: 'user', content: [{ type: 'text', text: `问题：${g.title}\n${g.description}\n类别：${g.category}，建议严重度：${g.severity}\n受影响人群：${segments.join('、')}（${sessIds.length} 个 Session）\n候选证据：\n${members.slice(0, 8).map((m) => `- [${m.source}] ${m.error_code ?? ''} ${m.title} :: ${(m.description ?? '').slice(0, 200)}`).join('\n')}\n干净重放：${replay ? (replay.reproduced ? '复现成功' : '未复现') : '未执行'}\n专家对照：${expertRan ? (expertHit ? '专家也遇到了' : '专家未遇到') : '无专家 Session'}` }, ...frames] }], schema: MetaSchema, schemaName: 'attribution', reasoning: 'medium', tags: { study_id: studyId, purpose: 'attribution_meta' } });
+      const meta = await gateway().chat('judge_meta', { messages: [{ role: 'system', content: '你负责归因复核：判断这是真实的产品问题（product），还是模拟用户/执行器自身造成的（simulator），证据不足则 uncertain。采信顺序：客观错误码与干净重放结果 > 专家对照 > 截图 > 模拟用户的主观描述。如果用户在同一处反复尝试，而界面没有给出可行动的反馈（例如失败原因、规则说明），应归因为产品交互问题；只有当界面已经清楚说明了怎么做、用户仍机械重复时，才归因为模拟器。干净重放能复现说明是产品层面的问题；专家也遇到倾向 bug；只有特定人群遇到倾向 ux（仍是 product）。' }, { role: 'user', content: [{ type: 'text', text: `问题：${g.title}\n${g.description}\n类别：${g.category}，建议严重度：${g.severity}\n受影响人群：${segments.join('、')}（${sessIds.length} 个 Session）\n候选证据：\n${members.slice(0, 8).map((m) => `- [${m.source}] ${m.error_code ?? ''} ${m.title} :: ${(m.description ?? '').slice(0, 200)}`).join('\n')}\n干净重放：${replay ? (replay.reproduced ? '复现成功' : '未复现') : '未执行'}\n专家对照：${expertRan ? (expertHit ? '专家也遇到了' : '专家未遇到') : '无专家 Session'}` }, ...frames] }], schema: MetaSchema, schemaName: 'attribution', reasoning: 'medium', tags: { study_id: studyId, purpose: 'attribution_meta' } });
       attribution = meta.data.attribution; rationale = meta.data.rationale; severity = meta.data.severity;
       if (replay?.reproduced && attribution === 'uncertain') attribution = 'product';
       if (g.noise && attribution !== 'product') attribution = 'simulator';
