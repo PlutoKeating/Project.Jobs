@@ -1,0 +1,67 @@
+// JobsWorld API：REST /api/v1 + WebSocket /api/v1/stream（转发 NATS）+ 托管网页构建产物
+import Fastify from 'fastify';
+import fstatic from '@fastify/static';
+import websocket from '@fastify/websocket';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { dataPath, logger, REPO_ROOT } from '@pux/core';
+import { connectBus, SUBJ, type Bus } from '@pux/jobsworld';
+import { roleOf } from './auth.ts';
+import { routes } from './routes.ts';
+import { warmAvatars } from './avatars.ts';
+
+const PORT = Number(process.env.API_PORT ?? 5320);
+const HOST = process.env.API_HOST ?? '127.0.0.1';
+const WEB_DIST = join(REPO_ROOT, 'apps', 'web', 'dist');
+
+const app = Fastify({ logger: false, bodyLimit: 10 * 1024 * 1024, trustProxy: true });
+await app.register(websocket);
+await app.register(fstatic, { root: dataPath('reports'), prefix: '/reports/', decorateReply: false });
+if (existsSync(WEB_DIST)) await app.register(fstatic, { root: WEB_DIST, prefix: '/', wildcard: false });
+
+const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout', '/healthz']);
+app.addHook('onRequest', async (q, r) => {
+  const path = q.url.split('?')[0];
+  const guarded = path.startsWith('/api/') || path.startsWith('/reports/') || path.startsWith('/evidence/');
+  if (guarded && !OPEN.has(path) && !roleOf(q).viewer) return r.code(401).send({ error: 'auth_required' });
+});
+
+let bus: Bus | undefined;
+try { bus = await connectBus('jobsworld-api'); } catch (e) { logger.warn({ err: String((e as Error).message) }, 'NATS 不可用：世界相关接口与实时推送关闭'); }
+
+// ---- 实时推送：每个浏览器一个 WebSocket，服务端统一订阅 NATS 后扇出 ----
+const clients = new Set<{ send: (s: string) => void; readyState: number }>();
+if (bus) {
+  for (const subject of [SUBJ.snapshot, SUBJ.liveAll, SUBJ.sayAll]) {
+    void (async () => {
+      for await (const m of bus!.nc.subscribe(subject)) {
+        if (!clients.size) continue;
+        const kind = m.subject === SUBJ.snapshot ? 'snapshot' : m.subject.endsWith('.live') ? 'live' : 'say';
+        const frame = `{"type":"${kind}","data":${new TextDecoder().decode(m.data)}}`;
+        for (const c of clients) if (c.readyState === 1) c.send(frame);
+      }
+    })();
+  }
+}
+app.get('/api/v1/stream', { websocket: true }, (socket, req) => {
+  if (!roleOf(req).viewer) { socket.close(4401, 'auth_required'); return; }
+  clients.add(socket);
+  socket.on('close', () => clients.delete(socket));
+});
+
+routes(app, bus);
+app.get('/healthz', async () => ({ ok: true, nats: !!bus }));
+
+// SPA 回退：非 API 的 GET 都返回 index.html
+const indexHtml = existsSync(join(WEB_DIST, 'index.html')) ? readFileSync(join(WEB_DIST, 'index.html'), 'utf8') : '<!doctype html><meta charset="utf-8"><title>JobsWorld</title><p>pnpm web:build</p>';
+app.setNotFoundHandler((q, r) => {
+  if (q.method === 'GET' && !q.url.startsWith('/api/')) return r.type('text/html; charset=utf-8').send(indexHtml);
+  return r.code(404).send({ error: 'not_found' });
+});
+
+await app.listen({ port: PORT, host: HOST });
+logger.info(`JobsWorld API：http://${HOST}:${PORT}/`);
+void warmAvatars();
+
+const stop = async () => { await app.close(); await bus?.close(); process.exit(0); };
+process.on('SIGINT', stop); process.on('SIGTERM', stop);
