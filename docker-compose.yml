@@ -74,7 +74,30 @@ services:
     volumes:
       - natsdata:/data
 
+  tshock:
+    # JobsWorld 游戏服（TShock 6.x，原版 Terraria 1.4.5.8 客户端）。按需启动：
+    #   docker compose --profile game up -d --build --no-deps tshock
+    profiles: [game]
+    build:
+      context: .
+      dockerfile: infra/game/tshock/Dockerfile
+    image: pux-tshock:latest
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    environment:
+      NATS_URL: nats://nats:4222
+      JW_GAME_PASSWORD: ${JW_GAME_PASSWORD:-}
+      JW_ADMIN_PASSCODE: ${JW_ADMIN_PASSCODE:-}
+      JW_WORLD_NAME: ${JW_WORLD_NAME:-JobsWorld}
+      JW_MAX_PLAYERS: ${JW_MAX_PLAYERS:-16}
+    ports:
+      - "127.0.0.1:${TSHOCK_PORT:-57777}:7777"
+    volumes:
+      - tshockdata:/data
+
 volumes:
+  tshockdata:
   natsdata:
   pgdata:
   s3data:

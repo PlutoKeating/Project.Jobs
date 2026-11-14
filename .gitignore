@@ -14,3 +14,7 @@ test-results/
 playwright-report/
 midscene_run/
 config/pux.config.local.yaml
+# JobsWorld 游戏端构建产物与本地下载的服务端
+game/**/bin/
+game/**/obj/
+game/**/.tshock/
