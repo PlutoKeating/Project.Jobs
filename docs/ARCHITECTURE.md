@@ -27,7 +27,7 @@
 | Experience Control Plane | `packages/engine/src/control/`、`apps/cli`、`apps/api`、`apps/worker` | Study 生命周期（幂等键）、规划、inline/Temporal 编排、人工接管 |
 | Product Intelligence | `packages/engine/src/product/intelligence.ts` | Playwright 爬取（遇登录墙自动注册测试账号）→ LLM 归纳 Feature/Task/Hypothesis → YAML 人工确认 → 入库；任务成功信号的客观判定 |
 | Scenario & Exploration | `packages/engine/src/exploration/` | 生活目标（禁用测试类词汇）、四种模式、覆盖率（state/feature/task path/segment/scenario/hypothesis/issue/mode）、自适应采样、饱和停止 |
-| Human Simulation | `packages/engine/src/human/` | 六层 Persona（YAML + zod 校验 + 版本哈希冻结）、MotorProfile、Dynamic State 规则引擎、感知过滤、识字量模型、Generative-Agents 式记忆（pgvector）、生成流水线 |
+| Human Simulation | `packages/engine/src/human/` | 六层 Persona（YAML + zod 校验 + 版本哈希冻结）、MotorProfile、Dynamic State 规则引擎、感知滤镜、识字量模型、记忆（每人一棵 ewave 记忆树，`packages/memory`；身份钉住、对产品的态度有界可变、全局信念要多次独立经历才动）、生成流水线 |
 | World Simulation | `packages/engine/src/world/simulator.ts` | 模拟时钟、Timeline、概率事件规则、Social Context、Resource Model（时间/电量/金钱/注意力/网络）、Constraint Engine（硬/软约束）、矩阵初始化器、因果链 caused_by、LLM 补充事件 |
 | Simulation Runtime | `packages/engine/src/runtime/` | 每步：世界推进 → 打断/弱网注入 → 观察（截图）→ 感知滤镜 → 想法（只看图，输出手上的一个动作）→ 预期违背 → 状态更新 → 落点（看截图定位）→ Policy Gate → 按人物的手注入 → 护栏 |
 | UAP 执行层 | `packages/executor/` | UAP v0.2（`packages/core/src/types/uap.ts`）；浏览器沙箱、成功标准判定、6 层错误分类、动作精度模型、Policy Gate、模态注入、录像/rrweb/HAR/axe |

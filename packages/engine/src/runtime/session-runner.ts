@@ -107,8 +107,9 @@ export class SessionRunner {
       if (life) this.memories.push(life);
     }
     if (av.reset_url) this.memScope = new Set((await db.select({ id: sessions.id }).from(sessions).where(eq(sessions.study_id, st.id))).map((x) => x.id));
-    const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.sess.revisit_day, undefined, this.memScope).catch(() => []);
-    this.memories.push(...mem.map((m) => m.content));
+    const mem = await recall(this.persona.id, this.appId, `${this.appName} ${this.goalText}`, this.sess.revisit_day, undefined, this.memScope, this.persona).catch(() => []);
+    // 想起一件事时，也会想起与之相反的经历（记忆树里的冲突边）
+    this.memories.push(...mem.map((m) => (m.conflicts_with ? (this.lang === 'zh' ? `不过你也记得：${m.content}` : `But you also remember: ${m.content}`) : m.content)));
     this.memories.push(accountHint(this.persona, this.appId));
     // 同一个网页产品，在路上用手机开，在办公桌前用电脑开：设备跟着人此时此地的处境走
     this.mobile = app.form === 'h5' || deviceFor({ device: this.worldTpl.device, scenario_class: this.worldTpl.scenario_class, init: { ...this.worldTpl.init, place: this.world.state.place, motion: this.world.state.motion, channels: this.world.state.channels } }) === 'phone';

@@ -10,15 +10,16 @@
   "dependencies": {
     "@pux/core": "workspace:*",
     "@pux/db": "workspace:*",
-    "@pux/storage": "workspace:*",
-    "@pux/llm": "workspace:*",
+    "@pux/demos": "workspace:*",
     "@pux/executor": "workspace:*",
+    "@pux/llm": "workspace:*",
+    "@pux/storage": "workspace:*",
     "drizzle-orm": "^0.45.4",
-    "zod": "^4.6.7",
-    "yaml": "^2.9.1",
     "playwright": "^1.65.0",
     "rrweb-player": "^2.2.2",
-    "@pux/demos": "workspace:*",
-    "sharp": "^0.35.5"
+    "sharp": "^0.35.5",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7",
+    "@pux/memory": "workspace:*"
   }
 }

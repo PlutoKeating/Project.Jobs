@@ -2,7 +2,8 @@
 import type { FastifyInstance } from 'fastify';
 import { existsSync } from 'node:fs';
 import { dataPath } from '@pux/core';
-import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, observations, personaMemories, sessions, steps, studies, worldStates } from '@pux/db';
+import { memoryCounts } from '@pux/memory';
+import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, observations, sessions, steps, studies, worldStates } from '@pux/db';
 import { blobs } from '@pux/storage';
 import * as E from '@pux/engine';
 import { computeLayout, kvGetJson, latestPersonas, loadAgenda, personaById, personaMemoryList, personaSessions, personaTrust, SUBJ, type Snapshot } from '@pux/jobsworld';
@@ -44,7 +45,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     const db = getDb();
     const roster = await latestPersonas();
     const ss = await db.select({ persona_id: sessions.persona_id, app: apps.name, started_at: sessions.started_at }).from(sessions).innerJoin(studies, eq(studies.id, sessions.study_id)).innerJoin(appVersions, eq(appVersions.id, studies.app_version_id)).innerJoin(apps, eq(apps.id, appVersions.app_id));
-    const mem = await db.select({ persona_id: personaMemories.persona_id, n: count() }).from(personaMemories).groupBy(personaMemories.persona_id);
+    const memN = await memoryCounts();
     const snap = await snapshot();
     return roster.map((r) => {
       const mine = ss.filter((s) => s.persona_id === r.id);
@@ -54,7 +55,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
         name: r.spec.identity.name, age: r.spec.identity.age, gender: r.spec.identity.gender, occupation: r.spec.identity.occupation, region: r.spec.identity.region,
         digital_literacy: r.spec.capability.digital_literacy, ai_familiarity: r.spec.capability.ai_familiarity,
         sessions: mine.length, apps: [...new Set(mine.map((s) => s.app))], last_seen: mine.reduce<Date | null>((m, s) => (s.started_at && (!m || s.started_at > m) ? s.started_at : m), null),
-        memories: mem.find((m) => m.persona_id === r.id)?.n ?? 0,
+        memories: memN.get(r.id) ?? 0,
         live: live ? { place_id: live.place_id, activity: live.activity, mode: live.mode, app: live.session?.app } : null,
       };
     });

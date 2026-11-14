@@ -14,4 +14,4 @@
 | `intelligence/` | 报告（Markdown 中英 + HTML 查看器） | `generateReport` |
 | `control/` | App 注册、Study 创建（幂等）、规划、inline 编排、收尾 | `createStudy` `runStudyInline` `finalizeStudy` |
 
-依赖：`@pux/core`、`@pux/db`、`@pux/storage`、`@pux/llm`、`@pux/executor`、`@pux/demos`（仅用于注册内置 Demo）。
+依赖：`@pux/core`、`@pux/db`、`@pux/storage`、`@pux/llm`、`@pux/memory`、`@pux/executor`、`@pux/demos`（仅用于注册内置 Demo）。

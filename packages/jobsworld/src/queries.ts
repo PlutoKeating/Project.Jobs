@@ -1,6 +1,7 @@
 // 世界服务与 API 共用的只读查询
 import type { PersonaSpec } from '@pux/core';
-import { and, apps, appVersions, desc, eq, getDb, inArray, interviews, personaGlobalState, personaMemories, personas, sessions, studies } from '@pux/db';
+import { listMemories } from '@pux/memory';
+import { and, apps, appVersions, desc, eq, getDb, inArray, interviews, personaGlobalState, personas, sessions, studies } from '@pux/db';
 
 export interface PersonaRow { id: string; version: string; kind: string; locale: string; segment: string; target_user: boolean; source: string; spec: PersonaSpec; frozen: boolean; created_at: Date }
 
@@ -25,9 +26,9 @@ export async function personaSessions(personaId: string, limit = 50): Promise<Pe
     .where(eq(sessions.persona_id, personaId)).orderBy(desc(sessions.started_at)).limit(limit);
 }
 
+/** 人物的记忆（来自他的 ewave 记忆树），字段与旧表保持一致，另带所在分支 */
 export async function personaMemoryList(personaId: string, limit = 60) {
-  return getDb().select({ id: personaMemories.id, app_id: personaMemories.app_id, kind: personaMemories.kind, content: personaMemories.content, valence: personaMemories.valence, importance: personaMemories.importance, sim_day: personaMemories.sim_day, sim_time: personaMemories.sim_time, source_session_id: personaMemories.source_session_id, created_at: personaMemories.created_at })
-    .from(personaMemories).where(eq(personaMemories.persona_id, personaId)).orderBy(desc(personaMemories.created_at)).limit(limit);
+  return (await listMemories(personaId, limit)).map((m) => ({ id: m.id, app_id: m.app_id ?? null, kind: m.kind, content: m.content, valence: m.valence, importance: m.importance, sim_day: m.sim_day, sim_time: m.sim_time ?? null, source_session_id: m.session_id ?? null, created_at: new Date(m.created_at), branch: m.branch }));
 }
 
 export async function personaTrust(personaId: string) {

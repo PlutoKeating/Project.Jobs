@@ -29,6 +29,13 @@
       "when": 1794685371585,
       "tag": "0003_issue_tracks",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794687070554,
+      "tag": "0004_memory_trees",
+      "breakpoints": true
     }
   ]
 }

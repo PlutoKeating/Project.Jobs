@@ -175,9 +175,15 @@ importers:
       '@pux/executor':
         specifier: workspace:*
         version: link:packages/executor
+      '@pux/jobsworld':
+        specifier: workspace:*
+        version: link:packages/jobsworld
       '@pux/llm':
         specifier: workspace:*
         version: link:packages/llm
+      '@pux/memory':
+        specifier: workspace:*
+        version: link:packages/memory
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -224,6 +230,9 @@ importers:
       '@pux/llm':
         specifier: workspace:*
         version: link:../../packages/llm
+      '@pux/memory':
+        specifier: workspace:*
+        version: link:../../packages/memory
       '@pux/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -451,6 +460,9 @@ importers:
       '@pux/llm':
         specifier: workspace:*
         version: link:../llm
+      '@pux/memory':
+        specifier: workspace:*
+        version: link:../memory
       '@pux/storage':
         specifier: workspace:*
         version: link:../storage
@@ -526,6 +538,9 @@ importers:
       '@pux/llm':
         specifier: workspace:*
         version: link:../llm
+      '@pux/memory':
+        specifier: workspace:*
+        version: link:../memory
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
@@ -544,6 +559,21 @@ importers:
       zod:
         specifier: ^4.6.7
         version: 4.6.7
+
+  packages/memory:
+    dependencies:
+      '@plutokeating/ewave':
+        specifier: 0.2.0
+        version: 0.2.0
+      '@pux/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pux/db':
+        specifier: workspace:*
+        version: link:../db
+      drizzle-orm:
+        specifier: ^0.45.4
+        version: 0.45.4(@opentelemetry/api@1.9.1)(@types/pg@8.23.1)(pg@8.23.1)
 
   packages/storage:
     dependencies:
@@ -1586,6 +1616,10 @@ packages:
 
   '@pinojs/redact@0.4.0':
     resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
+
+  '@plutokeating/ewave@0.2.0':
+    resolution: {integrity: sha512-awAd8sQBf8VJoj22D1H1MEli8jodVVEdo5+bjUcvlBMmnSwgyRFqzQ0yJSj9xT4hmX8KR+fUlToIuyfB7bHcHQ==}
+    engines: {node: '>=18'}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -5245,6 +5279,8 @@ snapshots:
     optional: true
 
   '@pinojs/redact@0.4.0': {}
+
+  '@plutokeating/ewave@0.2.0': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 

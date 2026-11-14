@@ -107,10 +107,22 @@ export const personaMemories = pgTable('persona_memories', {
   decay: real('decay').notNull().default(1),
 }, (t) => [index('pm_persona_app').on(t.persona_id, t.app_id)]);
 
+/** 每个人一棵 ewave 记忆树的快照（@pux/memory 读写；version 用于乐观锁）。旧表 persona_memories 只在首次建树时被读取迁入 */
+export const personaMemoryTrees = pgTable('persona_memory_trees', {
+  persona_id: text('persona_id').primaryKey(),
+  snapshot: jsonb('snapshot').notNull(),
+  leaves: integer('leaves').notNull().default(0),
+  version: integer('version').notNull().default(1),
+  updated_at: ts('updated_at').default(sql`now()`),
+});
+
 export const personaGlobalState = pgTable('persona_global_state', {
   persona_id: text('persona_id').primaryKey(),
   ai_trust: real('ai_trust').notNull(),
   app_trust: jsonb('app_trust').$type<Record<string, number>>().default({}),
+  // 改变全局信念需要的证据：多次独立经历指向同一方向才会动（一次经历改不了整个人）
+  belief_evidence: jsonb('belief_evidence').$type<{ dir: 1 | -1; app_id: string; sim_day: number; session_id: string }[]>().default([]),
+  belief_changed_day: integer('belief_changed_day'),
   sim_day: integer('sim_day').notNull().default(0),
   updated_at: ts('updated_at').default(sql`now()`),
 });

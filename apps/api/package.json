@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/server.ts", "./*": "./src/*.ts" },
+  "exports": {
+    ".": "./src/server.ts",
+    "./*": "./src/*.ts"
+  },
   "dependencies": {
     "@pux/core": "workspace:*",
     "@pux/db": "workspace:*",
@@ -15,6 +18,7 @@
     "fastify": "^5.12.8",
     "@fastify/static": "^10.1.11",
     "@fastify/websocket": "^11.3.7",
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "^0.45.4",
+    "@pux/memory": "workspace:*"
   }
 }

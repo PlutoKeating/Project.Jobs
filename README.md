@@ -57,6 +57,7 @@ pnpm jobsworld                     # http://<本机 IP>:7777/
 | `packages/db` | Drizzle schema（spec §16 全部实体）与迁移 |
 | `packages/storage` | MinIO/S3 证据存储（内容寻址） |
 | `packages/llm` | LiteLLM 角色别名网关、结构化输出、trace、厂商隔离校验 |
+| `packages/memory` | 人物记忆：每人一棵 ewave 记忆树（`@plutokeating/ewave`）的适配层——持久化、单写者、节点上限、检索、旧记忆迁入 |
 | `packages/executor` | UAP 执行层：浏览器沙箱（桌面 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像/rrweb/axe |
 | `packages/engine` | Human / World / Exploration / Product / Runtime / Evaluation / Calibration / Report / Control |
 | `demos/kit` | 11 个被测 Demo（AI 助手、记账、待办、外卖、游戏、资讯、健身、笔记、天气、菜谱、儿童识字），每个都有干净版与植入缺陷版 |

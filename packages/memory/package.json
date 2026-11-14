@@ -1,0 +1,13 @@
+{
+  "name": "@pux/memory",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts", "./*": "./src/*.ts" },
+  "dependencies": {
+    "@pux/core": "workspace:*",
+    "@pux/db": "workspace:*",
+    "@plutokeating/ewave": "0.2.0",
+    "drizzle-orm": "^0.45.4"
+  }
+}
