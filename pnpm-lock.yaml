@@ -309,6 +309,12 @@ importers:
         specifier: ^5.12.8
         version: 5.12.8
 
+  apps/gateway:
+    dependencies:
+      '@pux/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+
   apps/web:
     dependencies:
       '@tanstack/react-query':

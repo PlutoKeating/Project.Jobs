@@ -64,7 +64,7 @@ function Wordmark({ className = '' }: { className?: string }) {
 }
 
 function NavLink({ to, children }: { to: string; children: ReactNode }) {
-  return <Link to={to} activeOptions={{ exact: to === '/' }} className="relative rounded-md px-3 py-1.5 text-sm text-fg-muted transition-colors hover:text-fg data-[status=active]:text-fg-display data-[status=active]:after:absolute data-[status=active]:after:inset-x-3 data-[status=active]:after:-bottom-[13px] data-[status=active]:after:h-0.5 data-[status=active]:after:bg-accent">{children}</Link>;
+  return <Link to={to} activeOptions={{ exact: to === '/' }} className="relative rounded-md px-3 py-1.5 text-sm text-fg-muted transition-colors hover:text-fg data-[status=active]:text-fg-display data-[status=active]:after:absolute data-[status=active]:after:inset-x-3 data-[status=active]:after:-bottom-[9px] sm:data-[status=active]:after:-bottom-[13px] data-[status=active]:after:h-0.5 data-[status=active]:after:bg-accent">{children}</Link>;
 }
 
 /** 底部常驻街道：每一页都能看到城里的人此刻在哪 */
@@ -90,9 +90,9 @@ export function Shell() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b border-border bg-surface-glass backdrop-blur-[var(--blur-glass)]">
-        <div className="mx-auto flex h-[var(--ds-header-height)] max-w-[var(--container-wide)] items-center gap-2 px-4 sm:px-6">
-          <Wordmark className="mr-4" />
-          <nav className="flex items-center gap-0.5 overflow-x-auto">
+        <div className="mx-auto flex max-w-[var(--container-wide)] flex-wrap items-center gap-x-2 px-4 sm:h-[var(--ds-header-height)] sm:flex-nowrap sm:px-6">
+          <Wordmark className="mr-4 h-[var(--ds-header-height)]" />
+          <nav className="order-last -mx-1 flex w-full items-center gap-0.5 overflow-x-auto pb-2 sm:order-none sm:mx-0 sm:w-auto sm:pb-0">
             <NavLink to="/">{t('nav.world')}</NavLink>
             <NavLink to="/people">{t('nav.people')}</NavLink>
             <NavLink to="/apps">{t('nav.apps')}</NavLink>

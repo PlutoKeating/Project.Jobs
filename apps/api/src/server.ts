@@ -2,7 +2,7 @@
 import Fastify from 'fastify';
 import fstatic from '@fastify/static';
 import websocket from '@fastify/websocket';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dataPath, logger, REPO_ROOT } from '@pux/core';
 import { connectBus, SUBJ, type Bus } from '@pux/jobsworld';
@@ -17,7 +17,8 @@ const WEB_DIST = join(REPO_ROOT, 'apps', 'web', 'dist');
 const app = Fastify({ logger: false, bodyLimit: 10 * 1024 * 1024, trustProxy: true });
 await app.register(websocket);
 await app.register(fstatic, { root: dataPath('reports'), prefix: '/reports/', decorateReply: false });
-if (existsSync(WEB_DIST)) await app.register(fstatic, { root: WEB_DIST, prefix: '/', wildcard: false });
+mkdirSync(WEB_DIST, { recursive: true });
+await app.register(fstatic, { root: WEB_DIST, prefix: '/', wildcard: true, index: false });
 
 const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout', '/healthz']);
 app.addHook('onRequest', async (q, r) => {
@@ -53,9 +54,10 @@ routes(app, bus);
 app.get('/healthz', async () => ({ ok: true, nats: !!bus }));
 
 // SPA 回退：非 API 的 GET 都返回 index.html
-const indexHtml = existsSync(join(WEB_DIST, 'index.html')) ? readFileSync(join(WEB_DIST, 'index.html'), 'utf8') : '<!doctype html><meta charset="utf-8"><title>JobsWorld</title><p>pnpm web:build</p>';
+const indexHtml = () => (existsSync(join(WEB_DIST, 'index.html')) ? readFileSync(join(WEB_DIST, 'index.html'), 'utf8') : '<!doctype html><meta charset="utf-8"><title>JobsWorld</title><p>pnpm web:build</p>');
+app.get('/', (_q, r) => r.type('text/html; charset=utf-8').header('cache-control', 'no-cache').send(indexHtml()));
 app.setNotFoundHandler((q, r) => {
-  if (q.method === 'GET' && !q.url.startsWith('/api/')) return r.type('text/html; charset=utf-8').send(indexHtml);
+  if (q.method === 'GET' && !q.url.startsWith('/api/')) return r.type('text/html; charset=utf-8').header('cache-control', 'no-cache').send(indexHtml());
   return r.code(404).send({ error: 'not_found' });
 });
 

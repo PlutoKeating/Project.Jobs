@@ -7,6 +7,7 @@
   --ds-font-sans: "Inter", "Noto Sans SC", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
   --horizon-h: 132px;
 }
+@media (max-width: 640px) { :root { --horizon-h: 84px; } }
 
 @layer base {
   html { color-scheme: dark; -webkit-font-smoothing: antialiased; }
