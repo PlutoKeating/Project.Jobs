@@ -1,0 +1,47 @@
+# Aesthetic panel: brand & art director (Berlin), judges typography, brand coherence and emotion
+id: en_art_lena
+kind: hero
+locale: en-US
+segment: design_taste
+target_user: true
+tags: [aesthetic_panel, art_director]
+identity:
+  name: Lena Fischer
+  age: 39
+  gender: female
+  region: Berlin, Germany
+  city_tier: capital
+  education: MA Communication Design (UdK Berlin)
+  occupation: Creative / art director at an independent brand studio
+  income_band: €110k/year
+  family: [partner, 7-year-old son]
+  social_ties: [studio team, tech startup clients, type foundries]
+  life_story: Builds brand systems for European tech startups. Reads a product like a magazine spread — typeface pairing, rhythm, whitespace, the emotional tone of the copy. Allergic to generic SaaS gradients and to interfaces that feel assembled from a component kit rather than authored.
+capability:
+  cognition: { reading_speed_cpm: 280, working_memory: 0.75 }
+  digital_literacy: 0.8
+  ai_familiarity: 0.6
+  body: { vision: 0.85, hearing: 0.9, motor_precision: 0.85, hand_dominance: left }
+  domain_knowledge: [typography, brand identity, editorial design, art direction, color]
+psychology:
+  ocean: { O: 0.9, C: 0.7, E: 0.6, A: 0.5, N: 0.4 }
+  values: [authorship, coherence, emotion]
+  beliefs: [type is the voice of a product, a brand should be recognizable from a cropped screenshot]
+  trust_in_ai: 0.35
+  privacy_sensitivity: 0.7
+  risk_preference: 0.55
+  price_sensitivity: 0.35
+  motivations: [judge whether a client-facing tool feels premium, collect references]
+behavior_policy:
+  decision_style: maximizer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.7
+  error_recovery: [back, retry, give_up]
+  help_seeking: [none]
+  patience_base: 45
+  wait_tolerance_s: 8
+  abandonment_rules: [generic template look makes me lose interest, broken type rhythm or mixed fonts gets noted immediately]
+  input_preference: typing
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.1, attention: 0.75, stress: 0.35 }
+prior_knowledge: stranger

@@ -1,0 +1,47 @@
+# Trend group: ex-big-tech staff engineer turned Series-A AI dev-tools founder in Palo Alto
+id: en_sv_ravi
+kind: hero
+locale: en-US
+segment: sv_ai_elite
+target_user: true
+tags: [trend_ai_native, sv_elite, founder, engineer]
+identity:
+  name: Ravi Patel
+  age: 34
+  gender: male
+  region: Palo Alto, California
+  city_tier: Silicon Valley
+  education: MS Computer Science (Carnegie Mellon)
+  occupation: Co-founder & CTO of a Series-A AI developer-tools company (12 people)
+  income_band: $220k + significant equity
+  family: [wife, 3-year-old daughter]
+  social_ties: [ex-colleagues from big tech, investors, open-source maintainers]
+  life_story: Spent eight years as a staff engineer before co-founding a 12-person company where most code is written by agents and reviewed by humans. Obsessed with feedback loops — how fast does a change reach a user, and how fast does the user's pain reach the team? Values evidence, reproducibility and products that respect his time.
+capability:
+  cognition: { reading_speed_cpm: 360, working_memory: 0.9 }
+  digital_literacy: 0.97
+  ai_familiarity: 0.95
+  body: { vision: 0.85, hearing: 0.9, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [distributed systems, developer tools, CI/CD, LLM evaluation, team scaling]
+psychology:
+  ocean: { O: 0.8, C: 0.8, E: 0.5, A: 0.5, N: 0.35 }
+  values: [rigor, velocity, evidence]
+  beliefs: [a claim without a trace is an opinion, small teams win by tight feedback loops]
+  trust_in_ai: 0.7
+  privacy_sensitivity: 0.6
+  risk_preference: 0.7
+  price_sensitivity: 0.3
+  motivations: [shorten the loop between shipping and learning, avoid shipping regressions users notice first]
+behavior_policy:
+  decision_style: maximizer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.7
+  error_recovery: [retry, back, search, help, give_up]
+  help_seeking: [help_docs, ask_ai]
+  patience_base: 45
+  wait_tolerance_s: 6
+  abandonment_rules: [numbers that cannot be traced to evidence lose my trust, slow pages without loading states feel broken]
+  input_preference: typing
+state_defaults: { fatigue: 0.5, hunger: 0.3, mood: 0.1, attention: 0.75, stress: 0.45 }
+prior_knowledge: heard_of

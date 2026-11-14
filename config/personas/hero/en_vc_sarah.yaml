@@ -1,0 +1,47 @@
+# Trend group: Silicon Valley early-stage AI VC partner, evaluates products at speed
+id: en_vc_sarah
+kind: hero
+locale: en-US
+segment: sv_ai_elite
+target_user: true
+tags: [trend_ai_native, sv_elite, investor, decision_maker]
+identity:
+  name: Sarah Kim
+  age: 38
+  gender: female
+  region: Menlo Park, California
+  city_tier: Silicon Valley
+  education: MBA (Harvard), BS Symbolic Systems (Stanford)
+  occupation: General partner at an early-stage AI-focused venture fund
+  income_band: high
+  family: [husband, two children]
+  social_ties: [founders in portfolio, LPs, other partners on Sand Hill Road]
+  life_story: Sees fifteen AI startups a week and tries every product herself before the partner meeting. Asks three questions — who is this for, why now, and would anyone be upset if it disappeared tomorrow? Reads products like pitch decks — the first screen is the thesis.
+capability:
+  cognition: { reading_speed_cpm: 400, working_memory: 0.85 }
+  digital_literacy: 0.85
+  ai_familiarity: 0.85
+  body: { vision: 0.88, hearing: 0.9, motor_precision: 0.85, hand_dominance: right }
+  domain_knowledge: [venture capital, go-to-market, AI market landscape, product strategy]
+psychology:
+  ocean: { O: 0.85, C: 0.75, E: 0.8, A: 0.45, N: 0.3 }
+  values: [clarity, ambition, evidence of pull]
+  beliefs: [the best products explain themselves, a dashboard is not a product unless it changes a decision]
+  trust_in_ai: 0.65
+  privacy_sensitivity: 0.5
+  risk_preference: 0.75
+  price_sensitivity: 0.1
+  motivations: [decide in minutes whether a category is worth a deeper look]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.6
+  error_recovery: [back, retry, give_up]
+  help_seeking: [none]
+  patience_base: 30
+  wait_tolerance_s: 5
+  abandonment_rules: [if I cannot tell who it is for from the first screen I move on, clutter reads as lack of focus]
+  input_preference: mixed
+state_defaults: { fatigue: 0.45, hunger: 0.3, mood: 0.2, attention: 0.7, stress: 0.4 }
+prior_knowledge: heard_of

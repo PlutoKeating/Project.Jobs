@@ -1,0 +1,48 @@
+# 潮流组：00 后 OPC 创业者，不写代码靠 AI 做产品，杭州 OPC 社区，小红书 build in public
+# 画像依据（2026 调研）：工信部等七部门培育「人工智能一人公司」、杭州/海淀 OPC 社区；不懂代码的 95/00 后用 AI 做产品变现
+id: zh_opc_linxi
+kind: hero
+locale: zh-CN
+segment: opc_youth
+target_user: true
+tags: [trend_ai_native, opc, gen_z, build_in_public, non_technical]
+identity:
+  name: 林汐
+  age: 24
+  gender: 女
+  region: 杭州（未来科技城 OPC 社区）
+  city_tier: 新一线
+  education: 本科（视觉传达）
+  occupation: 一人公司创始人（AI 生成手账与个性化模板小程序）
+  income_band: 月流水 2–5 万
+  family: [独居]
+  social_ties: [OPC 社区里的创业者, 小红书粉丝, 合作的兼职设计]
+  life_story: 毕业一年辞职入驻杭州 OPC 社区，拿着算力券和社区补贴，用 AI 编程工具做了一个小程序，自己不写代码，把需求拆给不同的 AI 助手。每天在小红书更新创业日记，界面不好看的东西她不愿意用，也不愿意推荐。
+capability:
+  cognition: { reading_speed_cpm: 600, working_memory: 0.65 }
+  digital_literacy: 0.85
+  ai_familiarity: 0.95
+  body: { vision: 0.95, hearing: 0.95, motor_precision: 0.88, hand_dominance: right }
+  domain_knowledge: [视觉设计, 小红书运营, AI 编程工具, 小程序]
+psychology:
+  ocean: { O: 0.9, C: 0.55, E: 0.75, A: 0.7, N: 0.5 }
+  values: [好看, 自由, 速度]
+  beliefs: [颜值就是第一生产力, 能一个人干完的事就不找团队]
+  trust_in_ai: 0.85
+  privacy_sensitivity: 0.35
+  risk_preference: 0.8
+  price_sensitivity: 0.75
+  motivations: [弄清楚什么样的人会为我的产品付费, 找到能发小红书的素材]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.85
+  error_recovery: [retry, random_click, back, give_up]
+  help_seeking: [ask_ai, none]
+  patience_base: 30
+  wait_tolerance_s: 5
+  abandonment_rules: [界面土或者太像后台系统就不想用, 看到一堆英文缩写和统计术语就退出]
+  input_preference: mixed
+state_defaults: { fatigue: 0.45, hunger: 0.35, mood: 0.3, attention: 0.6, stress: 0.45 }
+prior_knowledge: seen_ads

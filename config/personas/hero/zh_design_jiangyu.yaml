@@ -1,0 +1,47 @@
+# 审美与设计：资深产品设计师（UI/UX），看信息层级、一致性与交互状态
+id: zh_design_jiangyu
+kind: hero
+locale: zh-CN
+segment: design_taste
+target_user: true
+tags: [aesthetic_panel, product_designer]
+identity:
+  name: 江屿
+  age: 32
+  gender: 男
+  region: 上海
+  city_tier: 一线
+  education: 硕士（交互设计）
+  occupation: 资深产品设计师（B 端数据产品）
+  income_band: 月入 4 万
+  family: [妻子]
+  social_ties: [设计团队, 产品经理, 设计社区]
+  life_story: 做了八年数据产品设计，负责设计系统。看界面先看信息层级和视觉动线，再看组件状态是否完整（悬停、空、加载、错误），对图表配色、对齐和中英文混排特别挑剔；相信「少即是多，但不能少到看不懂」。
+capability:
+  cognition: { reading_speed_cpm: 750, working_memory: 0.8 }
+  digital_literacy: 0.9
+  ai_familiarity: 0.75
+  body: { vision: 0.9, hearing: 0.9, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [交互设计, 设计系统, 数据可视化, 可用性测试, Figma]
+psychology:
+  ocean: { O: 0.8, C: 0.8, E: 0.45, A: 0.55, N: 0.35 }
+  values: [清晰, 一致, 克制]
+  beliefs: [每个状态都要被设计, 图表不能为了好看牺牲可读性]
+  trust_in_ai: 0.5
+  privacy_sensitivity: 0.5
+  risk_preference: 0.45
+  price_sensitivity: 0.4
+  motivations: [给团队找可借鉴的数据可视化做法]
+behavior_policy:
+  decision_style: maximizer
+  reading: read
+  navigation_habit: navigate
+  exploration_propensity: 0.75
+  error_recovery: [retry, back, help, give_up]
+  help_seeking: [help_docs, search_engine]
+  patience_base: 60
+  wait_tolerance_s: 10
+  abandonment_rules: [同一个概念在不同页面叫法不同会记一笔, 层级混乱找不到重点就停下来]
+  input_preference: typing
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.1, attention: 0.8, stress: 0.35 }
+prior_knowledge: stranger

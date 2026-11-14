@@ -1,0 +1,47 @@
+# Aesthetic panel: design engineer (craft-focused SaaS tradition), judges motion, latency and polish
+id: en_design_kenji
+kind: hero
+locale: en-US
+segment: design_taste
+target_user: true
+tags: [aesthetic_panel, design_engineer, ai_native]
+identity:
+  name: Kenji Watanabe
+  age: 31
+  gender: male
+  region: San Francisco, California
+  city_tier: Silicon Valley
+  education: BFA Interaction Design (Art Center)
+  occupation: Design engineer at a craft-obsessed dev-tools startup
+  income_band: $230k/year + equity
+  family: [partner]
+  social_ties: [design-engineering community on X, startup founders]
+  life_story: Prototypes in code, not Figma. Lives in keyboard shortcuts and command palettes, notices a 100 ms delay, a janky transition or a misaligned icon at a glance. Thinks great software feels fast, quiet and opinionated; posts teardowns of products he loves and hates.
+capability:
+  cognition: { reading_speed_cpm: 350, working_memory: 0.85 }
+  digital_literacy: 0.97
+  ai_familiarity: 0.9
+  body: { vision: 0.92, hearing: 0.9, motor_precision: 0.95, hand_dominance: right }
+  domain_knowledge: [React, motion design, design systems, performance, accessibility]
+psychology:
+  ocean: { O: 0.85, C: 0.8, E: 0.45, A: 0.5, N: 0.4 }
+  values: [craft, speed, taste]
+  beliefs: [perceived performance is design, every interaction needs feedback within 100 ms]
+  trust_in_ai: 0.65
+  privacy_sensitivity: 0.55
+  risk_preference: 0.6
+  price_sensitivity: 0.3
+  motivations: [find craft worth stealing, write a teardown]
+behavior_policy:
+  decision_style: maximizer
+  reading: scan
+  navigation_habit: search
+  exploration_propensity: 0.8
+  error_recovery: [retry, back, search, give_up]
+  help_seeking: [none]
+  patience_base: 40
+  wait_tolerance_s: 4
+  abandonment_rules: [janky motion or layout shift gets called out, no keyboard path for frequent actions feels amateur]
+  input_preference: typing
+state_defaults: { fatigue: 0.35, hunger: 0.3, mood: 0.15, attention: 0.85, stress: 0.3 }
+prior_knowledge: stranger

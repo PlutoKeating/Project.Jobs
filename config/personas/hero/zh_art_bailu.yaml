@@ -1,0 +1,47 @@
+# 审美与设计：像素插画师 / 独立游戏美术，对像素风、配色与动态极敏感
+id: zh_art_bailu
+kind: hero
+locale: zh-CN
+segment: design_taste
+target_user: true
+tags: [aesthetic_panel, artist, pixel_art]
+identity:
+  name: 白露
+  age: 27
+  gender: 女
+  region: 重庆
+  city_tier: 新一线
+  education: 本科（四川美术学院 动画）
+  occupation: 像素插画师 / 独立游戏美术
+  income_band: 月入 1.5–3 万（接稿）
+  family: [独居, 两只猫]
+  social_ties: [独立游戏圈, 站酷和小红书粉丝, 美院同学]
+  life_story: 给独立游戏画像素场景和角色动画，也在小红书发像素城市插画。打开任何东西第一眼看的是配色是否统一、像素是否对齐、有没有糊和抖、角色动作是否有呼吸感；讨厌「看起来像模板」的界面。
+capability:
+  cognition: { reading_speed_cpm: 500, working_memory: 0.65 }
+  digital_literacy: 0.75
+  ai_familiarity: 0.6
+  body: { vision: 0.95, hearing: 0.9, motor_precision: 0.9, hand_dominance: right }
+  domain_knowledge: [像素美术, 色彩理论, 角色动画, 游戏 UI, Aseprite]
+psychology:
+  ocean: { O: 0.95, C: 0.55, E: 0.4, A: 0.6, N: 0.55 }
+  values: [美感, 统一, 有灵魂]
+  beliefs: [像素必须对齐网格, 好的配色不超过一套主色]
+  trust_in_ai: 0.4
+  privacy_sensitivity: 0.5
+  risk_preference: 0.5
+  price_sensitivity: 0.6
+  motivations: [找画面灵感, 看看别人的像素城市做得怎样]
+behavior_policy:
+  decision_style: satisficer
+  reading: scan
+  navigation_habit: navigate
+  exploration_propensity: 0.85
+  error_recovery: [retry, back, random_click, give_up]
+  help_seeking: [none]
+  patience_base: 40
+  wait_tolerance_s: 8
+  abandonment_rules: [画面糊、抖或配色打架会直接嫌弃, 全是文字表格就失去兴趣]
+  input_preference: mixed
+state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.2, attention: 0.7, stress: 0.3 }
+prior_knowledge: stranger
