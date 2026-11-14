@@ -20,6 +20,8 @@
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
 - **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
+上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列（除示例产品的源码外，连同示例产品一起）打进一个镜像 `jobs`，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobs _control`（systemd 监视单元触发）执行。
+
 ## 1.1 发布主线（`packages/engine/src/launch/`）
 
 ```mermaid
@@ -148,7 +150,7 @@ sequenceDiagram
 详见 [`JOBSWORLD.md`](JOBSWORLD.md)。要点：
 
 - **一个世界**：一次使用发生在这个人此时此地在城里的处境里（`sessions.world_context` 记录地点、活动、设备、需求、身边的人和据此生成的世界模板）。处境由 `packages/jobsworld` 的纯规则计算，世界服务和引擎用同一套函数；引擎从 Postgres 读时钟（`world_kv`）、日程、需求和城里的事件，不要求世界服务在线。使用结束后，心情和压力写回这个人在城里的状态。
-- **居民**：`households` / `residents` / `relations` 三张表。201 人、113 户；需求（饿、精力、孤单、压力、心情）按规则推进并改写日程；模型只用在决策点。
+- **居民**：`households` / `residents` / `relations` 三张表。约两百人（新装为 199 人）；需求（饿、精力、孤单、压力、心情）按规则推进并改写日程；模型只用在决策点。
 - **直播**：`apps/world` 每 1.5 秒只读轮询 Postgres 中正在进行的使用的新步骤，转成 NATS 事件；各产品的漏斗人数随发布引擎的每一轮广播（`jw.launches`）。
 - **同一份城镇**：`config/jobsworld/town.yaml` → `computeLayout()`（`packages/jobsworld/src/town.ts`）生成渲染无关的图元与落脚点；网页小地图、TShock 插件、tModLoader mod 都从它渲染。
 - **人物日程**：`persona_agendas` 表；规则骨架（`config/jobsworld/agenda.yaml`）+ `mind.slow` 补全意图与因果。

@@ -19,7 +19,7 @@ npx playwright install chromium
 
 ```bash
 docker compose up -d       # Postgres+pgvector / MinIO / NATS
-pnpm jobs init             # 数据库迁移 + 导入手写人物与随包自带的 185 位居民（共 201 人住进城里）+ 注册示例产品
+pnpm jobs init             # 数据库迁移 + 导入手写人物与随包自带的 185 位居民（新库共 199 人住进城里）+ 注册示例产品
 ```
 
 ## 3. 启动 Jobs

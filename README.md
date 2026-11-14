@@ -1,10 +1,18 @@
 # Jobs
 
-把产品**发布**到 **JobsWorld**——一座住着约两百位虚拟居民的城。他们过着自己的日子，在应用商店、广告、朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。你看到的是一页人话的结论，每一句都能点开看是谁说的、原话是什么、当时屏幕上是什么。
+把产品**发布**到 **JobsWorld**——一座住着两百位虚拟居民的城。他们过着自己的日子，在应用商店、广告、朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。你看到的是一页人话的结论，每一句都能点开看是谁说的、原话是什么、当时屏幕上是什么。
 
 > 产品决策（2026-11-15，冲突时以它为准）：[`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md)
 >
-> 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · 模型接入：[`docs/MODELS.md`](docs/MODELS.md) · 架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 接口：[`docs/API.md`](docs/API.md) · 城与游戏：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 校准（内部）：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+> 安装与运维：[`docs/INSTALL.md`](docs/INSTALL.md) · 从源码运行：[`docs/QUICK_START.md`](docs/QUICK_START.md) · 模型接入：[`docs/MODELS.md`](docs/MODELS.md) · 架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 接口：[`docs/API.md`](docs/API.md) · 城与游戏：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 校准（内部）：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+
+## 安装
+
+```bash
+curl -fsSL https://jobs.plutokeating.beer/install | bash
+```
+
+需要一台装了 Docker 的机器。装完会打印访问地址和口令；第一次打开网页，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存），然后点「发布」。详见 [`docs/INSTALL.md`](docs/INSTALL.md)。从源码运行见 [`docs/QUICK_START.md`](docs/QUICK_START.md)。
 
 ## 它怎么工作
 
@@ -45,7 +53,9 @@ claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agen
 
 工具：`publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。
 
-在仓库里开发时，`jobs` 即 `pnpm jobs`（见快速开始）。
+命令有两个名字：`jobs` 和 `jobsworld`，是同一个东西。`jobs` 在 bash / zsh / fish 里本来是内建命令（列出后台任务），安装脚本会往 shell 启动文件里加一个小函数来分流（带着 Jobs 的子命令时交给 Jobs，其余照旧）；写脚本时请用 `jobsworld`。在仓库里开发时用 `pnpm jobs`。
+
+**飞书**：管理员在网页右上角扫码接入后，可以直接在飞书里发布、看状况、要结论、调宣发、把手机递给人、向居民追问；有人用完了、结论更新了、需要介入时机器人会主动告诉你。
 
 **Terraria**：同一座城可以用原版 Terraria 或 tModLoader 客户端走进去，居民是会走动、头上冒想法的角色；`/jw launches`、`/jw publish`、`/jw promote`、`/jw invite` 与网页是同一套能力。
 
@@ -54,7 +64,7 @@ claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agen
 | 路径 | 说明 |
 |---|---|
 | `apps/cli` | `jobs` 命令行：发布、状况、结论、宣发、递手机、MCP 服务；`jobs dev …` 收纳内部校准用的指派式批次 |
-| `apps/api` | REST `/api/v1`（发布、人物、世界、使用过程、证据、虚拟身份收件箱）+ WebSocket 实时推送 + 托管网页 |
+| `apps/api` | REST `/api/v1`（发布、模型接入、人物、世界、使用过程、证据、虚拟身份收件箱、游戏服开关）+ WebSocket 实时推送 + 托管网页 + 飞书机器人 |
 | `apps/web` | 网页（React）：侧视像素城、产品页（结论 / 人 / 口碑 / 工程附录）、人物、使用过程回看 |
 | `apps/world` | 世界服务：时钟、日程、需求、位置；驱动发布引擎（曝光 → 决定 → 使用 → 口碑）；NATS 广播 |
 | `apps/gateway` | 单端口网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
@@ -66,6 +76,7 @@ claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agen
 | `packages/core` · `packages/db` · `packages/storage` | 类型与 schema · Drizzle 表与迁移 · 证据存储（MinIO/S3，内容寻址） |
 | `game/` · `infra/game/` | Terraria 两个游戏端的插件与模组（C#）· 游戏服镜像 |
 | `demos/kit` | 11 个示例产品（每个有干净版与植入缺陷版），用于演示与校准 |
+| `deploy/` · `site/` · `Dockerfile` | 主镜像的入口与生产编排、一行安装脚本、装好后的 `jobs` 命令；`site/` 是 `jobs.plutokeating.beer` 的落地页与安装脚本的托管目录 |
 | `config/` | 人口抽样表与随包居民（`population/`）、城镇布局与日程骨架（`jobsworld/`）、手写人物、规则 |
 
 ## 人口从哪来
@@ -73,7 +84,7 @@ claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agen
 - **中国人群**：按普查口径的条件抽样表（`config/population/zh-CN.json`：家庭类型 → 年龄 → 学历 → 职业 → 收入）。数值是依据公开汇总数据的量级手工设定的近似值，不是微观数据拟合。
 - **英语区人群**：从 [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA)（CC BY 4.0，基于美国人口普查分布的合成人口）随机抽样，再拼成家庭。
 - **数值由规则推导**：数字素养、视力、阅读速度、性格、耐心、价格敏感度等由年龄、学历、职业、收入加随机扰动推导；模型不决定任何数值，只写名字、生平和看法。
-- 随包自带 185 位居民（`config/population/residents.jsonl`），连同手写人物共 201 人、113 户。重新生成：`jobs world populate -n <人数>`。
+- 随包自带 185 位居民（`config/population/residents.jsonl`），连同 14 位手写人物，新装好的城里一共 199 人。重新生成：`jobs world populate -n <人数>`。
 
 ## 定位声明
 

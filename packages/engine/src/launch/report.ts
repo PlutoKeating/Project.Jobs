@@ -58,13 +58,19 @@ export async function launchReport(l: LaunchRow, lang: 'zh' | 'en' = 'zh', opts:
   const { moments, passersby, sessions: nSess, people } = await gatherMoments(l);
   const used = new Set(moments.filter((m) => m.session_id).map((m) => m.persona_id)).size;
   // 什么时候重新归纳：有人用完了、有了新评论，或者路过没点开的人明显变多了。只是多几个人刷到广告不重算（那只改人数，人数每次都取最新）
-  const basis = `${nSess}:${funnel.reviews}:${moments.length}:${Math.floor(passersby.length / 10)}:${funnel.reached > 0 ? 1 : 0}`;
+  const basis = `${nSess}:${funnel.reviews}:${moments.length}:${Math.floor(passersby.length / 10)}:${funnel.reached > 0 ? 1 : 0}:${funnel.opened > 0 ? 1 : 0}`;
   const [cached] = await db.select().from(launchReports).where(and(eq(launchReports.launch_id, l.id), eq(launchReports.lang, lang)));
   if (cached && cached.basis === basis && !opts.force) return { ...(cached.data as LaunchReport), funnel, people_used: used };
   const base = { launch_id: l.id, lang, generated_at: new Date().toISOString(), basis, funnel, people_used: used, simulated: true as const };
   if (nSess === 0) {
     // 还没有人打开过：只说「为什么没点开」
-    const rep: LaunchReport = { ...base, verdict: 'too_early', headline: zh ? (funnel.reached ? '看到的人还没有谁点开' : '还没有人看到它') : (funnel.reached ? 'People saw it, nobody opened it yet' : 'Nobody has seen it yet'), summary: zh ? (funnel.reached ? `${funnel.reached} 个人看到过，${funnel.noticed} 个人注意到了，还没有人点开。` : '城里的人还没遇到它。可以把宣发强度调高，或者把手机递给几个人试试。') : (funnel.reached ? `${funnel.reached} people saw it, ${funnel.noticed} noticed, none opened it yet.` : 'Nobody in town has come across it yet. Raise the promotion, or hand it to a few people.'), hurts: [], delights: [], who_stays: [], who_leaves: [], why_not_opened: passersby.filter((x) => x.reaction === 'not_for_me').slice(0, 3).map((x) => ({ text: x.thought, moments: [], passersby: [x] })), next: '' };
+    // 有人已经打开、只是还没用完时，不能说「没有人点开」
+    const using = funnel.opened > 0;
+    const headline = zh ? (using ? '有人正在用，还没有人用完' : funnel.reached ? '看到的人还没有谁点开' : '还没有人看到它') : (using ? 'People are using it; nobody has finished yet' : funnel.reached ? 'People saw it, nobody opened it yet' : 'Nobody has seen it yet');
+    const summary = zh
+      ? (using ? `${funnel.reached} 个人看到过，${funnel.opened} 个人打开了，还在用。等他们用完再来看。` : funnel.reached ? `${funnel.reached} 个人看到过，${funnel.noticed} 个人注意到了，还没有人点开。` : '城里的人还没遇到它。可以把宣发强度调高，或者把手机递给几个人试试。')
+      : (using ? `${funnel.reached} people saw it and ${funnel.opened} opened it; they are still using it. Check back when they finish.` : funnel.reached ? `${funnel.reached} people saw it, ${funnel.noticed} noticed, none opened it yet.` : 'Nobody in town has come across it yet. Raise the promotion, or hand it to a few people.');
+    const rep: LaunchReport = { ...base, verdict: 'too_early', headline, summary, hurts: [], delights: [], who_stays: [], who_leaves: [], why_not_opened: passersby.filter((x) => x.reaction === 'not_for_me').slice(0, 3).map((x) => ({ text: x.thought, moments: [], passersby: [x] })), next: '' };
     await save(l.id, lang, basis, rep); return rep;
   }
   const iss = (await db.select().from(issues).where(and(eq(issues.app_version_id, l.app_version_id), eq(issues.track, 'experience')))).filter((i) => !['rejected', 'folded'].includes(i.status));
