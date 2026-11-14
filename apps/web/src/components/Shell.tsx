@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Gamepad2, LogOut, Moon, Sun } from 'lucide-react';
+import { Gamepad2, LogOut, Moon, Pause, Sun } from 'lucide-react';
 import { post, useMe, useTown, queryClient } from '../lib/api.ts';
 import { setLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
@@ -22,7 +22,7 @@ function Clock() {
       <span className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-accent live-dot' : 'bg-fg-subtle'}`} />
       <span className="text-fg-display text-sm font-medium">{c?.clock ?? '--:--'}</span>
       {c && c.speed !== 1 && <span>×{c.speed}</span>}
-      {c?.paused && <span className="text-warning">❚❚</span>}
+      {c?.paused && <Pause size={12} className="text-warning" aria-label="paused" />}
     </span>
   );
 }

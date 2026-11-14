@@ -30,7 +30,7 @@ function DayLane({ items, minute, placeName }: { items: AgendaItem[]; minute: nu
         })}
         {minute !== null && <span className="absolute inset-y-0 w-0.5 bg-accent shadow-[0_0_10px_var(--color-accent)]" style={{ left: `${(minute / 1440) * 100}%` }} />}
       </div>
-      <div className="tabular mt-1.5 flex justify-between text-[11px] text-fg-subtle">{['00', '06', '12', '18', '24'].map((h) => <span key={h}>{h}:00</span>)}</div>
+      <div className="tabular mt-1.5 flex justify-between text-xs text-fg-subtle">{['00', '06', '12', '18', '24'].map((h) => <span key={h}>{h}:00</span>)}</div>
       {it && (
         <div className="mt-4 grid grid-cols-[6.5rem_1fr] gap-3">
           <div className="tabular text-sm text-fg-muted">{it.from}–{it.to}{show === cur && <span className="mt-2 block h-1.5 w-1.5 rounded-full bg-accent" />}</div>
@@ -58,7 +58,7 @@ function MemoryList({ items, apps }: { items: Memory[]; apps: Map<string, string
           <li key={m.id} className="grid grid-cols-[0.5rem_1fr_auto] items-start gap-3 py-3">
             <span className="mt-2 h-2 w-2 rounded-full" style={{ background: m.valence < -0.2 ? 'var(--color-danger)' : m.valence > 0.2 ? 'var(--color-success)' : 'var(--color-fg-subtle)', opacity: 0.4 + m.importance * 0.6 }} />
             <p className="text-sm leading-relaxed">{m.content}</p>
-            <span className="text-right text-[11px] text-fg-subtle"><span className="block">{L(m.kind)}</span>{m.app_id && <span className="block truncate">{apps.get(m.app_id) ?? ''}</span>}</span>
+            <span className="text-right text-xs text-fg-subtle"><span className="block">{L(m.kind)}</span>{m.app_id && <span className="block truncate">{apps.get(m.app_id) ?? ''}</span>}</span>
           </li>
         ))}
       </ul>
@@ -78,7 +78,7 @@ function History({ sessions }: { sessions: PersonaSession[] }) {
             {ss.map((s) => (
               <li key={s.id}>
                 <Link to="/sessions/$id" params={{ id: s.id }} title={`${s.started_at ? new Date(s.started_at).toLocaleString() : ''} · ${L(s.world)} · ${L(s.mode)}`}
-                  className={`tabular inline-flex h-7 items-center gap-1.5 rounded border px-2 text-xs transition-colors hover:border-accent ${s.outcome === 'success' ? 'border-success/40 text-success' : s.outcome ? 'border-danger/40 text-danger' : 'border-border text-fg-muted'}`}>
+                  className={`tabular inline-flex h-7 items-center gap-1.5 rounded-xs border px-2 text-xs transition-colors hover:border-accent ${s.outcome === 'success' ? 'border-success/40 text-success' : s.outcome ? 'border-danger/40 text-danger' : 'border-border text-fg-muted'}`}>
                   {s.revisit_day ? `D${s.revisit_day}` : s.started_at ? new Date(s.started_at).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' }) : '—'}
                   <span className="text-fg-subtle">{L(s.outcome ?? s.status)}</span>
                 </Link>
@@ -152,7 +152,7 @@ export function PersonPage() {
             </div>
             <div className="mt-6 grid grid-cols-5 gap-2 text-center">
               {(['O', 'C', 'E', 'A', 'N'] as const).map((k) => (
-                <div key={k}><div className="relative mx-auto h-16 w-2 overflow-hidden rounded-full bg-border"><span className="absolute inset-x-0 bottom-0 rounded-full bg-secondary" style={{ height: `${s.psychology.ocean[k] * 100}%` }} /></div><span className="mt-1 block text-[11px] text-fg-subtle">{k}</span></div>
+                <div key={k}><div className="relative mx-auto h-16 w-2 overflow-hidden rounded-full bg-border"><span className="absolute inset-x-0 bottom-0 rounded-full bg-secondary" style={{ height: `${s.psychology.ocean[k] * 100}%` }} /></div><span className="mt-1 block text-xs text-fg-subtle">{k}</span></div>
               ))}
             </div>
             {s.behavior_policy.abandonment_rules.length > 0 && <ul className="mt-6 space-y-1.5 text-xs text-fg-muted">{s.behavior_policy.abandonment_rules.map((r) => <li key={r}>— {r}</li>)}</ul>}

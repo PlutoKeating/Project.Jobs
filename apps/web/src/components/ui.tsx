@@ -51,8 +51,8 @@ export const pct = (v: number | null | undefined) => (v === null || v === undefi
 export const num = (v: number | null | undefined, d = 0) => (v === null || v === undefined ? '—' : v.toFixed(d));
 
 export function Sev({ s }: { s: string }) {
-  const c = { P0: 'bg-danger text-bg', P1: 'bg-accent text-accent-fg', P2: 'bg-warning/80 text-bg', P3: 'bg-border-strong text-fg' }[s] ?? 'bg-border text-fg';
-  return <span className={`inline-flex h-5 w-7 items-center justify-center rounded text-[11px] font-semibold tabular ${c}`}>{s}</span>;
+  const c = { P0: 'bg-danger text-bg', P1: 'bg-danger/60 text-fg-display', P2: 'bg-warning/80 text-bg', P3: 'bg-border-strong text-fg' }[s] ?? 'bg-border text-fg';
+  return <span className={`inline-flex h-5 w-7 items-center justify-center rounded-xs text-xs font-semibold tabular ${c}`}>{s}</span>;
 }
 
 export function Skeleton({ className = '' }: { className?: string }) { return <div className={`animate-pulse rounded-md bg-surface-hover ${className}`} />; }

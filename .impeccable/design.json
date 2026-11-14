@@ -1,0 +1,741 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-14T12:16:21+00:00",
+  "title": "Design System: JobsWorld",
+  "extensions": {
+    "colorMeta": {
+      "charcoal-night": {
+        "role": "neutral",
+        "displayName": "夜炭 Charcoal Night",
+        "canonical": "#0e0f11",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414244",
+          "#606164",
+          "#818285",
+          "#a4a5a7",
+          "#c8c9cb",
+          "#eeeef0"
+        ]
+      },
+      "charcoal-raised": {
+        "role": "neutral",
+        "displayName": "抬升炭 Charcoal Raised",
+        "canonical": "#131417",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242527",
+          "#414245",
+          "#606165",
+          "#818286",
+          "#a4a5a8",
+          "#c8c9cc",
+          "#eeeef0"
+        ]
+      },
+      "charcoal-surface": {
+        "role": "neutral",
+        "displayName": "炭面 Charcoal Surface",
+        "canonical": "#17181c",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#242528",
+          "#414245",
+          "#606166",
+          "#818287",
+          "#a4a5a9",
+          "#c8c9cc",
+          "#edeef1"
+        ]
+      },
+      "charcoal-hover": {
+        "role": "neutral",
+        "displayName": "悬停炭 Charcoal Hover",
+        "canonical": "#1d1e23",
+        "tonalRamp": [
+          "#0b0b0d",
+          "#242528",
+          "#414246",
+          "#606166",
+          "#818288",
+          "#a4a5aa",
+          "#c8c9cd",
+          "#edeef2"
+        ]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "细线 Hairline",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272521",
+          "#44423d",
+          "#64615b",
+          "#85827c",
+          "#a8a59f",
+          "#cbc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "hairline-strong": {
+        "role": "neutral",
+        "displayName": "强细线 Hairline Strong",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272521",
+          "#44423d",
+          "#64615b",
+          "#85827c",
+          "#a8a59f",
+          "#cbc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "bone-text": {
+        "role": "neutral",
+        "displayName": "骨白 Bone Text",
+        "canonical": "#e8e4dd",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272521",
+          "#44423d",
+          "#64615b",
+          "#85827c",
+          "#a8a59f",
+          "#cbc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "ash-muted": {
+        "role": "neutral",
+        "displayName": "灰烬 Ash Muted",
+        "canonical": "#a9a49c",
+        "tonalRamp": [
+          "#0d0b08",
+          "#272521",
+          "#45413c",
+          "#65615a",
+          "#86827b",
+          "#a8a49e",
+          "#ccc9c3",
+          "#f1eeea"
+        ]
+      },
+      "ash-subtle": {
+        "role": "neutral",
+        "displayName": "浅灰烬 Ash Subtle",
+        "canonical": "#6f6b65",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272521",
+          "#44423d",
+          "#64615b",
+          "#86827c",
+          "#a8a49f",
+          "#cbc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "lichen-link": {
+        "role": "neutral",
+        "displayName": "地衣链接 Lichen Link",
+        "canonical": "#cfd8d5",
+        "tonalRamp": [
+          "#090c0b",
+          "#222625",
+          "#3e4342",
+          "#5c6361",
+          "#7d8482",
+          "#a0a7a4",
+          "#c5cbc9",
+          "#ebf0ee"
+        ]
+      },
+      "lamplight-amber": {
+        "role": "primary",
+        "displayName": "灯下琥珀 Lamplight Amber",
+        "canonical": "#f0a35e",
+        "tonalRamp": [
+          "#1c0300",
+          "#3f1900",
+          "#663300",
+          "#8f4f00",
+          "#b47030",
+          "#d29764",
+          "#f0be94",
+          "#ffe6c5"
+        ]
+      },
+      "lamplight-amber-hover": {
+        "role": "primary",
+        "displayName": "亮琥珀 Lamplight Amber Hover",
+        "canonical": "#f5b67c",
+        "tonalRamp": [
+          "#190500",
+          "#3b1c00",
+          "#603707",
+          "#87541d",
+          "#ab7541",
+          "#ca9a6f",
+          "#e9c09d",
+          "#ffe8cc"
+        ]
+      },
+      "ember-ink": {
+        "role": "primary",
+        "displayName": "余烬墨 Ember Ink",
+        "canonical": "#1a120a",
+        "tonalRamp": [
+          "#0e0a07",
+          "#29241f",
+          "#484039",
+          "#695f56",
+          "#8a8077",
+          "#aca39b",
+          "#cfc8c1",
+          "#f3ede8"
+        ]
+      },
+      "amber-wash": {
+        "role": "primary",
+        "displayName": "琥珀薄雾 Amber Wash",
+        "tonalRamp": [
+          "#1c0300",
+          "#3f1900",
+          "#663300",
+          "#8f4f00",
+          "#b47030",
+          "#d29764",
+          "#f0be94",
+          "#ffe6c5"
+        ]
+      },
+      "slate-sage": {
+        "role": "secondary",
+        "displayName": "石板灰绿 Slate Sage",
+        "canonical": "#7d8f8a",
+        "tonalRamp": [
+          "#070d0b",
+          "#1e2725",
+          "#394542",
+          "#556561",
+          "#768782",
+          "#9aa9a5",
+          "#c0ccc9",
+          "#e7f1ee"
+        ]
+      },
+      "slate-sage-pale": {
+        "role": "secondary",
+        "displayName": "淡石板 Slate Sage Pale",
+        "canonical": "#c2cfcb",
+        "tonalRamp": [
+          "#080c0b",
+          "#202725",
+          "#3c4442",
+          "#596461",
+          "#7a8582",
+          "#9ea8a5",
+          "#c3cbc9",
+          "#eaf0ee"
+        ]
+      },
+      "moss-success": {
+        "role": "neutral",
+        "displayName": "苔绿 Moss Success",
+        "canonical": "#7fb08f",
+        "tonalRamp": [
+          "#010f05",
+          "#112b1b",
+          "#284b35",
+          "#416c51",
+          "#628e71",
+          "#8ab096",
+          "#b3d2bc",
+          "#ddf6e4"
+        ]
+      },
+      "straw-warning": {
+        "role": "neutral",
+        "displayName": "麦黄 Straw Warning",
+        "canonical": "#d9b96a",
+        "tonalRamp": [
+          "#140900",
+          "#322200",
+          "#543e00",
+          "#785d09",
+          "#9b7f36",
+          "#bba268",
+          "#dbc797",
+          "#fdedc8"
+        ]
+      },
+      "dusty-rose-danger": {
+        "role": "neutral",
+        "displayName": "玫瑰红 Dusty Rose Danger",
+        "canonical": "#c97c7c",
+        "tonalRamp": [
+          "#1b0304",
+          "#3e1718",
+          "#643031",
+          "#8d4b4c",
+          "#b26c6c",
+          "#d09292",
+          "#efbab9",
+          "#ffe3e1"
+        ]
+      },
+      "ink-well": {
+        "role": "neutral",
+        "displayName": "墨井 Ink Well",
+        "canonical": "#111215",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242527",
+          "#414245",
+          "#606165",
+          "#818286",
+          "#a4a5a8",
+          "#c8c9cc",
+          "#eeeef1"
+        ]
+      },
+      "series-river-dark": {
+        "role": "tertiary",
+        "displayName": "河蓝（暗）Series River",
+        "canonical": "#3d9cc4",
+        "tonalRamp": [
+          "#000e1c",
+          "#002a3f",
+          "#004965",
+          "#006b8e",
+          "#378db1",
+          "#6bafcf",
+          "#9cd2ed",
+          "#ccf6ff"
+        ]
+      },
+      "series-clay-dark": {
+        "role": "tertiary",
+        "displayName": "陶土（暗）Series Clay",
+        "canonical": "#c9792f",
+        "tonalRamp": [
+          "#1d0200",
+          "#411700",
+          "#683100",
+          "#924c00",
+          "#b76e2b",
+          "#d59561",
+          "#f3bd92",
+          "#ffe5c4"
+        ]
+      },
+      "paper-bg-light": {
+        "role": "neutral",
+        "displayName": "纸底（亮）Paper",
+        "canonical": "#f7f3ec",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272522",
+          "#44423d",
+          "#64615b",
+          "#85827c",
+          "#a7a59f",
+          "#cbc9c4",
+          "#f0eeeb"
+        ]
+      },
+      "paper-surface-light": {
+        "role": "neutral",
+        "displayName": "纸面（亮）Paper Surface",
+        "canonical": "#fdfbf8",
+        "tonalRamp": [
+          "#0c0b0a",
+          "#262523",
+          "#434240",
+          "#62615f",
+          "#84827f",
+          "#a6a5a3",
+          "#cac9c7",
+          "#efeeed"
+        ]
+      },
+      "paper-hover-light": {
+        "role": "neutral",
+        "displayName": "纸悬停（亮）Paper Hover",
+        "canonical": "#f1ece3",
+        "tonalRamp": [
+          "#0c0b08",
+          "#272521",
+          "#45423c",
+          "#65615a",
+          "#86827a",
+          "#a8a59e",
+          "#ccc9c3",
+          "#f1eeea"
+        ]
+      },
+      "umber-text-light": {
+        "role": "neutral",
+        "displayName": "赭墨正文（亮）Umber Text",
+        "canonical": "#26221e",
+        "tonalRamp": [
+          "#0d0b09",
+          "#272522",
+          "#45413e",
+          "#65605c",
+          "#86817d",
+          "#a8a4a0",
+          "#ccc8c5",
+          "#f1eeeb"
+        ]
+      },
+      "umber-display-light": {
+        "role": "neutral",
+        "displayName": "赭墨标题（亮）Umber Display",
+        "canonical": "#16130f",
+        "tonalRamp": [
+          "#0c0b09",
+          "#272522",
+          "#44413e",
+          "#64615c",
+          "#85827d",
+          "#a8a4a0",
+          "#cbc9c5",
+          "#f0eeeb"
+        ]
+      },
+      "umber-muted-light": {
+        "role": "neutral",
+        "displayName": "赭灰（亮）Umber Muted",
+        "canonical": "#625b53",
+        "tonalRamp": [
+          "#0d0b08",
+          "#282420",
+          "#46413b",
+          "#676059",
+          "#888179",
+          "#aaa49d",
+          "#cdc8c2",
+          "#f2eee9"
+        ]
+      },
+      "terracotta-accent-light": {
+        "role": "primary",
+        "displayName": "赤陶琥珀（亮）Terracotta Accent",
+        "canonical": "#a5623f",
+        "tonalRamp": [
+          "#1b0400",
+          "#3d1a05",
+          "#63331a",
+          "#8b4f30",
+          "#b07150",
+          "#ce967b",
+          "#edbda6",
+          "#ffe5d3"
+        ]
+      },
+      "slate-sage-light": {
+        "role": "secondary",
+        "displayName": "石板灰绿（亮）Slate Sage",
+        "canonical": "#5f726d",
+        "tonalRamp": [
+          "#060d0b",
+          "#1d2825",
+          "#384542",
+          "#546661",
+          "#758782",
+          "#99a9a5",
+          "#bfcdc9",
+          "#e7f1ee"
+        ]
+      },
+      "series-river-light": {
+        "role": "tertiary",
+        "displayName": "河蓝（亮）Series River",
+        "canonical": "#1f7fae",
+        "tonalRamp": [
+          "#000d1e",
+          "#002942",
+          "#004869",
+          "#0a6993",
+          "#3a8bb7",
+          "#6daed4",
+          "#9dd1f1",
+          "#cdf5ff"
+        ]
+      },
+      "series-clay-light": {
+        "role": "tertiary",
+        "displayName": "陶土（亮）Series Clay",
+        "canonical": "#b0602e",
+        "tonalRamp": [
+          "#1d0200",
+          "#411600",
+          "#683006",
+          "#934b1c",
+          "#b86c40",
+          "#d6936e",
+          "#f3bb9c",
+          "#ffe4cb"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "verdict": {
+        "displayName": "Verdict",
+        "purpose": "软件报告顶部的一句话结论，一页最多一处。"
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "每页页头标题。"
+      },
+      "stat": {
+        "displayName": "Stat",
+        "purpose": "页头与报告横条中的关键数字，等宽数字。"
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "页内分节标题。"
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "正文、列表、按钮、导航；长段落限宽 70ch。"
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "时间戳、地点、元数据、胶囊与小按钮。"
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "任务日志与代码块。"
+      }
+    },
+    "shadows": [
+      {
+        "name": "float",
+        "value": "0 8px 24px -12px rgb(0 0 0 / 0.4)",
+        "purpose": "浮在城市画布上的时间控制、对话气泡、事件图钉。"
+      },
+      {
+        "name": "lift",
+        "value": "0 1px 2px 0 rgb(0 0 0 / 0.18)",
+        "purpose": "分段控件的选中格。"
+      },
+      {
+        "name": "now-glow",
+        "value": "0 0 10px var(--color-accent)",
+        "purpose": "仅日程条上的「现在」竖线。"
+      },
+      {
+        "name": "glass-header",
+        "value": "background: rgb(14 15 17 / 0.72); backdrop-filter: blur(12px)",
+        "purpose": "吸顶页头的玻璃底。"
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "默认状态过渡与行闪烁。"
+      },
+      {
+        "name": "ease-emphasized",
+        "value": "cubic-bezier(0.3, 0, 0, 1)",
+        "purpose": "气泡出现、面板揭示。"
+      },
+      {
+        "name": "duration-fast",
+        "value": "150ms",
+        "purpose": "按钮、链接、行悬停的颜色过渡。"
+      },
+      {
+        "name": "bubble-in",
+        "value": "220ms ease-emphasized",
+        "purpose": "人物气泡放大淡入。"
+      },
+      {
+        "name": "row-flash",
+        "value": "2.4s ease-standard",
+        "purpose": "「此刻」列表变化行的琥珀薄雾闪烁。"
+      },
+      {
+        "name": "live-pulse",
+        "value": "1.6s ease-in-out infinite",
+        "purpose": "在线圆点的呼吸闪烁。"
+      },
+      {
+        "name": "reveal",
+        "value": "600ms ease-emphasized, 6px rise",
+        "purpose": "展开的发起面板。"
+      },
+      {
+        "name": "reduced-motion",
+        "value": "prefers-reduced-motion: reduce → 0.01ms",
+        "purpose": "所有动画与过渡降为瞬时。"
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "40rem"
+      },
+      {
+        "name": "md",
+        "value": "48rem"
+      },
+      {
+        "name": "lg",
+        "value": "64rem"
+      },
+      {
+        "name": "xl",
+        "value": "80rem"
+      },
+      {
+        "name": "2xl",
+        "value": "96rem"
+      },
+      {
+        "name": "horizon-compact",
+        "value": "max-width 640px → 地平线 84px（默认 132px）"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "中性主操作：骨白底夜炭字，每个视图至多一个。",
+      "html": "<button class=\"ds-btn-primary\">进入</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 14px;border:0;border-radius:var(--ds-radius-md,10px);background:var(--ds-color-fg-display,#e8e4dd);color:var(--ds-color-bg,#0e0f11);font:600 0.9375rem/1.5rem var(--ds-font-sans,Inter,sans-serif);cursor:pointer;transition:opacity 150ms cubic-bezier(0.2,0,0,1)}.ds-btn-primary:hover{opacity:.9}.ds-btn-primary:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:2px}.ds-btn-primary:disabled{opacity:.45}"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "默认按钮：强细线描边，悬停铺悬停炭。",
+      "html": "<button class=\"ds-btn-quiet\">重试</button>",
+      "css": ".ds-btn-quiet{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border:1px solid var(--ds-color-border-strong,rgb(232 228 221 / .18));border-radius:var(--ds-radius-md,10px);background:transparent;color:var(--ds-color-fg,#e8e4dd);font:600 0.9375rem/1.5rem var(--ds-font-sans,Inter,sans-serif);cursor:pointer;transition:background-color 150ms,border-color 150ms}.ds-btn-quiet:hover{background:var(--ds-color-surface-hover,#1d1e23);border-color:var(--ds-color-fg-subtle,#6f6b65)}.ds-btn-quiet:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:2px}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "页头工具按钮：无框灰烬字，图标 15px。",
+      "html": "<button class=\"ds-btn-ghost\" aria-label=\"theme\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"12\" cy=\"12\" r=\"4\"/><path d=\"M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M6.3 17.7l-1.4 1.4M19.1 4.9l-1.4 1.4\"/></svg></button>",
+      "css": ".ds-btn-ghost{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;min-width:36px;padding:0 10px;border:0;border-radius:var(--ds-radius-md,10px);background:transparent;color:var(--ds-color-fg-muted,#a9a49c);font:600 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);cursor:pointer;transition:color 150ms,background-color 150ms}.ds-btn-ghost:hover{color:var(--ds-color-fg,#e8e4dd);background:var(--ds-color-surface-hover,#1d1e23)}.ds-btn-ghost:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:2px}"
+    },
+    {
+      "name": "Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "输入框：抬升炭底细线，聚焦描边转琥珀。",
+      "html": "<input class=\"ds-field\" type=\"password\" placeholder=\"口令\">",
+      "css": ".ds-field{width:240px;padding:8px 12px;border:1px solid var(--ds-color-border,rgb(232 228 221 / .08));border-radius:var(--ds-radius-md,10px);background:var(--ds-color-bg-elevated,#131417);color:var(--ds-color-fg,#e8e4dd);font:450 0.9375rem/1.5rem var(--ds-font-sans,Inter,sans-serif);outline:none;transition:border-color 150ms}.ds-field::placeholder{color:var(--ds-color-fg-subtle,#6f6b65)}.ds-field:focus,.ds-field:focus-visible{border-color:var(--ds-color-accent,#f0a35e)}"
+    },
+    {
+      "name": "Navigation",
+      "kind": "nav",
+      "refersTo": "nav-link",
+      "description": "页头文字导航：当前页标题色字 + 贴底 2px 琥珀下划线。",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-link is-active\" href=\"#\">世界</a><a class=\"ds-nav-link\" href=\"#\">人</a><a class=\"ds-nav-link\" href=\"#\">软件</a><a class=\"ds-nav-link\" href=\"#\">评测</a><a class=\"ds-nav-link\" href=\"#\">接管</a></nav>",
+      "css": ".ds-nav{display:flex;gap:2px;height:60px;align-items:center;border-bottom:1px solid var(--ds-color-border,rgb(232 228 221 / .08));background:var(--ds-color-surface-glass,rgb(14 15 17 / .72));backdrop-filter:blur(12px);padding:0 16px}.ds-nav-link{position:relative;padding:6px 12px;border-radius:var(--ds-radius-md,10px);color:var(--ds-color-fg-muted,#a9a49c);text-decoration:none;font:450 0.9375rem/1.5rem var(--ds-font-sans,Inter,sans-serif);transition:color 150ms}.ds-nav-link:hover{color:var(--ds-color-fg,#e8e4dd)}.ds-nav-link.is-active{color:var(--ds-color-fg-display,#e8e4dd)}.ds-nav-link.is-active::after{content:\"\";position:absolute;left:12px;right:12px;bottom:-13px;height:2px;background:var(--ds-color-accent,#f0a35e)}.ds-nav-link:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:2px}"
+    },
+    {
+      "name": "Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "全圆胶囊：细线描边；筛选选中为琥珀描边 + 琥珀薄雾。",
+      "html": "<span class=\"ds-chips\"><button class=\"ds-chip is-selected\">全部</button><button class=\"ds-chip\">上班族</button><button class=\"ds-chip\">学生</button></span>",
+      "css": ".ds-chips{display:inline-flex;gap:8px}.ds-chip{padding:4px 12px;border:1px solid var(--ds-color-border,rgb(232 228 221 / .08));border-radius:9999px;background:transparent;color:var(--ds-color-fg-muted,#a9a49c);font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);cursor:pointer;transition:border-color 150ms,color 150ms}.ds-chip:hover{border-color:var(--ds-color-border-strong,rgb(232 228 221 / .18));color:var(--ds-color-fg,#e8e4dd)}.ds-chip.is-selected{border-color:var(--ds-color-accent,#f0a35e);background:var(--ds-color-accent-soft,rgb(240 163 94 / .12));color:var(--ds-color-fg-display,#e8e4dd)}.ds-chip:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:2px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented",
+      "description": "速度与视图切换：抬升炭框，选中格悬停炭 + 轻阴影。",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\"><button class=\"ds-seg-item is-on\" role=\"radio\" aria-checked=\"true\">1×</button><button class=\"ds-seg-item\" role=\"radio\" aria-checked=\"false\">10×</button><button class=\"ds-seg-item\" role=\"radio\" aria-checked=\"false\">60×</button></div>",
+      "css": ".ds-seg{display:inline-flex;padding:2px;border:1px solid var(--ds-color-border,rgb(232 228 221 / .08));border-radius:var(--ds-radius-md,10px);background:var(--ds-color-bg-elevated,#131417)}.ds-seg-item{padding:4px 12px;border:0;border-radius:5px;background:transparent;color:var(--ds-color-fg-muted,#a9a49c);font:450 0.9375rem/1.5rem var(--ds-font-sans,Inter,sans-serif);font-variant-numeric:tabular-nums;cursor:pointer;transition:color 150ms,background-color 150ms}.ds-seg-item:hover{color:var(--ds-color-fg,#e8e4dd)}.ds-seg-item.is-on{background:var(--ds-color-surface-hover,#1d1e23);color:var(--ds-color-fg-display,#e8e4dd);box-shadow:0 1px 2px 0 rgb(0 0 0 / .18)}.ds-seg-item:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:2px}"
+    },
+    {
+      "name": "Now Row",
+      "kind": "custom",
+      "refersTo": "live-tag",
+      "description": "「此刻」列表行：头像 + 名字 + 琥珀实时标签 + 动态 + 地点；变化时琥珀薄雾闪烁。",
+      "html": "<button class=\"ds-now-row\"><span class=\"ds-now-ava\"></span><span class=\"ds-now-main\"><span class=\"ds-now-name\">林薇<span class=\"ds-live-tag\">demo-assistant</span></span><span class=\"ds-now-act\">又注册失败？连个为什么都不写</span></span><span class=\"ds-now-place\">星河大厦</span></button>",
+      "css": ".ds-now-row{display:grid;grid-template-columns:2rem 1fr auto;align-items:center;gap:12px;width:360px;padding:10px 20px;border:0;border-bottom:1px solid var(--ds-color-border,rgb(232 228 221 / .08));background:transparent;color:var(--ds-color-fg,#e8e4dd);text-align:left;cursor:pointer;transition:background-color 150ms}.ds-now-row:hover{background:var(--ds-color-surface-hover,#1d1e23)}.ds-now-row:focus-visible{outline:2px solid var(--ds-color-accent,#f0a35e);outline-offset:-2px}.ds-now-ava{width:32px;height:32px;border-radius:var(--ds-radius-md,10px);background:var(--ds-color-surface-hover,#1d1e23)}.ds-now-main{display:flex;flex-direction:column;min-width:0}.ds-now-name{display:flex;gap:8px;align-items:center;font:600 0.9375rem/1.5rem var(--ds-font-sans,Inter,sans-serif);color:var(--ds-color-fg-display,#e8e4dd)}.ds-live-tag{padding:0 6px;background:var(--ds-color-accent-soft,rgb(240 163 94 / .12));color:var(--ds-color-accent,#f0a35e);font:600 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif)}.ds-now-act{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);color:var(--ds-color-fg-muted,#a9a49c)}.ds-now-place{font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);color:var(--ds-color-fg-subtle,#6f6b65)}"
+    },
+    {
+      "name": "Meter",
+      "kind": "custom",
+      "refersTo": "meter",
+      "description": "0–1 量条：细线轨道 + 石板灰绿填充 + 等宽数值。",
+      "html": "<div class=\"ds-meter\"><span class=\"ds-meter-label\">数字素养</span><span class=\"ds-meter-track\"><span class=\"ds-meter-fill\" style=\"width:75%\"></span></span><span class=\"ds-meter-val\">0.75</span></div>",
+      "css": ".ds-meter{display:flex;align-items:center;gap:12px;width:320px}.ds-meter-label{width:96px;font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);color:var(--ds-color-fg-muted,#a9a49c)}.ds-meter-track{position:relative;flex:1;height:6px;border-radius:9999px;background:var(--ds-color-border,rgb(232 228 221 / .08));overflow:hidden}.ds-meter-fill{position:absolute;inset:0 auto 0 0;border-radius:9999px;background:var(--ds-color-secondary,#7d8f8a)}.ds-meter-val{width:40px;text-align:right;font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);font-variant-numeric:tabular-nums;color:var(--ds-color-fg,#e8e4dd)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "灯下的街区",
+    "overview": "JobsWorld 是夜里一条有人走动的街：暖炭黑的底色像天黑后的城市，琥珀色是窗里亮着的灯，只照在「此刻正在发生」的人和事上。界面本身退到后面，是干净的细线、10px 圆角和一套继承自 PlutoKeating 设计系统的克制字号；画面的主角永远是那座侧视像素小城和城里的人。\n\n信息密度偏中高：列表、表格和量条承载真实数据，但不堆卡片墙，不做左侧栏后台模板。导航由两层承担：顶部玻璃质感的细导航条，和每一页底部常驻的像素街道地平线；点街上的人就进人物，点建筑就进地点。明暗两套主题完全由 token 切换，城市天空则跟随模拟时钟，与界面主题无关。\n\n文字尽可能少：功能由布局、图标、状态色和交互解释，控件旁边不放说明性小字（PRODUCT.md 的硬性品牌承诺）。",
+    "keyCharacteristics": [
+      "暖炭黑底 + 琥珀只标「此刻」与选中，次要数据用石板灰绿。",
+      "Inter + 思源黑体，中英混排，数字一律等宽数字（tabular）。",
+      "像素颗粒（crispEdges / pixelated）只属于城市、头像与 Wordmark；界面是细线与圆角。",
+      "平面为主，深度靠色阶叠层；阴影只给浮在画布上的东西。",
+      "底部像素街道跨页常驻，是导航也是签名。"
+    ],
+    "rules": [
+      {
+        "name": "琥珀即此刻 Rule",
+        "body": "琥珀只出现在「此刻正在发生」「当前选中」「当前指向（悬停/焦点）」三件事上。静态分类、严重度、品牌装饰一律不用琥珀。审查方法：截一张静止无悬停的图，琥珀应该只落在在线的人、正在用的软件和当前页上。",
+        "section": "colors"
+      },
+      {
+        "name": "中性主按钮 Rule",
+        "body": "主操作按钮是骨白底夜炭字（亮色下反转为深字色底），不是琥珀。琥珀按钮会和「此刻」信号抢语义。",
+        "section": "colors"
+      },
+      {
+        "name": "数据不借强调色 Rule",
+        "body": "量条默认石板灰绿；图表用独立的河蓝/陶土双色。只有当一条量值本身就是「此刻」或被选中时才换琥珀。",
+        "section": "colors"
+      },
+      {
+        "name": "等宽数字 Rule",
+        "body": "时钟、计数、百分比、日期、版本号一律加 tabular（`font-variant-numeric: tabular-nums`），让实时跳动的数字不抖。",
+        "section": "typography"
+      },
+      {
+        "name": "没有眉题 Rule",
+        "body": "不用全大写小字眉题、不加字距标签；层级只靠字号与字重。",
+        "section": "typography"
+      },
+      {
+        "name": "只有画布上的东西会浮起来 Rule",
+        "body": "卡片、列表、面板一律不带阴影；需要分区就用细线或色阶。",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** 让琥珀只落在「此刻 / 选中 / 指向」上，静止截图里一眼就能找到谁在线。",
+      "**Do** 主按钮用骨白底夜炭字（`button-primary`），每个视图至多一个。",
+      "**Do** 所有数字加 tabular 等宽数字。",
+      "**Do** 用 1px 细线和色阶分区；阴影只给浮在城市画布上的元素。",
+      "**Do** 图表双系列用河蓝 + 陶土（暗 `#3d9cc4` / `#c9792f`，亮 `#1f7fae` / `#b0602e`），轴与网格取 token 的灰烬与细线。",
+      "**Do** 颜色只通过 token 使用，`tokens.css` 整体替换不手改，明暗两套必须同时成立。",
+      "**Do** 遵守 `prefers-reduced-motion`：呼吸、闪烁、气泡动画全部降到瞬时。"
+    ],
+    "donts": [
+      "**Don't** 在控件或功能旁加说明性小字；用布局、图标、状态与交互解释功能（用户硬性要求）。",
+      "**Don't** 做「左侧栏 + KPI 卡片墙」的后台模板；关键数字放在细线分隔的横条或页头右侧。",
+      "**Don't** 用琥珀表示分类、严重度或装饰，也不要做琥珀主按钮。",
+      "**Don't** 把像素块用到城市、头像和 Wordmark 以外的界面上。",
+      "**Don't** 加全大写眉题或字距标签。",
+      "**Don't** 给卡片、列表、面板加阴影。",
+      "**Don't** 让城市天空跟随界面明暗主题；它只跟随模拟时钟。"
+    ]
+  }
+}

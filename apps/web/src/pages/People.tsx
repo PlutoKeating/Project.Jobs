@@ -57,7 +57,7 @@ export function PeoplePage() {
                 <Link to="/people/$id" params={{ id: p.id }} className="group block">
                   <div className="relative overflow-hidden rounded-lg bg-surface transition-transform duration-200 group-hover:-translate-y-1">
                     <Avatar id={p.id} size={400} className="!h-auto !w-full aspect-square !rounded-none" />
-                    {l?.session && <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded bg-bg/85 px-1.5 py-0.5 text-[11px] font-medium text-accent backdrop-blur"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{l.session.app}</span>}
+                    {l?.session && <span className="absolute left-2 top-2 inline-flex items-center gap-1.5 rounded-xs bg-bg/85 px-1.5 py-0.5 text-xs font-medium text-accent backdrop-blur"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{l.session.app}</span>}
                     {p.target_user && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-secondary-fg ring-2 ring-bg/60" title={t('target_user')} />}
                   </div>
                   <div className="mt-3 flex items-baseline justify-between gap-2">
@@ -66,7 +66,7 @@ export function PeoplePage() {
                   </div>
                   <p className="truncate text-xs text-fg-muted">{p.occupation}</p>
                   <p className="mt-1 truncate text-xs text-fg-subtle">{l ? `${place(l.place_id) || L(l.place_kind)} · ${l.activity}` : L(p.segment)}</p>
-                  <p className="tabular mt-1 text-[11px] text-fg-subtle">{p.sessions ? `${t('n_sessions', { n: p.sessions })} · ${p.apps.length} ${t('nav.apps')}` : '—'}</p>
+                  <p className="tabular mt-1 text-xs text-fg-subtle">{p.sessions ? `${t('n_sessions', { n: p.sessions })} · ${p.apps.length} ${t('nav.apps')}` : '—'}</p>
                 </Link>
               </li>
             );

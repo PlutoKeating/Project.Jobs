@@ -30,7 +30,7 @@ function PersonCard({ p, town, onClose }: { p: PersonaLive; town?: TownLayout; o
           <p className="truncate text-xs text-fg-muted">{p.age} · {p.occupation}</p>
           <p className="mt-1 text-xs text-fg-subtle">{placeName(town, p.place_id, lang)} · {L(p.mode)}</p>
         </div>
-        <button onClick={onClose} aria-label="close" className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><X size={16} /></button>
+        <button onClick={onClose} aria-label="close" className="rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><X size={16} /></button>
       </div>
 
       {s && (
@@ -87,7 +87,7 @@ function Board({ people, town, selected, onPick, filter }: { people: PersonaLive
           <button onClick={() => onPick(p.id)} className={`grid w-full grid-cols-[2rem_1fr_auto] items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-surface-hover ${selected === p.id ? 'bg-surface-hover' : ''}`}>
             <Avatar id={p.id} size={32} />
             <span className="min-w-0">
-              <span className="flex items-center gap-2"><span className="truncate text-sm font-medium text-fg-display">{p.name}</span>{p.session && <span className="truncate rounded bg-accent-soft px-1.5 text-[11px] font-medium text-accent">{p.session.app}</span>}</span>
+              <span className="flex items-center gap-2"><span className="truncate text-sm font-medium text-fg-display">{p.name}</span>{p.session && <span className="truncate rounded-xs bg-accent-soft px-1.5 text-xs font-medium text-accent">{p.session.app}</span>}</span>
               <span className="block truncate text-xs text-fg-muted">{p.session?.monologue ?? p.activity}</span>
             </span>
             <span className="max-w-[7rem] truncate text-right text-xs text-fg-subtle">{placeName(town, p.place_id, lang)}</span>
@@ -111,7 +111,7 @@ function PlacePanel({ id, town, people, onPick, onClose, admin }: { id: string; 
     <div className="animate-reveal border-b border-border p-5">
       <div className="flex items-start justify-between gap-2">
         <div><h2 className="text-lg font-semibold">{placeName(town, id, lang)}</h2><p className="text-xs text-fg-muted">{L(pl?.kind)} · {t('n_people', { n: here.length })}</p></div>
-        <button onClick={onClose} aria-label="close" className="rounded p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><X size={16} /></button>
+        <button onClick={onClose} aria-label="close" className="rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><X size={16} /></button>
       </div>
       {here.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{here.map((p) => <button key={p.id} onClick={() => onPick(p.id)} title={p.name} className="rounded-md transition-transform hover:-translate-y-0.5"><Avatar id={p.id} size={36} ring={!!p.session} /></button>)}</div>}
       {admin && (
@@ -174,7 +174,7 @@ export function WorldPage() {
                   const pos = toScreen(v, pl.x + pl.w / 2, pl.top - 6);
                   return <span key={e.id} className="absolute -translate-x-1/2 -translate-y-full rounded-full bg-warning p-1.5 text-bg shadow-md live-dot" style={pos} title={e.kind}><Icon size={14} /></span>;
                 })}
-                {v.s >= 3 && town.places.map((p) => { const pos = toScreen(v, p.x + p.w / 2, p.top - 1.5); return <span key={p.id} className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-[11px] font-medium text-fg-display/80 [text-shadow:0_1px_6px_rgb(0_0_0/0.6)]" style={pos}>{lang === 'zh' ? p.name.zh : p.name.en}</span>; })}
+                {v.s >= 3 && town.places.map((p) => { const pos = toScreen(v, p.x + p.w / 2, p.top - 1.5); return <span key={p.id} className="absolute -translate-x-1/2 -translate-y-full whitespace-nowrap text-xs font-medium text-fg-display/80 [text-shadow:0_1px_6px_rgb(0_0_0/0.6)]" style={pos}>{lang === 'zh' ? p.name.zh : p.name.en}</span>; })}
                 {people.map((p) => {
                   const pos = toScreen(v, p.x, p.y - 3.8);
                   const bubble = p.say && now - p.say.at < 10_000 ? p.say : null;
@@ -185,7 +185,7 @@ export function WorldPage() {
                       {bubble && v.s >= 3 && (
                         <div key={bubble.at} className={`bubble absolute bottom-6 left-0 w-max max-w-[15rem] -translate-x-1/2 rounded-lg px-2.5 py-1.5 text-xs leading-snug shadow-md ${bubble.tone === 'angry' ? 'bg-danger text-bg' : bubble.tone === 'confused' ? 'bg-warning text-bg' : bubble.tone === 'happy' ? 'bg-success text-bg' : 'bg-fg text-bg'}`}>{bubble.text}</div>
                       )}
-                      {tag && <span className="absolute bottom-0 left-0 -translate-x-1/2 whitespace-nowrap rounded bg-bg/85 px-1.5 text-[11px] text-fg-display">{p.name}{p.session && <span className="ml-1 text-accent">· {p.session.app}</span>}</span>}
+                      {tag && <span className="absolute bottom-0 left-0 -translate-x-1/2 whitespace-nowrap rounded-xs bg-bg/85 px-1.5 text-xs text-fg-display">{p.name}{p.session && <span className="ml-1 text-accent">· {p.session.app}</span>}</span>}
                     </div>
                   );
                 })}
@@ -199,7 +199,7 @@ export function WorldPage() {
           {selected && <PersonCard p={selected} town={town} onClose={() => { setSel(null); void nav({ to: '/', search: {}, replace: true }); }} />}
           {place && !selected && <PlacePanel id={place} town={town} people={people} onPick={pick} onClose={() => setPlace(null)} admin={!!me?.admin} />}
           <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/95 px-5 py-3 backdrop-blur">
-            <h2 className="flex items-center gap-2 text-sm font-semibold">{t('now')}{usingN > 0 && <span className="tabular rounded bg-accent px-1.5 text-[11px] text-accent-fg">{usingN}</span>}</h2>
+            <h2 className="flex items-center gap-2 text-sm font-semibold">{t('now')}{usingN > 0 && <span className="tabular rounded-xs bg-accent px-1.5 text-xs text-accent-fg">{usingN}</span>}</h2>
             <Seg size="sm" value={filter} onChange={setFilter} options={[{ value: 'using', label: t('using') }, { value: 'all', label: t('everyone') }]} />
           </div>
           <Board people={people} town={town} selected={sel} onPick={pick} filter={filter} />
