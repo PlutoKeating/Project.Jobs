@@ -2,7 +2,7 @@
 
 ## 1. REST API（`apps/api`，默认 `http://127.0.0.1:5320`，对外经网关 `:7777`）
 
-所有入口（CLI / 工作台 / API / CI）最终都调用同一个 `createStudy()`（`packages/engine/src/control/study.ts`），用**幂等键**防止重复运行。前缀统一为 `/api/v1`；带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员登录（否则 403）。设置 `JW_PASSCODE` 后，除 `/api/v1/me`、`/api/v1/auth/*`、`/healthz` 外都需要登录（否则 401）。
+前缀统一为 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）。设置 `JW_PASSCODE` 后，除 `/me`、`/auth/*`、`/inbox/*`、`/healthz` 外都需要登录（否则 401）。身份有两种带法：网页登录后的 HttpOnly Cookie；命令行、MCP 与脚本用 `Authorization: Bearer <口令>`。
 
 ### 身份
 
@@ -12,68 +12,65 @@
 | `POST /auth/login` `{ passcode }` | 共享口令或管理员口令；写入 HttpOnly Cookie |
 | `POST /auth/logout` | 清除登录 |
 
-### Study（管理员可写）
-
-`POST /studies`（管理员）：请求头 `Idempotency-Key: <key>`（可选）；同一键再次提交只会返回已有 Study。
-
-```json
-{
-  "app_version_id": "av_xxx",
-  "sessions": 6, "steps": 30, "concurrency": 3, "round": 4,
-  "locale": "zh-CN",                  // zh-CN | en-US | mixed
-  "temporal": false,
-  "config": { "revisits": [1, 7], "judges": 2, "mode_mix": { "goal": 0.4, "curiosity": 0.25, "stress": 0.2, "adversarial": 0.15 } }
-}
-```
-
-响应：`{ "id": "std_xxx", "existing": false, "isolation_warning": "…" }`。`config` 可覆盖 `StudyInputSchema` 的任意字段。
+### 发布
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /studies` | 最近 200 个 Study（含应用、Session 数、是否有报告、是否在本进程运行） |
-| `GET /studies/:id` | Study、Session（含人物名）、问题、运行日志（inline 模式） |
-| `POST /projects`（管理员） | 灌入新项目并全自动评测：`name`、`url`、`version`、`form`、`prd`、`user`/`password`、`sessions`、`steps`、`temporal` → `{ study_id }` |
-| `GET /app-versions` | 可发起评测的应用版本 |
-| `GET /sessions/:id` | Session、人物、软件、逐步时间线（截图证据、地点、资源、动作结果）、世界事件、访谈、评审 |
-| `POST /sessions/:id/ask` `{ q }` | 可追问访谈 → `{ answer }` |
-| `POST /issues/:id/triage`（管理员） `{ status }` | `confirmed` / `rejected` / `open` |
-| `GET /human`、`POST /human/:id/resolve`（管理员） | 人工接管队列；Temporal 模式下同时发送 Signal |
-| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON（旧路径 `/evidence/:id` 仍可用）。设置了 `JW_PASSCODE` 时，游戏内面板用 `?k=<sha256("jw-evidence:"+JW_PASSCODE) 前 32 位十六进制>` 访问（只对本接口有效） |
-| `GET /reports/<study>/index.html` | 离线 HTML 报告 |
+| `GET /launches` | 已发布的产品：`id`、`name`、`tagline`、`description`、`url`、`landing_url`、`form`、`shots`（商店页截图的证据 id）、`ad_text`、`intensity`、`audience`、`status`（`live` / `paused` / `ended`）、`funnel`、`spend`（`usd`、`tokens`） |
+| `POST /launches`（管理员） | 发布。必填 `name`、`tagline`、`url`；可选 `landing_url`、`description`、`ad_text`、`intensity`（0–1，默认 0.3）、`audience`、`form`（`web` 电脑和手机都能开 / `h5` 只在手机上开）。返回同上的一行 |
+| `GET /launches/:id` | 上面的一行，加上 `uses`（每次使用：谁、在哪、什么时候、什么设备、怎么遇到的、是否受邀、第几次、结局、离开时的原话）、`passersby`（注意到了没点开的人和当时的想法）、`reviews`（商店评论）、`posts`（公开动态）。`:id` 也可以写产品名 |
+| `GET /launches/:id/report?lang=zh\|en[&force=1]` | 一页结论：`verdict`（`works` / `mixed` / `not_yet` / `too_early`）、`headline`、`summary`、`hurts`、`delights`、`who_stays`、`who_leaves`、`why_not_opened`、`next`、`funnel`、`people_used`。每一条是 `{ text, moments[], passersby[] }`：`moments` 带当事人、原话、`session_id`、`step_idx`、`screenshot_ev`。有人用完、有了新评论或路过的人明显变多时重新归纳，否则读缓存（人数始终是最新的）；`force=1` 强制重算 |
+| `GET /launches/:id/engineering` | `experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议） |
+| `POST /launches/:id/promotion`（管理员） | 调宣发：`intensity`、`audience`、`status`、`ad_text`、`tagline`，只改传了的字段 |
+| `POST /launches/:id/invite`（管理员） | 把手机递给人：`n`（1–20，默认 3）、`segment`、`locale`、`persona_ids`、`want`（希望他们做的一件事）。返回 `{ invited, session_ids }` |
+| `GET /store` | 城里的人看到的应用商店：每个上架产品的介绍、截图、评分与评论 |
+| `GET /feed[?launch_id=]` | 城里的公开动态 |
 
-兼容旧控制台：`POST /api/studies`（同 `/api/v1/studies`）、`GET /api/studies/:id`（307 到 v1）。
+`funnel`：`reached`（看到）、`noticed`（注意到）、`interested`（有兴趣）、`opened`（打开过）、`came_back`（回来再用）、`using_now`（此刻在用）、`sessions`、`reviews`、`rating`、`by_channel`。按人去重，是这座城里实际发生的人数（模拟）。
+
+`audience`（投给谁，空 = 所有人）：`locales`（`zh-CN` / `en-US`）、`age_min`、`age_max`、`segments`、`tags`。不在投放范围内的人也可能看到，只是少得多。
+
+### 虚拟身份的收件箱（免登录）
+
+每位居民有城里发的邮箱（`…@jobsworld.test`）和手机号。把被测产品测试环境的发信、发短信地址指到这里，对应的人会在使用过程中真的收到：
+
+| 方法 路径 | 说明 |
+|---|---|
+| `POST /inbox/email` `{ to, from?, subject?, body }` | 投递一封邮件 |
+| `POST /inbox/sms` `{ to, from?, body }` | 投递一条短信 |
+| `GET /personas/:id/inbox` | 这个人收到的邮件与短信（需登录） |
 
 ### 人物
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /personas` | 每个人物的最新版本 + 使用统计（Session 数、用过的软件、记忆数）+ 此刻位置、需求（`live.needs`）、手机在不在手边（`live.phone`）、所在家庭 |
-| `GET /personas/:id` | 六层画像、今天的日程、记忆（最近 120 条，来自他的记忆树）、历史 Session、信任状态、实时状态与世界时钟；`resident`（家庭、职业大类、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境：地点、姿势、设备、需求、身边的人、是否有空、还能用多久） |
+| `GET /personas` | 每个人物的最新版本 + 使用统计（次数、用过的产品、记忆数）+ 此刻位置、需求、手机在不在手边、所在家庭 |
+| `GET /personas/:id` | 画像、今天的日程、记忆（最近 120 条，来自他的记忆树）、使用历史（`sessions`；`launch_of` 把 `app_id` 对到发布 id）、信任状态、实时状态与世界时钟；`resident`（家庭、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境） |
 | `GET /personas/:id/avatar` | 头像：`image.gen` 生成后缓存到 MinIO；生成前返回确定性像素头像 SVG |
-| `POST /personas/generate`（管理员） `{ n, locale }` | 生成新居民并住进城里（1–12 人；`locale`：`zh-CN` 中国、`en-US` 英语区、`mixed` 各半） |
+| `POST /personas/generate`（管理员） `{ n, locale }` | 生成新居民并住进城里（1–12 人） |
 
 ### 世界
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /world/town` | 城镇布局（图元、地点、落脚点，`packages/jobsworld/src/town.ts`） |
-| `GET /world/snapshot` | 最近一次世界快照（时钟、人物位置/状态、世界事件） |
+| `GET /overview` | 人数、使用次数、已发布产品数、待人工处理的任务数、最近一次快照 |
+| `GET /world/town` | 城镇布局（图元、地点、落脚点） |
+| `GET /world/snapshot` | 最近一次世界快照（时钟、人物位置与状态、世界事件） |
 | `POST /world/clock`（管理员） `{ paused?, speed?, jump_to? }` | 控制世界时钟 |
-| `POST /world/events`（管理员） `{ place_id, kind, minutes }` | 制造事件：`weak_network` `crowd` `rain` `power_cut` `noise`。写入 `world_events`；正在该地点使用产品的人会真的受到影响 |
-| `POST /world/replay` `{ session_id, speed? }` | 在原地点回放一个 Session |
-| `POST /world/ask` `{ persona_id, question }` | 和人物聊聊（基于最近一次已结束的 Session；正在使用软件时返回 `busy`） |
-| `GET /stream`（WebSocket） | 实时推送：`{ type: "snapshot" \| "live" \| "say", data }` |
+| `POST /world/events`（管理员） `{ place_id, kind, minutes }` | 制造事件：`weak_network` `crowd` `rain` `power_cut` `noise`；正在该地点使用产品的人会真的受到影响 |
+| `POST /world/replay` `{ session_id, speed? }` | 在原地点回放一次使用 |
+| `POST /world/ask` `{ persona_id, question }` | 向人物追问（基于他最近一次已结束的使用；正在使用时返回 `busy`） |
+| `GET /stream`（WebSocket） | 实时推送 `{ type, data }`：`snapshot`（世界快照）、`live`（某人使用中的一步）、`say`（气泡）、`launches`（各产品的漏斗人数） |
 
-### 软件
+### 使用过程、证据、人工接管
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /apps` | 全部软件的简要汇总（用过的人数、Session 数、完成率、SUS 模拟估计、P0/P1） |
-| `GET /apps/:id/report` | 汇总报告：概览、原本的目标客户、按人群/年龄/数字素养/AI 熟悉度/场景/模式/目标与否分组的适配度、用过的人、典型反馈（吐槽/称赞/访谈，带截图与 Session 链接）、问题（`issues`：只含虚拟人亲历的；`engineering`：工程附录）、走势、可信度 |
-| `GET /apps/:id/verdict?lang=zh\|en` | 最近一次一句话总评 |
-| `POST /apps/:id/verdict`（管理员） `{ lang }` | 用 `judge.meta` 基于汇总数据生成总评（缓存到 `app_verdicts`） |
-
-适配度 = 0.30×完成率 + 0.30×SUS/100 + 0.25×还会再用比例 + 0.15×(满意度−1)/6（缺项按剩余权重归一化）；专家基线 Session 不计入。所有主观指标均为模拟估计。
+| `GET /sessions/:id` | 一次使用：人物、所属发布（`launch`）、逐步时间线（截图证据、想法、动作、地点、资源）、世界事件、事后访谈 |
+| `POST /sessions/:id/ask` `{ q }` | 追问这次使用 → `{ answer }` |
+| `POST /issues/:id/triage`（管理员） `{ status }` | `confirmed` / `rejected` / `open` |
+| `GET /human`、`POST /human/:id/resolve`（管理员） | 需要人介入的任务（例如验证码） |
+| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON。设置了 `JW_PASSCODE` 时，游戏内面板用 `?k=<sha256("jw-evidence:"+JW_PASSCODE) 前 32 位十六进制>` 访问（只对本接口有效） |
 
 ### 单端口网关（`apps/gateway`，`JW_PORT`，默认 `0.0.0.0:7777`）
 
@@ -81,11 +78,11 @@
 
 ### NATS（JobsWorld 事件总线）
 
-主题与消息格式见 `packages/jobsworld/src/protocol.ts` 与 [`JOBSWORLD.md`](JOBSWORLD.md) §3.2。
+主题与消息格式见 `packages/jobsworld/src/protocol.ts` 与 [`JOBSWORLD.md`](JOBSWORLD.md) §3.2。发布相关：`jw.launches`（广播各产品的人数）、`jw.launches.get`、`jw.cmd.publish`、`jw.cmd.promote`、`jw.cmd.invite`（请求/应答；游戏端与 API 共用）。
 
-## 2. CLI
+## 2. 命令行与 MCP
 
-见 `pnpm pux --help` 与 [`QUICK_START.md`](QUICK_START.md)。
+`jobs`（仓库内为 `pnpm jobs`）通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`；`jobs mcp` 以 stdio 启动 MCP 服务，工具为 `publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ## 3. UAP v0.2（执行层接口）
 
@@ -106,12 +103,12 @@ interface Executor {
 
 | 角色键（pux.config.yaml） | 别名 | 用途 |
 |---|---|---|
-| mind_fast | mind.fast | Persona Mind 每一步 |
-| mind_slow | mind.slow | 记忆整理、生活目标、回访间生活 |
+| mind_fast | mind.fast | 人物使用时的每一步；注意到产品后要不要点开 |
+| mind_slow | mind.slow | 记忆整理、用完之后怎么评价与跟谁说、生活目标 |
 | operator_locate | operator.locate | Midscene 看截图定位目标 |
 | world_sim | world.sim | LLM 补充世界事件（规则优先） |
 | judge_0..2 | judge.panel.0..2 | 主观模拟评估、AI 质量（不同档位 + 不同视角） |
-| judge_meta | judge.meta | 问题合成、归因复核、假设判定、校准匹配 |
+| judge_meta | judge.meta | 一页结论的归纳、问题合成、归因复核、校准匹配 |
 | interview | interview | 事后访谈、可追问访谈 |
 | gen_persona / product_induce | gen.persona / product.induce | Persona 生成、产品理解 |
 | embed / image_gen | embed / image.gen | 记忆与去重向量 / 相机注入素材 |
@@ -119,9 +116,9 @@ interface Executor {
 ## 5. 数据文件格式
 
 - Persona：`config/personas/**/*.yaml`（`PersonaSpecSchema`）
-- 场景模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）。默认不用：每次使用发生在人物此时此地的处境里（`sessions.world_context`，`world_template_id = 'live'`）；只有 Study 显式指定 `world_ids` 时才用模板
+- 场景模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）。默认不用：每次使用发生在人物此时此地的处境里（`sessions.world_context`，`world_template_id = 'live'`）；只有内部校准批次显式指定 `world_ids` 时才用模板
 - 人口抽样表：`config/population/{zh-CN,en-US}.json`；随包居民：`config/population/residents.jsonl`（每行 `{ spec, household, skeleton }`）
 - ProductSpec：`data/apps/<app>/<version>/product.yaml`（`ProductSpecSchema`）
-- 测试环境重置（`pux app add --reset-url`）：每次 Study 开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。注意：同一环境上并发运行多个 Study 会互相干扰。
-- 已知缺陷清单（`pux app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
+- 测试环境重置（`jobs dev app add --reset-url`）：每个校准批次开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。
+- 已知缺陷清单（`jobs dev app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
 - 校准输入：见 [`CALIBRATION.md`](CALIBRATION.md)

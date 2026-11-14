@@ -1,12 +1,12 @@
 // 实时世界状态：WebSocket /api/v1/stream → 外部 store（useSyncExternalStore）
 import { useSyncExternalStore } from 'react';
-import type { SessionLive, Snapshot, Tone } from './types.ts';
+import type { LaunchLive, SessionLive, Snapshot, Tone } from './types.ts';
 
 export interface FeedItem { key: string; persona_id: string; name?: string; session: SessionLive; ts: number }
 export interface SayItem { persona_id: string; name: string; text: string; tone: Tone; ts: number }
 
-interface State { snapshot: Snapshot | null; feed: FeedItem[]; says: SayItem[]; connected: boolean }
-let state: State = { snapshot: null, feed: [], says: [], connected: false };
+interface State { snapshot: Snapshot | null; feed: FeedItem[]; says: SayItem[]; launches: LaunchLive[] | null; connected: boolean }
+let state: State = { snapshot: null, feed: [], says: [], launches: null, connected: false };
 const subs = new Set<() => void>();
 const emit = () => { for (const s of subs) s(); };
 const set = (patch: Partial<State>) => { state = { ...state, ...patch }; emit(); };
@@ -23,6 +23,7 @@ function connect() {
   ws.onmessage = (m) => {
     const msg = JSON.parse(m.data as string) as { type: string; data: unknown };
     if (msg.type === 'snapshot') set({ snapshot: msg.data as Snapshot });
+    else if (msg.type === 'launches') set({ launches: (msg.data as { launches: LaunchLive[] }).launches });
     else if (msg.type === 'live') {
       const d = msg.data as { persona_id: string; session: SessionLive; ts: number };
       const key = `${d.session.id}:${d.session.step_idx}`;
@@ -42,4 +43,6 @@ export const useSnapshot = () => useStream((s) => s.snapshot);
 export const useConnected = () => useStream((s) => s.connected);
 export const useFeed = () => useStream((s) => s.feed);
 export const useSays = () => useStream((s) => s.says);
+/** 已发布产品的实时漏斗（世界服务每隔几秒推一次）；还没收到时为 null */
+export const useLiveLaunches = () => useStream((s) => s.launches);
 export const seedSnapshot = (s: Snapshot | null | undefined) => { if (s && !state.snapshot) set({ snapshot: s }); };

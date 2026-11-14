@@ -66,7 +66,7 @@ export function PeoplePage() {
                   </div>
                   <p className="truncate text-xs text-fg-muted">{p.occupation}</p>
                   <p className="mt-1 truncate text-xs text-fg-subtle">{l ? `${place(l.place_id) || L(l.place_kind)} · ${l.activity}` : L(p.segment)}</p>
-                  <p className="tabular mt-1 text-xs text-fg-subtle">{p.sessions ? `${t('n_sessions', { n: p.sessions })} · ${p.apps.length} ${t('nav.apps')}` : '—'}</p>
+                  <p className="tabular mt-1 text-xs text-fg-subtle">{p.sessions ? `${t('n_sessions', { n: p.sessions })} · ${p.apps.length} ${t('nav.products')}` : '—'}</p>
                 </Link>
               </li>
             );

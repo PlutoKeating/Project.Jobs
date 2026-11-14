@@ -11,7 +11,7 @@ export function userCommands(program: Command) {
     .option('--landing <url>', '官网或落地页').option('--desc <text>', '商店页上的介绍').option('--ad <text>', '广告文案').option('--intensity <0-1>', '宣发强度：0.1 悄悄上线，1 全城铺开', '0.3').option('--phone-only', '只在手机上开（H5）')
     .action(run(async (url: string, o: { name: string; tagline: string; landing?: string; desc?: string; ad?: string; intensity: string; phoneOnly?: boolean }) => {
       const l = await api<LaunchView>('/launches', { body: { name: o.name, tagline: o.tagline, url, landing_url: o.landing, description: o.desc, ad_text: o.ad, intensity: Number(o.intensity), form: o.phoneOnly ? 'h5' : 'web' } });
-      console.log(`✅ 已发布「${l.name}」 ${l.id}\n   去城里看：${apiBase()}/?launch=${l.id}\n   想马上得到反馈：jobs invite ${l.id} -n 3`);
+      console.log(`✅ 已发布「${l.name}」 ${l.id}\n   在网页上看：${apiBase()}/products/${l.id}\n   想马上得到反馈：jobs invite ${l.id} -n 3`);
     }));
 
   program.command('ls').description('已发布的产品').action(run(async () => {

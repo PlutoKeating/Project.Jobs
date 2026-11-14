@@ -3,13 +3,12 @@ import type { FastifyInstance } from 'fastify';
 import { existsSync } from 'node:fs';
 import { dataPath } from '@pux/core';
 import { memoryCounts } from '@pux/memory';
-import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, observations, sessions, steps, studies, worldStates } from '@pux/db';
+import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, launches, observations, sessions, steps, studies, worldStates } from '@pux/db';
 import { blobs } from '@pux/storage';
 import * as E from '@pux/engine';
 import { computeLayout, kvGetJson, latestPersonas, liveContextFor, loadAgenda, personaById, personaMemoryList, personaSessions, personaTrust, residentOf, tiesOf, SUBJ, type Snapshot } from '@pux/jobsworld';
 import { login, logout, requireAdmin, roleOf, authEnabled } from './auth.ts';
 import { avatarFor } from './avatars.ts';
-import { appRollup, cachedVerdict, generateVerdict, sessionFacts } from './rollup.ts';
 import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
 
@@ -36,9 +35,9 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     const [sc] = await db.select({ n: count() }).from(sessions);
     const [ic] = await db.select({ n: count() }).from(issues);
     const live = await db.select({ id: sessions.id }).from(sessions).where(inArray(sessions.status, ['running', 'waiting_human']));
-    const tested = await db.selectDistinct({ app: appVersions.app_id }).from(studies).innerJoin(appVersions, eq(appVersions.id, studies.app_version_id));
+    const [lc] = await db.select({ n: count() }).from(launches);
     const pending = await db.select({ id: humanTasks.id }).from(humanTasks).where(eq(humanTasks.status, 'pending'));
-    return { personas: (await latestPersonas()).length, sessions: sc.n, issues: ic.n, live: live.length, apps_tested: tested.length, human_pending: pending.length, snapshot: await snapshot() };
+    return { personas: (await latestPersonas()).length, sessions: sc.n, issues: ic.n, live: live.length, launches: lc.n, human_pending: pending.length, snapshot: await snapshot() };
   });
 
   // ---- 人物 ----
@@ -71,7 +70,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     const date = snap?.clock.date ?? new Date().toISOString().slice(0, 10);
     return {
       id: p.id, version: p.version, kind: p.kind, locale: p.locale, segment: p.segment, target_user: p.target_user, source: p.source, frozen: p.frozen, created_at: p.created_at,
-      spec: p.spec, agenda: await loadAgenda(id, date), memories: await personaMemoryList(id, 120), sessions: await personaSessions(id, 80), trust: await personaTrust(id),
+      spec: p.spec, agenda: await loadAgenda(id, date), memories: await personaMemoryList(id, 120), sessions: await personaSessions(id, 80), launch_of: Object.fromEntries((await getDb().select({ id: launches.id, app_id: launches.app_id }).from(launches)).map((l) => [l.app_id, l.id])), trust: await personaTrust(id),
       live: snap?.personas.find((x) => x.id === id) ?? null, clock: snap?.clock ?? null,
       // 世界里的人：家庭、工作地点、钱包、关系网，以及此时此地的处境（合并世界：这就是他使用产品时的上下文）
       resident: await residentOf(id).then((x) => (x ? { household_id: x.household_id, role: x.role, work_group: x.work_group, workplace_id: x.workplace_id, income_month: x.income_month, currency: x.currency, wallet: x.wallet, life_event: x.life_event } : null)),
@@ -104,35 +103,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   app.post('/api/v1/world/replay', async (q) => request(SUBJ.cmdReplay, q.body ?? {}, 10_000));
   app.post('/api/v1/world/ask', async (q) => request(SUBJ.ask, q.body ?? {}));
 
-  // ---- 软件 ----
-  app.get('/api/v1/apps', async () => {
-    const db = getDb();
-    const list = await db.select().from(apps).orderBy(apps.name);
-    const out = [];
-    for (const a of list) {
-      const facts = (await sessionFacts(a.id)).filter((f) => !f.expert);
-      const vs = await db.select({ id: appVersions.id }).from(appVersions).where(eq(appVersions.app_id, a.id));
-      const iss = vs.length ? await db.select({ severity: issues.severity, status: issues.status }).from(issues).where(inArray(issues.app_version_id, vs.map((v) => v.id))) : [];
-      const live = iss.filter((i) => i.status !== 'rejected' && i.status !== 'folded');
-      const sus = facts.map((f) => f.sus).filter((x): x is number => x !== null);
-      const comp = facts.map((f) => f.completed).filter((x): x is boolean => x !== null);
-      out.push({ id: a.id, name: a.name, description: a.description, form: a.form, versions: vs.length, sessions: facts.length, personas: new Set(facts.map((f) => f.persona_id)).size,
-        completion: comp.length ? comp.filter(Boolean).length / comp.length : null, sus: sus.length ? sus.reduce((x, y) => x + y, 0) / sus.length : null,
-        issues: { P0: live.filter((i) => i.severity === 'P0').length, P1: live.filter((i) => i.severity === 'P1').length, total: live.length },
-        last_run: facts.reduce<Date | null>((m, f) => (f.started_at && (!m || f.started_at > m) ? f.started_at : m), null) });
-    }
-    return out;
-  });
-  app.get('/api/v1/apps/:id/report', async (q, r) => (await appRollup((q.params as P).id)) ?? r.code(404).send({ error: 'not_found' }));
-  app.get('/api/v1/apps/:id/verdict', async (q) => {
-    const lang = (q.query as { lang?: string }).lang === 'en' ? 'en' : 'zh';
-    return (await cachedVerdict((q.params as P).id, lang)) ?? null;
-  });
-  app.post('/api/v1/apps/:id/verdict', async (q, r) => {
-    if (!requireAdmin(q, r)) return;
-    const lang = (q.body as { lang?: string } | undefined)?.lang === 'en' ? 'en' : 'zh';
-    try { return await generateVerdict((q.params as P).id, lang); } catch (e) { return r.code(422).send({ error: String((e as Error).message) }); }
-  });
+  // ---- 使用过程 ----
   app.get('/api/v1/sessions/:id', async (q, r) => {
     const id = (q.params as P).id; const db = getDb();
     const [s] = await db.select().from(sessions).where(eq(sessions.id, id));
@@ -142,8 +113,9 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
     const obs = new Map((await db.select({ id: observations.id, url: observations.url, title: observations.title, data: observations.data }).from(observations).where(eq(observations.session_id, id))).map((o) => [o.id, o]));
     const ws = new Map((await db.select({ step_idx: worldStates.step_idx, state: worldStates.state }).from(worldStates).where(eq(worldStates.session_id, id))).map((w) => [w.step_idx, w.state as Record<string, unknown>]));
     const p = await personaById(s.persona_id);
+    const [lch] = await db.select({ id: launches.id, name: launches.name }).from(launches).where(eq(launches.study_id, s.study_id));
     return {
-      session: s, app: meta, persona: p ? { id: p.id, name: p.spec.identity.name, occupation: p.spec.identity.occupation, age: p.spec.identity.age, segment: p.segment, locale: p.locale } : null,
+      session: s, app: meta, launch: lch ?? null, persona: p ? { id: p.id, name: p.spec.identity.name, occupation: p.spec.identity.occupation, age: p.spec.identity.age, segment: p.segment, locale: p.locale } : null,
       steps: st.map((x) => { const o = x.observation_id ? obs.get(x.observation_id) : undefined; const w = ws.get(x.idx); return {
         idx: x.idx, sim_clock: x.sim_clock, monologue: x.monologue, intent: x.intent, decision: x.decision, expectation: x.expectation, expectation_violated: x.expectation_violated,
         dynamic_state: x.dynamic_state, action: x.action_request, result: x.action_result, url: o?.url, title: o?.title, screenshot_ev: (o?.data as { screenshot_ev?: string } | undefined)?.screenshot_ev,

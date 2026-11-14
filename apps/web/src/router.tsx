@@ -3,10 +3,8 @@ import { Shell } from './components/Shell.tsx';
 import { WorldPage } from './pages/World.tsx';
 import { PeoplePage } from './pages/People.tsx';
 import { PersonPage } from './pages/Person.tsx';
-import { AppsPage } from './pages/Apps.tsx';
-import { AppReportPage } from './pages/AppReport.tsx';
-import { StudiesPage } from './pages/Studies.tsx';
-import { StudyPage } from './pages/Study.tsx';
+import { ProductsPage } from './pages/Products.tsx';
+import { LaunchPage } from './pages/Launch.tsx';
 import { SessionPage } from './pages/Session.tsx';
 import { HumanPage } from './pages/Human.tsx';
 
@@ -15,15 +13,14 @@ const P = () => root;
 const world = createRoute({ getParentRoute: P, path: '/', component: WorldPage, validateSearch: (s: Record<string, unknown>): { focus?: string; place?: string } => ({ focus: typeof s.focus === 'string' ? s.focus : undefined, place: typeof s.place === 'string' ? s.place : undefined }) });
 const people = createRoute({ getParentRoute: P, path: '/people', component: PeoplePage });
 const person = createRoute({ getParentRoute: P, path: '/people/$id', component: PersonPage });
-const appsR = createRoute({ getParentRoute: P, path: '/apps', component: AppsPage });
-const appR = createRoute({ getParentRoute: P, path: '/apps/$id', component: AppReportPage });
-const studies = createRoute({ getParentRoute: P, path: '/studies', component: StudiesPage });
-const study = createRoute({ getParentRoute: P, path: '/studies/$id', component: StudyPage });
+const products = createRoute({ getParentRoute: P, path: '/products', component: ProductsPage });
+const TABS = ['verdict', 'people', 'voices', 'engineering'] as const;
+const launch = createRoute({ getParentRoute: P, path: '/products/$id', component: LaunchPage, validateSearch: (s: Record<string, unknown>): { tab?: (typeof TABS)[number] } => ({ tab: TABS.find((x) => x === s.tab && x !== 'verdict') }) });
 const session = createRoute({ getParentRoute: P, path: '/sessions/$id', component: SessionPage });
 const human = createRoute({ getParentRoute: P, path: '/human', component: HumanPage });
 
 export const router = createRouter({
-  routeTree: root.addChildren([world, people, person, appsR, appR, studies, study, session, human]),
+  routeTree: root.addChildren([world, products, launch, people, person, session, human]),
   defaultPreload: 'intent',
   scrollRestoration: true,
 });

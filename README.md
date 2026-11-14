@@ -1,102 +1,93 @@
-# AI 产品体验官（pux）
+# Jobs
 
-让**模拟真人**在**模拟世界**里使用**真实产品**，发现可用性问题、流程断点、「突然不对劲」时刻和 AI 回答质量问题；每条结论都有独立证据链、复现路径、受影响人群和**可信度标签**。
+把产品**发布**到 **JobsWorld**——一座住着约两百位虚拟居民的城。他们过着自己的日子，在应用商店、广告、朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。你看到的是一页人话的结论，每一句都能点开看是谁说的、原话是什么、当时屏幕上是什么。
 
-> **重塑决策（2026-11-15，最新，冲突时以它为准）**：[`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md)
+> 产品决策（2026-11-15，冲突时以它为准）：[`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md)
 >
-> 设计文档：[`docs/SPEC_v0.2.md`](docs/SPEC_v0.2.md) · JobsWorld：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 实现架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · API：[`docs/API.md`](docs/API.md) · 校准：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+> 快速开始：[`docs/QUICK_START.md`](docs/QUICK_START.md) · 架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 接口：[`docs/API.md`](docs/API.md) · 城与游戏：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 校准（内部）：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
 
-## 它做什么
+## 它怎么工作
 
 ```
-灌入一个 Web App（URL）
-  → Product Intelligence：爬取页面、LLM 归纳功能/任务/假设（YAML 可人工确认）
-  → World：一座常驻运行的城（JobsWorld）住着 201 位居民——按人口统计分布抽样的家庭、职业、收入，有日程、关系网和需求
-            （饿了去吃、困了早睡、闷了找人聊）。一个人此时此地在城里的状态，就是他使用产品时的处境
-  → Exploration：按覆盖缺口、未验证假设、低可信区域自适应采样「把手机递给谁 × 带着什么生活目标 × 哪种模式」
-  → Simulation：每次使用一个独立浏览器沙箱；处境决定设备、手眼是否有空、网络、还能用多久；城里的事件和身边的人会真的打断他；
-                虚拟人（第一人称、不知道自己在被测试）只看屏幕截图——经注意力、视力、识字量滤镜后的「这一眼」——决定手上的一个动作；
-                执行层用 Midscene 看截图定位，再按这个人的手注入点击、触屏滑动、长按、打字；Policy Gate 拦截高风险动作
-  → Evidence：截图、这一眼看到的画面、录像、独白、世界事件；a11y、axe、rrweb、网络日志作为工程证据。全部内容寻址入库
-  → Evaluation（Session 结束后）：问题分两路——虚拟人亲历的（预期落空、反复尝试、放弃）进体验问题；
-                用户看不到的技术信号与专家检查（无障碍扫描、接口与脚本错误、评审团、AI 回答核查）进工程附录
-                → 事后访谈（SUS/UMUX-Lite 模拟估计）→ 问题合成 → 干净重放 + 专家对照 + 复核归因 → 假设判定
-  → Calibration：已知缺陷注入版本的检出率/误报率、真人基准、埋点漏斗、评论 → 可信度（high/medium/low/unknown）
-  → Report：中英双语 Markdown + 离线 HTML 查看器（截图时间线、rrweb 回放、录像、校准卡、热力矩阵、版本对比）
+发布（网址、名字、一句话）
+  → 商店页：拍下产品的样子，上架到城里的应用商店
+  → 遇到：居民按各自的日程生活。手机在手边时会刷到广告、逛到商店、看到别人发的动态；路上瞥见广告牌；熟人当面提起
+  → 注意：多数曝光根本没被注意到（规则计算，不调用模型）
+  → 决定：只有注意到的人，才由他自己说要不要点开（一次模型调用）。忙、累、对不上自己的事，就划过去
+  → 使用：点开的人在自己此时此地的处境里用——地铁上单手拿手机、带着孩子、只剩五分钟。
+          他只看屏幕截图，不知道这是测试；需要注册时用城里发给他的邮箱和手机号，验证码真的会送到；付款从他的钱包扣
+  → 之后：用完写不写商店评论、跟谁说、发不发动态、过几天回不回来，都由他这次的经历决定；口碑沿着关系网传开
+  → 结论：一页人话——好不好用、最让人难受的地方、让人高兴的地方、谁会留下谁会走、看到的人为什么没点开、最该改的一件事。
+          虚拟人亲身遇到的问题带复现步骤；用户看不到的技术信号（无障碍扫描、接口与脚本错误）单独放进工程附录
 ```
 
-## 一分钟开始
+所有人数都是这座城里实际发生的人数，是**模拟**，不是对真实市场的预测。
+
+## 三个入口
+
+**网页**（第一眼是城）：右上角「发布」，粘贴网址、名字、一句话。城里随时能看到谁正在用；「产品」里是每个产品的结论、人数、宣发强度与投给谁、把手机递给几个人、口碑、工程附录。
+
+**命令行**：
 
 ```bash
-cp .env.example .env               # 填 VERTEX_PROJECT 与 GOOGLE_ADC_FILE
-pnpm install && npx playwright install chromium
-docker compose up -d               # Postgres+pgvector / MinIO / LiteLLM / Temporal
-pnpm pux doctor                    # 检查全部依赖
-pnpm pux init                      # 迁移 + 导入人物与随包自带的 185 位居民 + 让他们住进城里 + 注册内置 Demo
-pnpm demos &                       # 启动 11 个 Demo × (干净版 + 植入缺陷版)
-
-# 全自动评测任意 Web App（新项目一步到位）
-pnpm pux auto --url http://127.0.0.1:5501/ --name my-app --sessions 6 --steps 30
-
-# 可视化工作台 JobsWorld（网页 + Terraria 共用一个端口，局域网可访问）
-pnpm jobsworld                     # http://<本机 IP>:7777/
+jobs publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
+jobs status 闪念笔记            # 多少人看到、注意到、有兴趣、打开过、回来再用；谁在用；路过的人怎么想
+jobs invite 闪念笔记 -n 3       # 不等他们自己遇到：把手机递给三个人
+jobs report 闪念笔记 --eng      # 一页结论 + 亲历的问题（含复现步骤）+ 工程附录
+jobs promote 闪念笔记 --intensity 0.8
 ```
 
-报告输出在 `data/reports/<study_id>/`（`report.zh.md`、`report.en.md`、`index.html`）。
+**Coding agent（MCP）**：写完代码就发布、看反应、取回可据此修改的问题清单，然后继续改。
+
+```bash
+claude mcp add jobs -- jobs mcp        # Claude Code；其他支持 MCP 的 agent 同理（stdio，命令为 `jobs mcp`）
+```
+
+工具：`publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。
+
+在仓库里开发时，`jobs` 即 `pnpm jobs`（见快速开始）。
+
+**Terraria**：同一座城可以用原版 Terraria 或 tModLoader 客户端走进去，居民是会走动、头上冒想法的角色；`/jw launches`、`/jw publish`、`/jw promote`、`/jw invite` 与网页是同一套能力。
 
 ## 仓库结构
 
 | 路径 | 说明 |
 |---|---|
-| `apps/cli` | `pux` 命令行（主入口） |
-| `apps/api` | JobsWorld API：REST `/api/v1`（人物、世界、软件汇总、Study/Session/问题/人工接管，`POST /studies` 支持 `Idempotency-Key`）+ WebSocket 实时推送 + 托管网页 |
-| `apps/web` | 可视化工作台（React）：侧视像素城市实时观察、人物管理、软件汇总报告、评测与接管 |
-| `apps/world` | 世界服务：世界时钟、人物日程、位置模拟、只读跟踪正在运行的 Session、回放 → NATS |
-| `apps/gateway` | 单端口复用网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
-| `packages/jobsworld` | 世界契约与规则：城镇布局、日程、需求与行为规则、居民与关系网、此时此地的处境（合并世界）、NATS 主题与消息 |
-| `apps/worker` | Temporal worker（Study=工作流，Session=子工作流，Step=Activity，人工接管=Signal） |
-| `packages/core` | UAP v0.2 类型、领域 schema（六层 Persona、世界模板、ProductSpec、Study）、配置 |
-| `packages/db` | Drizzle schema（spec §16 全部实体）与迁移 |
-| `packages/storage` | MinIO/S3 证据存储（内容寻址） |
-| `packages/llm` | LiteLLM 角色别名网关、结构化输出、trace、厂商隔离校验 |
-| `packages/memory` | 人物记忆：每人一棵 ewave 记忆树（`@plutokeating/ewave`）的适配层——持久化、单写者、节点上限、检索、旧记忆迁入 |
-| `packages/executor` | UAP 执行层：浏览器沙箱（桌面 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像/rrweb/axe |
-| `packages/engine` | Human / World / Exploration / Product / Runtime / Evaluation / Calibration / Report / Control |
-| `demos/kit` | 11 个被测 Demo（AI 助手、记账、待办、外卖、游戏、资讯、健身、笔记、天气、菜谱、儿童识字），每个都有干净版与植入缺陷版 |
-| `config/` | 全局配置、手写人物、场景模板（只用于可复现的校准）、人口抽样表与随包居民（`config/population/`）、规则、JobsWorld 城镇布局与日程骨架（`config/jobsworld/`） |
-| `infra/` | LiteLLM 角色别名配置、Postgres 初始化 |
-| `examples/calibration` | 真人基准 / 漏斗 / 评论的示例文件 |
-| `data/` | 运行时数据（不入库）：报告、产品理解草稿、生成的 Persona、学习参数 |
-
-## 本机模型
-
-本机只配置了 Vertex AI 上的 Gemini（经 LiteLLM 代理，ADC 鉴权）：`gemini-4-hydrogen`（≈flash，用于虚拟人的想法与 Midscene 定位）、`gemini-4-argon`（≈pro，用于记忆整理/访谈/评审）、`gemini-4-carbon`（≈ultra，用于评审/归因复核）。由于只有一家厂商，厂商隔离为 `warn` 模式：报告会标注并把相关结论可信度降一级。新增厂商只需修改 `infra/litellm/config.yaml` 与 `config/pux.config.yaml` 的 `roles`。
+| `apps/cli` | `jobs` 命令行：发布、状况、结论、宣发、递手机、MCP 服务；`jobs dev …` 收纳内部校准用的指派式批次 |
+| `apps/api` | REST `/api/v1`（发布、人物、世界、使用过程、证据、虚拟身份收件箱）+ WebSocket 实时推送 + 托管网页 |
+| `apps/web` | 网页（React）：侧视像素城、产品页（结论 / 人 / 口碑 / 工程附录）、人物、使用过程回看 |
+| `apps/world` | 世界服务：时钟、日程、需求、位置；驱动发布引擎（曝光 → 决定 → 使用 → 口碑）；NATS 广播 |
+| `apps/gateway` | 单端口网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
+| `packages/jobsworld` | 城的契约与规则：城镇布局、日程、需求、居民与关系网、此时此地的处境、NATS 主题与消息 |
+| `packages/engine` | 发布主线（`launch/`）、人（记忆、感知、人口）、使用过程运行时、事后评估与问题合成、校准、报告 |
+| `packages/executor` | 浏览器沙箱（电脑 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像 |
+| `packages/memory` | 人物记忆：每人一棵 ewave 记忆树（`@plutokeating/ewave`）的适配层 |
+| `packages/llm` | 模型角色网关、结构化输出、花费记录 |
+| `packages/core` · `packages/db` · `packages/storage` | 类型与 schema · Drizzle 表与迁移 · 证据存储（MinIO/S3，内容寻址） |
+| `game/` · `infra/game/` | Terraria 两个游戏端的插件与模组（C#）· 游戏服镜像 |
+| `demos/kit` | 11 个示例产品（每个有干净版与植入缺陷版），用于演示与校准 |
+| `config/` | 人口抽样表与随包居民（`population/`）、城镇布局与日程骨架（`jobsworld/`）、手写人物、规则 |
 
 ## 人口从哪来
 
-- **中国人群**：按普查口径的条件抽样表（`config/population/zh-CN.json`：家庭类型 → 年龄 → 学历 → 职业 → 收入）。表里的数值是依据公开汇总数据的量级手工设定的近似值，不是微观数据拟合；生成后输出边际分布供核对。
-- **英语区人群**：从 [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA)（CC BY 4.0，基于美国人口普查分布的合成人口）随机抽样，年龄、性别、婚姻、学历、职业、所在地原样采用，再拼成家庭。
-- **数值由规则推导**：数字素养、视力、阅读速度、性格、耐心、价格敏感度等由年龄、学历、职业、收入加随机扰动推导（`packages/engine/src/human/population.ts`），模型不决定任何数值。
-- **模型只写叙事**：按家庭一次调用，写名字、生平、家人、看法。
-- 随包自带一批已生成的居民：`config/population/residents.jsonl`（185 人）。重新生成：`pnpm pux world populate -n <人数>`。
+- **中国人群**：按普查口径的条件抽样表（`config/population/zh-CN.json`：家庭类型 → 年龄 → 学历 → 职业 → 收入）。数值是依据公开汇总数据的量级手工设定的近似值，不是微观数据拟合。
+- **英语区人群**：从 [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA)（CC BY 4.0，基于美国人口普查分布的合成人口）随机抽样，再拼成家庭。
+- **数值由规则推导**：数字素养、视力、阅读速度、性格、耐心、价格敏感度等由年龄、学历、职业、收入加随机扰动推导；模型不决定任何数值，只写名字、生平和看法。
+- 随包自带 185 位居民（`config/population/residents.jsonl`），连同手写人物共 201 人、113 户。重新生成：`jobs world populate -n <人数>`。
 
 ## 定位声明
 
-合成用户的反馈偏浅、偏正面、缺少长尾（NN/g、ACM 2025）。本系统**不取代真人用户研究**：所有主观指标都是「模拟估计」；没有校准数据的结论一律标为「未校准（仅作假设）」。已知缺陷注入版本是早期最主要的客观校准源。
+合成用户的反馈偏浅、偏正面、缺少长尾。Jobs **不取代真人用户研究**：它让你在没有任何真实用户之前，先看到一群各不相同的人第一次遇到你的产品时会发生什么。人数与评分都是模拟；尚未用真人数据校准。模型调用不设花费上限，界面与命令行会一直显示已花的钱。
 
-## 本机验证记录（2026-11-14）
+## 验证记录
 
 | 验证项 | 结果 |
 |---|---|
-| 单元测试（`pnpm test`） | 18 项通过：UAP 抽象、Policy Gate、动作精度/状态规则、识字量、§7.2 因果链、任务信号、校准统计、schema |
-| 集成测试（`PUX_INTEGRATION=1 pnpm test`） | 6 项通过：TTS 语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、下载反馈与长文本粘贴、弱网注入 |
-| 端到端（inline） | 助手 / 记账 / 外卖（H5，中英混合，压力与对抗模式，第 1 天回访）/ 儿童识字（儿童 Persona + Policy Gate）/ 天气（REST API 创建） |
-| 端到端（Temporal） | 记账 Demo、翻牌游戏；幂等键重复提交返回同一 Study（2026-11-14，重塑前的执行器） |
-| 全自动灌入新项目 | `pux auto`（CLI）与控制台 `POST /api/projects`：爬取 → 归纳 → 自动确认 → 多轮采样 → 评估 → 校准 → 报告 |
-| 人工接管 | 验证码检测 → 挂起 → DevTools 远程接管地址 → `pux human resolve` → 继续 |
-| 校准验收（助手 Demo 植入缺陷版，16 Session + D1/D7 回访） | 最终运行检出率 72.7%（8/11，CI 0.43–0.90）≥ 60% ✅，误报率 7.7%（CI 0.01–0.33）≤ 30% ✅；两次完整运行合计 72.7%，四次运行合计 65.9%，11 个缺陷均至少检出一次。详见 `docs/CALIBRATION_RECORD.md` |
-| JobsWorld 工作台 | 世界服务 + API + 网页 + 单端口网关 + TShock/tModLoader 游戏服，均在本机实测（详见 `docs/JOBSWORLD.md` §7）；产品负责人已用真实 Terraria 客户端验证 |
-| 重塑阶段 ②「世界和人」（2026-11-15） | 单元测试 54 项通过；生成并入住 185 位新居民（97 户，中国与英语区各半），连同原有 16 人共 201 人、113 户、1287 条关系；世界服务带 201 人常驻运行；合并世界 3 人批次（`std_if0qv0z9zm38`）：66 岁的退休职工清晨在公园打太极时被递了手机，看到红色报错「怕乱点扣钱」放弃；另一位在早饭时亲身遇到笔记不保存；TShock 与 tModLoader 镜像重新编译通过 |
-| 重塑阶段 ①「像人」（2026-11-15） | 单元测试 37 项、集成测试 6 项通过；笔记 Demo 植入缺陷版 3 人批次（`std_kcejshfmj6a5`）：虚拟人只看截图完成注册、登录失败后改去注册、新建并填写笔记；一人亲身遇到「显示已自动保存但内容丢失」并放弃（命中 NT-01，干净重放 100% 复现）；报告分为体验问题 2 条与工程附录 3 条 |
+| 单元测试（`pnpm test`） | 65 项通过：感知与手、识字量、记忆与态度边界、人口与需求规则、曝光与注意、渠道常态、虚拟身份、命令行输出等 |
+| 集成测试（`PUX_INTEGRATION=1 pnpm test`） | 6 项通过：语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、下载与长文本粘贴、弱网注入 |
+| 发布主线（2026-11-15） | 发布笔记示例（植入缺陷版）：一个模拟日内 190 人看到、91 人注意到；受邀的 3 人全部亲身撞上「显示已自动保存但内容丢失」并放弃；结论页、命令行、MCP、网页与两个游戏端镜像均实测 |
+| 像人（2026-11-15） | 虚拟人只看截图完成注册、登录失败后改去注册、新建并填写笔记；问题分为体验问题与工程附录 |
+| 世界和人（2026-11-15） | 201 人、113 户、约 1287 条关系常驻运行；使用发生在人物此时此地的处境里 |
+| Terraria | TShock 与 tModLoader 镜像编译通过；产品负责人已用真实客户端验证进入同一座城 |
 
-已知局限：本机只有一家模型厂商（Gemini），评审与 Mind 未做到厂商隔离（报告已标注并降级）；单次 Study 的检出率存在抽样波动（n=11，置信区间较宽），需要较深使用才会暴露的缺陷（例如第 3 次提问才出现的弹窗）依赖留存回访与更多轮次；真人基准、埋点、评论校准需要导入真实数据才有意义（已提供示例与命令）；儿童 Persona 的安全 rubric 仍需人工审核后才能在正式环境开启。
+已知局限：本机只接了一家模型厂商；自然流量下的点开率取决于模型对「这个人此刻会不会点」的判断，未经真人数据校准；需要较深使用才暴露的问题依赖回访与更多人次。

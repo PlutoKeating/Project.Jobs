@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearch } from '@tanstack/react-router';
 import { ArrowRight, CloudRain, Megaphone, Pause, Play, Send, Users, WifiOff, X, ZapOff, Volume2 } from 'lucide-react';
-import { evidenceUrl, post, useMe, useTown } from '../lib/api.ts';
+import { evidenceUrl, post, useLaunches, useMe, useTown } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import { seedSnapshot, useSnapshot } from '../lib/stream.ts';
-import type { PersonaLive, TownLayout } from '../lib/types.ts';
+import type { Launch, PersonaLive, TownLayout } from '../lib/types.ts';
 import { CityCanvas, toScreen } from '../components/city/CityCanvas.tsx';
 import { Avatar, Button, Seg } from '../components/ui.tsx';
+import { useLiveFunnel } from './Products.tsx';
 import { useOverview } from '../lib/api.ts';
 
 const placeName = (town: TownLayout | undefined, id: string | undefined, lang: string) => {
@@ -95,6 +96,32 @@ function Board({ people, town, selected, onPick, filter }: { people: PersonaLive
         </li>
       ))}
     </ul>
+  );
+}
+
+function ProductRow({ launch }: { launch: Launch }) {
+  const { t } = useT();
+  const l = useLiveFunnel(launch); const f = l.funnel;
+  return (
+    <li>
+      <Link to="/products/$id" params={{ id: l.id }} className="group grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 px-5 py-2.5 transition-colors hover:bg-surface-hover">
+        <span className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-medium text-fg-display group-hover:text-accent">{l.name}</span>{f.using_now > 0 && <span className="inline-flex shrink-0 items-center gap-1 text-xs text-accent"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{f.using_now}</span>}</span>
+        <span className="tabular text-xs text-fg-muted" title={`${t('f_opened')} / ${t('f_reached')}`}><span className="text-sm text-fg-display">{f.opened}</span> / {f.reached}</span>
+      </Link>
+    </li>
+  );
+}
+
+/** 城里此刻有哪些产品，各有多少人打开过 / 看到过 */
+function ProductsNow() {
+  const { t } = useT(); const q = useLaunches();
+  const live = (q.data ?? []).filter((l) => l.status !== 'ended');
+  if (!live.length) return null;
+  return (
+    <section className="border-b border-border pb-2">
+      <h2 className="px-5 pb-1 pt-4 text-sm font-semibold">{t('nav.products')}</h2>
+      <ul>{live.map((l) => <ProductRow key={l.id} launch={l} />)}</ul>
+    </section>
   );
 }
 
@@ -198,6 +225,7 @@ export function WorldPage() {
         <div className="min-h-0 flex-1 overflow-y-auto">
           {selected && <PersonCard p={selected} town={town} onClose={() => { setSel(null); void nav({ to: '/', search: {}, replace: true }); }} />}
           {place && !selected && <PlacePanel id={place} town={town} people={people} onPick={pick} onClose={() => setPlace(null)} admin={!!me?.admin} />}
+          {!selected && !place && <ProductsNow />}
           <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/95 px-5 py-3 backdrop-blur">
             <h2 className="flex items-center gap-2 text-sm font-semibold">{t('now')}{usingN > 0 && <span className="tabular rounded-xs bg-accent px-1.5 text-xs text-accent-fg">{usingN}</span>}</h2>
             <Seg size="sm" value={filter} onChange={setFilter} options={[{ value: 'using', label: t('using') }, { value: 'all', label: t('everyone') }]} />

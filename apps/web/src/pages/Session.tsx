@@ -67,7 +67,7 @@ export function SessionPage() {
         {d.persona && <Link to="/people/$id" params={{ id: d.persona.id }}><Avatar id={d.persona.id} size={72} className="!rounded-xl" /></Link>}
         <div className="min-w-0 flex-1">
           <p className="text-sm text-fg-muted">{d.persona && <Link to="/people/$id" params={{ id: d.persona.id }} className="hover:text-accent">{d.persona.name}</Link>} · {d.persona?.occupation}</p>
-          <h1 className="mt-1 text-2xl font-semibold">{d.app ? <Link to="/apps/$id" params={{ id: d.app.app_id }} className="hover:text-accent">{d.app.app}</Link> : '—'} <span className="text-fg-subtle">{d.app?.version}</span></h1>
+          <h1 className="mt-1 text-2xl font-semibold">{d.launch ? <Link to="/products/$id" params={{ id: d.launch.id }} className="hover:text-accent">{d.launch.name}</Link> : d.app?.app ?? '—'} <span className="text-fg-subtle">{d.app?.version}</span></h1>
           <p className="mt-1 text-sm text-fg-muted">{L(s.world_template_id)} · {L(s.mode)}{s.revisit_day ? ` · D${s.revisit_day}` : ''} · <span className={s.outcome === 'success' ? 'text-success' : s.outcome ? 'text-danger' : 'text-accent'}>{L(s.outcome ?? s.status)}</span></p>
           {s.end_reason && <p className="mt-1 max-w-[70ch] text-xs text-fg-subtle">{s.end_reason}</p>}
         </div>

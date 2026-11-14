@@ -66,14 +66,14 @@ function MemoryList({ items, apps }: { items: Memory[]; apps: Map<string, string
   );
 }
 
-function History({ sessions }: { sessions: PersonaSession[] }) {
+function History({ sessions, launchOf }: { sessions: PersonaSession[]; launchOf: Record<string, string> }) {
   const L = useLabel();
   const byApp = useMemo(() => { const m = new Map<string, PersonaSession[]>(); for (const s of sessions) m.set(s.app, [...(m.get(s.app) ?? []), s]); return [...m.entries()]; }, [sessions]);
   return (
     <div className="space-y-6">
       {byApp.map(([app, ss]) => (
         <div key={app}>
-          <Link to="/apps/$id" params={{ id: ss[0].app_id }} className="inline-flex items-center gap-1 font-medium text-fg-display hover:text-accent">{app}<ArrowUpRight size={13} /></Link>
+          {launchOf[ss[0].app_id] ? <Link to="/products/$id" params={{ id: launchOf[ss[0].app_id] }} className="inline-flex items-center gap-1 font-medium text-fg-display hover:text-accent">{app}<ArrowUpRight size={13} /></Link> : <span className="font-medium text-fg-display">{app}</span>}
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {ss.map((s) => (
               <li key={s.id}>
@@ -121,7 +121,7 @@ export function PersonPage() {
           )}
         </div>
         <dl className="tabular grid grid-cols-3 gap-6 text-right">
-          <div><dt className="text-xs text-fg-muted">{t('nav.apps')}</dt><dd className="text-2xl font-semibold text-fg-display">{apps.size}</dd></div>
+          <div><dt className="text-xs text-fg-muted">{t('nav.products')}</dt><dd className="text-2xl font-semibold text-fg-display">{apps.size}</dd></div>
           <div><dt className="text-xs text-fg-muted">{t('sessions')}</dt><dd className="text-2xl font-semibold text-fg-display">{d.sessions.length}</dd></div>
           <div><dt className="text-xs text-fg-muted">{t('completion')}</dt><dd className="text-2xl font-semibold text-fg-display">{okRate === null ? '—' : `${Math.round(okRate * 100)}%`}</dd></div>
         </dl>
@@ -130,7 +130,7 @@ export function PersonPage() {
       <div className="mt-4 grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="min-w-0">
           {d.agenda && <Section title={t('today')} aside={<span className="tabular text-xs text-fg-subtle">{d.agenda.sim_date}</span>}><DayLane items={d.agenda.items} minute={minute} placeName={placeName} /></Section>}
-          <Section title={t('history')}>{d.sessions.length ? <History sessions={d.sessions} /> : <p className="text-sm text-fg-subtle">—</p>}</Section>
+          <Section title={t('history')}>{d.sessions.length ? <History sessions={d.sessions} launchOf={d.launch_of ?? {}} /> : <p className="text-sm text-fg-subtle">—</p>}</Section>
           <Section title={t('memories')} aside={<span className="tabular text-xs text-fg-subtle">{d.memories.length}</span>}>{d.memories.length ? <MemoryList items={d.memories} apps={apps} /> : <p className="text-sm text-fg-subtle">—</p>}</Section>
         </div>
         <aside className="min-w-0">

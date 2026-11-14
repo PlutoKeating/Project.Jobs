@@ -1,10 +1,10 @@
-# JobsWorld：可视化工作台与 Terraria 世界（计划与决策）
+# JobsWorld：城与 Terraria 世界（计划与决策）
 
 > 状态：已实现并在本机验证（2026-11-14，分支 `feature/jobsworld`）。本文是 JobsWorld 的唯一计划与决策记录；实现与本文不一致时以代码为准并回写本文。
 
 ## 1. 目标
 
-把 pux 的数据变成**可以看、可以走进去**的东西，而不是文字日志：
+把 Jobs 的数据变成**可以看、可以走进去**的东西，而不是文字日志（以下是 2026-11-14 立项时的目标；发布主线带来的变化见 §2.1）：
 
 1. **Persona 管理**：世界里都有哪些人？点进去：他是谁、做什么工作、有哪些记忆、做过什么事。
 2. **实时观察（JobsWorld）**：一个虚拟城市。走到公园、地铁站，看到谁正在用哪个软件、在操作什么、在想什么、刚才做了什么、用完之后本来要去哪（接孩子？开车回家？）。可以用 Terraria 客户端（原版或 tModLoader）进入，也可以在浏览器里看实时小地图。
@@ -55,6 +55,8 @@
 | 城镇 | 3 栋住宅、40 套 | 5 栋住宅、120 套（宽度 1356 格）；游戏端按布局版本自动重建 |
 | 游戏内 | `/jw info` 与人物面板显示位置、日程、软件 | 另显示身心状态（很饿、很累、心情不好…）、手机是否在手边、熟人 |
 | Terraria 图形客户端 | 开发时只做了协议层与编译层验证 | 产品负责人已用真实客户端验证可用 |
+| 这座城用来做什么 | 展示指派式评测的过程（工作台有「软件」「评测」两页） | **发布**：产品上架到城里，居民自己遇到它、决定用不用、跟谁说。网页导航为「城 / 产品 / 人」，右上角「发布」；「软件汇总」与「评测」页面及其接口已删除 |
+| 游戏内的发布 | 无 | `/jw launches`（各产品的人数）、`/jw publish <网址> <名字> <一句话>`、`/jw promote <产品> <0-100|pause|resume|end>`、`/jw invite <产品> [人数]`；有人注意到产品时头上会冒出当时的想法 |
 
 规则与契约见 [`packages/jobsworld/docs/README.md`](../packages/jobsworld/docs/README.md)，世界服务见 [`apps/world/docs/README.md`](../apps/world/docs/README.md)。
 
@@ -108,6 +110,9 @@
 | `jw.persona.<id>.say` | world → 游戏 | 头顶气泡文本（想法摘要、骂人时刻） |
 | `jw.town` | 请求/应答 | 城镇布局 JSON（游戏端启动时拉取） |
 | `jw.cmd.clock` / `jw.cmd.event` / `jw.cmd.replay` | 网页/游戏 → world | 暂停/倍速、制造事件、回放 Session |
+| `jw.launches` | world → * | 已发布的产品与各自的漏斗人数（看到、注意到、有兴趣、打开过、回来再用、此刻在用、评分），发布引擎每一轮广播一次（同时写入 KV `jobsworld.launches`） |
+| `jw.launches.get` | 请求/应答 | 此刻的产品与人数（游戏内 `/jw launches`） |
+| `jw.cmd.publish` / `jw.cmd.promote` / `jw.cmd.invite` | 游戏/API → world | 发布产品、调宣发（强度 / 暂停 / 继续 / 结束，`launch_id` 可写产品名）、把手机递给几个人 |
 
 JetStream 流 `JW_LIVE` 保留 `jw.persona.*.live` 24 小时，用于断线补齐与回放。
 

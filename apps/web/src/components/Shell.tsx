@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Gamepad2, LogOut, Moon, Pause, Sun } from 'lucide-react';
-import { post, useMe, useTown, queryClient } from '../lib/api.ts';
+import { post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
 import { setLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
 import { CityCanvas } from './city/CityCanvas.tsx';
+import { PublishDialog, openPublish } from './Publish.tsx';
 import { Button } from './ui.tsx';
 
 function useTheme(): ['dark' | 'light', () => void] {
@@ -32,7 +33,7 @@ function JoinGame({ port }: { port: number }) {
   const [done, setDone] = useState(false);
   const addr = `${location.hostname}:${port}`;
   return (
-    <Button variant="ghost" size="sm" title={`${t('game')} · ${addr}`} aria-label={t('game')}
+    <Button variant="ghost" size="sm" className="hidden sm:inline-flex" title={`${t('game')} · ${addr}`} aria-label={t('game')}
       onClick={() => { void navigator.clipboard?.writeText(addr); setDone(true); setTimeout(() => setDone(false), 1600); }}>
       <Gamepad2 size={16} /><span className="hidden tabular lg:inline">{done ? t('copied') : addr}</span>
     </Button>
@@ -58,7 +59,7 @@ function Wordmark({ className = '' }: { className?: string }) {
   return (
     <Link to="/" className={`inline-flex items-center gap-2 ${className}`}>
       <svg width="22" height="22" viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden><rect x="2" y="6" width="4" height="8" fill="var(--color-secondary)" /><rect x="7" y="3" width="4" height="11" fill="var(--color-secondary-fg)" /><rect x="12" y="8" width="2" height="6" fill="var(--color-secondary)" /><rect x="8" y="5" width="1" height="1" fill="var(--color-accent)" /><rect x="9" y="8" width="1" height="1" fill="var(--color-accent)" /><rect x="0" y="14" width="16" height="2" fill="var(--color-accent)" /></svg>
-      <span className="text-[15px] font-semibold tracking-tight text-fg-display">JobsWorld</span>
+      <span className="text-[15px] font-semibold tracking-tight text-fg-display">Jobs</span>
     </Link>
   );
 }
@@ -67,7 +68,7 @@ function NavLink({ to, children }: { to: string; children: ReactNode }) {
   return <Link to={to} activeOptions={{ exact: to === '/' }} className="relative rounded-md px-3 py-1.5 text-sm text-fg-muted transition-colors hover:text-fg data-[status=active]:text-fg-display data-[status=active]:after:absolute data-[status=active]:after:inset-x-3 data-[status=active]:after:-bottom-[9px] sm:data-[status=active]:after:-bottom-[13px] data-[status=active]:after:h-0.5 data-[status=active]:after:bg-accent">{children}</Link>;
 }
 
-/** 底部常驻街道：每一页都能看到城里的人此刻在哪 */
+/** 页脚的街道：读完一页，城里的人此刻在哪还在眼前。跟在内容后面，不盖住内容 */
 function Horizon() {
   const town = useTown().data; const snap = useSnapshot(); const nav = useNavigate();
   if (!town) return <div style={{ height: 'var(--horizon-h)' }} className="border-t border-border" />;
@@ -82,6 +83,7 @@ function Horizon() {
 export function Shell() {
   const me = useMe(); const { t, lang } = useT(); const [theme, toggle] = useTheme();
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const pending = useOverview(!!me.data?.viewer).data?.human_pending ?? 0;
   useEffect(() => { if (me.data?.viewer) startStream(); }, [me.data?.viewer]);
   useEffect(() => { const f = () => void queryClient.invalidateQueries({ queryKey: ['me'] }); window.addEventListener('jw:auth', f); return () => window.removeEventListener('jw:auth', f); }, []);
   if (me.isLoading) return <div className="min-h-dvh bg-bg" />;
@@ -94,10 +96,9 @@ export function Shell() {
           <Wordmark className="mr-4 h-[var(--ds-header-height)]" />
           <nav className="order-last -mx-1 flex w-full items-center gap-0.5 overflow-x-auto pb-2 sm:order-none sm:mx-0 sm:w-auto sm:pb-0">
             <NavLink to="/">{t('nav.world')}</NavLink>
+            <NavLink to="/products">{t('nav.products')}</NavLink>
             <NavLink to="/people">{t('nav.people')}</NavLink>
-            <NavLink to="/apps">{t('nav.apps')}</NavLink>
-            <NavLink to="/studies">{t('nav.studies')}</NavLink>
-            <NavLink to="/human">{t('nav.human')}</NavLink>
+            {(pending > 0 || path === '/human') && <NavLink to="/human">{t('nav.human')}{pending > 0 && <span className="tabular ml-1.5 rounded-xs bg-accent px-1 text-xs text-accent-fg">{pending}</span>}</NavLink>}
           </nav>
           <div className="ml-auto flex items-center gap-1">
             <Clock />
@@ -105,13 +106,15 @@ export function Shell() {
             <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} aria-label="language" className="w-9 tabular">{lang === 'zh' ? 'EN' : '中'}</Button>
             <Button variant="ghost" size="sm" onClick={toggle} aria-label="theme" className="w-9">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</Button>
             {me.data?.auth_required && <Button variant="ghost" size="sm" aria-label={t('logout')} onClick={async () => { await post('/auth/logout'); await queryClient.invalidateQueries(); }}><LogOut size={15} /></Button>}
+            {me.data?.admin && <Button variant="primary" size="sm" className="ml-1.5 h-8 px-3.5 text-sm" onClick={openPublish}>{t('publish')}</Button>}
           </div>
         </div>
       </header>
       <main className={onWorld ? 'flex min-h-0 flex-col' : 'mx-auto w-full max-w-[var(--container-wide)] flex-1 px-4 pb-16 pt-8 sm:px-6'}>
         <Outlet />
       </main>
-      {!onWorld && <div className="sticky bottom-0 z-20 bg-bg"><Horizon /></div>}
+      {!onWorld && <footer><Horizon /></footer>}
+      <PublishDialog />
     </div>
   );
 }
