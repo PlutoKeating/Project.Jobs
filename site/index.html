@@ -1,106 +1,146 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-lang="zh">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Jobs — 发布之前，先让一座城的人用用看</title>
-<meta name="description" content="把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、留不留、跟谁说。">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' fill='%230e0f11'/%3E%3Crect x='2' y='6' width='4' height='8' fill='%237d8f8a'/%3E%3Crect x='7' y='3' width='4' height='11' fill='%23c2cfcb'/%3E%3Crect x='12' y='8' width='2' height='6' fill='%237d8f8a'/%3E%3Crect x='8' y='5' width='1' height='1' fill='%23f0a35e'/%3E%3Crect x='9' y='8' width='1' height='1' fill='%23f0a35e'/%3E%3Crect y='14' width='16' height='2' fill='%23f0a35e'/%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
-<style>
-  :root {
-    color-scheme: dark;
-    --bg: #0e0f11; --raised: #131417; --line: rgb(232 228 221 / 0.08); --line-strong: rgb(232 228 221 / 0.18);
-    --fg: #e8e4dd; --muted: #a9a49c; --accent: #f0a35e; --slate: #7d8f8a; --slate-fg: #c2cfcb; --code: #111215;
-  }
-  @media (prefers-color-scheme: light) {
-    :root { color-scheme: light; --bg: #f6f2ea; --raised: #fbf8f2; --line: rgb(40 34 26 / 0.1); --line-strong: rgb(40 34 26 / 0.22); --fg: #1d1a16; --muted: #5d564c; --accent: #b0602e; --slate: #5f746e; --slate-fg: #3f524d; --code: #efe9df; }
-  }
-  * { box-sizing: border-box; }
-  html { -webkit-font-smoothing: antialiased; }
-  body { margin: 0; background: var(--bg); color: var(--fg); font: 450 1rem/1.7 "Inter", "Noto Sans SC Variable", "Noto Sans SC", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif; }
-  ::selection { background: rgb(240 163 94 / 0.28); }
-  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-  .wrap { max-width: 68rem; margin: 0 auto; padding: 0 1.5rem; }
-  header { display: flex; align-items: center; height: 3.75rem; }
-  .mark { display: inline-flex; align-items: center; gap: .5rem; font-weight: 600; letter-spacing: -0.01em; }
-  main { padding: clamp(2.5rem, 8vw, 6rem) 0 4rem; }
-  h1 { margin: 0; max-width: 16em; font-size: clamp(2rem, 5.4vw, 3.5rem); line-height: 1.16; letter-spacing: -0.02em; font-weight: 700; text-wrap: balance; word-break: keep-all; }
-  .lede { margin: 1.5rem 0 0; max-width: 40em; color: var(--muted); font-size: 1.0625rem; }
-  .install { margin-top: 2.5rem; display: flex; align-items: stretch; max-width: 42rem; border: 1px solid var(--line-strong); border-radius: .625rem; background: var(--code); }
-  .install code { flex: 1; min-width: 0; padding: .9rem 1rem; overflow-x: auto; white-space: nowrap; font: 500 .9375rem/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC", monospace; }
-  .install button { flex: none; padding: 0 1.1rem; border: 0; border-left: 1px solid var(--line-strong); background: transparent; color: var(--muted); font: inherit; font-size: .875rem; font-weight: 500; cursor: pointer; border-radius: 0 .625rem .625rem 0; transition: color .15s; }
-  .install button:hover { color: var(--accent); }
-  .need { margin: .75rem 0 0; color: var(--muted); font-size: .875rem; }
-  figure { margin: clamp(3rem, 7vw, 5rem) 0 0; }
-  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: .875rem; }
-  .how { margin: clamp(3rem, 7vw, 5rem) 0 0; padding: 0; list-style: none; display: grid; gap: 2.5rem 3rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); counter-reset: s; }
-  .how li { counter-increment: s; border-top: 1px solid var(--line-strong); padding-top: 1.1rem; }
-  .how li::before { content: counter(s); display: block; margin-bottom: .6rem; color: var(--slate); font-size: .875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .how h2 { margin: 0 0 .5rem; font-size: 1.1875rem; line-height: 1.4; letter-spacing: -0.01em; }
-  .how p { margin: 0; color: var(--muted); font-size: .9375rem; }
-  .also { margin-top: clamp(3rem, 7vw, 5rem); display: grid; gap: 1.25rem 3rem; grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr)); align-items: start; }
-  .also h2 { margin: 0 0 .5rem; font-size: 1.1875rem; letter-spacing: -0.01em; }
-  .also p { margin: 0; color: var(--muted); font-size: .9375rem; }
-  pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: .625rem; background: var(--code); font: 450 .8125rem/1.75 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC", monospace; }
-  pre .c { color: var(--slate); }
-  footer { border-top: 1px solid var(--line); padding: 1.5rem 0 3rem; color: var(--muted); font-size: .875rem; }
-  footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
-  footer a:hover { color: var(--accent); }
-  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jobs — 发布之前，先让一座城的人用用看</title>
+  <meta name="description" content="把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、留不留、跟谁说。">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" content="#0e0f11" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f7f3ec" media="(prefers-color-scheme: light)">
+  <link rel="canonical" href="https://jobs.plutokeating.beer/">
+  <link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/">
+  <link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en">
+  <link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Jobs">
+  <meta property="og:url" content="https://jobs.plutokeating.beer/">
+  <meta property="og:title" content="Jobs — 发布之前，先让一座城的人用用看">
+  <meta property="og:description" content="把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、留不留、跟谁说。">
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:locale:alternate" content="en_US">
+  <meta property="og:image" content="https://jobs.plutokeating.beer/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Jobs 的首屏：一座侧视的像素小城，右侧是已发布的产品和城里的人此刻在做什么">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preload" href="/fonts/InterVariable.woff2?v=693b77d4f3" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/tokens.css?v=f4a0594cea">
+  <link rel="stylesheet" href="/css/site.css?v=919b880f43">
+  <script>(function(){var d=document.documentElement;d.className+=" js";try{var t=localStorage.getItem("jobs.theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}})();(function(){try{var H={"en":"/en"},A=[["zh","zh"],["en","en"]],D="zh",s=localStorage.getItem("jobs.lang");if(s){if(H[s])location.replace(H[s]);return}var n=navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""],w="";for(var i=0;i<n.length&&!w;i++){var p=String(n[i]).toLowerCase();for(var j=0;j<A.length;j++)if(p.indexOf(A[j][0])===0){w=A[j][1];break}}if(!w)w="en";if(w!==D&&H[w])location.replace(H[w])}catch(e){}})();</script>
+  <script src="/js/site.js?v=73b31fb5dc" defer></script>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <span class="mark">
-      <svg width="22" height="22" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="6" width="4" height="8" fill="var(--slate)"/><rect x="7" y="3" width="4" height="11" fill="var(--slate-fg)"/><rect x="12" y="8" width="2" height="6" fill="var(--slate)"/><rect x="8" y="5" width="1" height="1" fill="var(--accent)"/><rect x="9" y="8" width="1" height="1" fill="var(--accent)"/><rect x="0" y="14" width="16" height="2" fill="var(--accent)"/></svg>
-      Jobs
-    </span>
-  </header>
-
-  <main>
-    <h1>发布之前，<wbr>先让一座城的人<wbr>用用看。</h1>
-    <p class="lede">把网址交给 Jobs。JobsWorld 里住着两百个各不相同的人：他们过着自己的日子，在应用商店、广告和朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。</p>
-
-    <div class="install">
-      <code id="cmd">curl -fsSL https://jobs.plutokeating.beer/install | bash</code>
-      <button type="button" id="copy" aria-label="复制安装命令">复制</button>
+<header class="site-header">
+  <a class="skip-link" href="#main">跳到正文</a>
+  <div class="col site-header-row">
+    <a class="wordmark" href="/"><svg class="mark" viewBox="0 0 16 16" width="22" height="22" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><rect class="px-a" x="2" y="6" width="4" height="8"/><rect class="px-b" x="7" y="3" width="4" height="11"/><rect class="px-a" x="12" y="8" width="2" height="6"/><rect class="px-lit" x="8" y="5" width="1" height="1"/><rect class="px-lit" x="9" y="8" width="1" height="1"/><rect class="px-lit" x="3" y="9" width="1" height="1"/><rect class="px-lit" x="0" y="14" width="16" height="2"/></svg><span>Jobs</span></a>
+    <nav class="site-nav" id="site-nav" aria-label="站内导航">
+      <ul>
+        <li><a href="/#install">安装</a></li>
+        <li><a href="/about">关于</a></li>
+        <li><a href="https://github.com/PlutoKeating/Project.Jobs" target="_blank" rel="noreferrer noopener">源码<svg class="icon icon-external" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5l-7 7"/></svg></a></li>
+      </ul>
+    </nav>
+    <div class="site-tools">
+      <details class="lang-menu">
+        <summary aria-label="语言"><svg class="icon icon-globe" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="7.25"/><path d="M2.75 10h14.5M10 2.75c2.2 2 3.3 4.4 3.3 7.25S12.2 15.25 10 17.25c-2.2-2-3.3-4.4-3.3-7.25S7.8 4.75 10 2.75z"/></svg><span>中文</span><svg class="icon icon-chevron" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M2.75 4.5L6 7.75 9.25 4.5"/></svg></summary>
+        <ul><li><a href="/" hreflang="zh-CN" lang="zh-CN" data-set-lang="zh" aria-current="true">中文</a></li><li><a href="/en" hreflang="en" lang="en" data-set-lang="en">English</a></li></ul>
+      </details>
+      <button type="button" class="icon-button theme-toggle" data-theme-toggle hidden data-label="外观" data-label-system="跟随系统" data-label-light="明亮" data-label-dark="暗黑"><svg class="icon icon-system" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="6.75"/><path d="M10 3.25v13.5a6.75 6.75 0 0 0 0-13.5z" fill="currentColor" stroke="none"/></svg><svg class="icon icon-light" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="3.25"/><path d="M10 2.5v1.75M10 15.75v1.75M2.5 10h1.75M15.75 10h1.75M4.7 4.7l1.25 1.25M14.05 14.05l1.25 1.25M4.7 15.3l1.25-1.25M14.05 5.95l1.25-1.25"/></svg><svg class="icon icon-dark" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16.5 11.6A6.75 6.75 0 0 1 8.4 3.5a6.75 6.75 0 1 0 8.1 8.1z"/></svg></button>
+      <button type="button" class="icon-button menu-toggle" data-menu-toggle hidden aria-expanded="false" aria-controls="site-nav" aria-label="打开菜单" data-label-open="打开菜单" data-label-close="关闭菜单"><svg class="icon icon-menu" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3.5 6h13M3.5 10h13M3.5 14h13"/></svg><svg class="icon icon-close" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 5l10 10M15 5L5 15"/></svg></button>
     </div>
-    <p class="need">需要一台装了 Docker 的机器。装好后打开网页，接入你自己的模型供应商。</p>
-
-    <figure><img src="/city.webp" width="1600" height="900" alt="Jobs 的首屏：一座侧视的像素小城，右侧是已发布的产品和城里的人此刻在做什么"></figure>
-
-    <ol class="how">
-      <li><h2>发布</h2><p>粘贴网址、名字、一句话。本机上的开发服务器也行。</p></li>
-      <li><h2>他们自己决定</h2><p>没有人被指派去测试。地铁上单手拿着手机的人、带着孩子的人、只剩五分钟的人，各自遇到它，各自决定点不点开。用的时候他们只看得到屏幕。</p></li>
-      <li><h2>读一页人话</h2><p>好不好用，哪里最让人难受，谁会留下谁会走，看到的人为什么没点开，最该改的一件事。每一句都能点开看是谁说的、原话和当时的屏幕。</p></li>
+  </div>
+</header>
+<main id="main">
+  <section class="col hero">
+    <h1><span>发布之前，</span><wbr><span>先让一座城的人</span><wbr><span>用用看。</span></h1>
+    <p class="lede">把网址交给 Jobs。JobsWorld 里住着两百个各不相同的人：他们过着自己的日子，在应用商店、广告和朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。</p>
+    <div class="install" id="install">
+      <code id="install-command">curl -fsSL https://jobs.plutokeating.beer/install | bash</code>
+      <button type="button" data-copy="install-command" data-label-copy="复制" data-label-copied="已复制" aria-label="复制安装命令"><svg class="icon icon-copy" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="7" y="7" width="9.5" height="9.5" rx="2"/><path d="M13 7V5.5a2 2 0 0 0-2-2H5.5a2 2 0 0 0-2 2V11a2 2 0 0 0 2 2H7"/></svg><svg class="icon icon-check" viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 10.5l3.5 3.5 7.5-8"/></svg><span aria-live="polite">复制</span></button>
+    </div>
+    <p class="need">需要一台装了 Docker 的机器。装好后打开网页，接入你自己的模型供应商。<a class="text-link" href="/install">先看看这个脚本做什么</a></p>
+  </section>
+  <figure class="col shot">
+    <img class="shot-dark" src="/shots/city-zh-dark.webp?v=b7881dd19a" width="1600" height="900" alt="Jobs 的首屏：一座侧视的像素小城，右侧是已发布的产品和城里的人此刻在做什么" decoding="async">
+    <img class="shot-light" src="/shots/city-zh-light.webp?v=8edf5e6bee" width="1600" height="900" alt="Jobs 的首屏：一座侧视的像素小城，右侧是已发布的产品和城里的人此刻在做什么" loading="lazy" decoding="async">
+  </figure>
+  <section class="col how" aria-labelledby="how-heading">
+    <h2 id="how-heading" class="visually-hidden">怎么用</h2>
+    <ol>
+      <li><h3>发布</h3><p>粘贴网址、名字、一句话。本机上的开发服务器也行。</p></li>
+      <li><h3>他们自己决定</h3><p>没有人被指派去测试。地铁上单手拿着手机的人、带着孩子的人、只剩五分钟的人，各自遇到它，各自决定点不点开。用的时候他们只看得到屏幕。</p></li>
+      <li><h3>读一页人话</h3><p>好不好用，哪里最让人难受，谁会留下谁会走，看到的人为什么没点开，最该改的一件事。每一句都能点开看是谁说的、原话和当时的屏幕。</p></li>
     </ol>
-
-    <div class="also">
-      <div>
-        <h2>也在终端和 coding agent 里</h2>
-        <p>写完代码就发布，取回结论和带复现步骤的问题清单，接着改。同一座城还能用 Terraria 走进去，或者接到飞书里。</p>
-      </div>
-      <pre><span class="c"># 发布、看状况、要结论</span>
-jobsworld publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
+  </section>
+  <section class="col also" aria-labelledby="also-heading">
+    <div>
+      <h2 id="also-heading">也在终端和 coding agent 里</h2>
+      <p>写完代码就发布，取回结论和带复现步骤的问题清单，接着改。同一座城还能用 Terraria 走进去，或者接到飞书里。</p>
+    </div>
+    <pre tabindex="0"><span class="c"># 发布、看状况、要结论</span>
+jobsworld publish http://127.0.0.1:3000/ \
+  --name 闪念笔记 --tagline &quot;想到什么，马上记下&quot;
 jobsworld status 闪念笔记
 jobsworld report 闪念笔记 --eng
 
 <span class="c"># 接进 Claude Code（其他支持 MCP 的 agent 同理）</span>
 claude mcp add jobs -- jobsworld mcp</pre>
+  </section>
+  <section class="col facts" aria-labelledby="facts-heading">
+    <h2 id="facts-heading" class="visually-hidden">装在哪、谁的模型、什么许可证</h2>
+    <ul>
+      <li><h3>装在你自己的机器上</h3><p>居民、记忆、截图和结论都存在你机器上的 Docker 卷里，不经过我们的服务器。</p></li>
+      <li><h3>模型由你接入</h3><p>在网页里选供应商、粘贴 Key、勾选模型。花了多少，页头一直显示。</p></li>
+      <li><h3>开源</h3><p>以 AGPL-3.0 发布，<a class="text-link" href="https://github.com/PlutoKeating/Project.Jobs" target="_blank" rel="noreferrer noopener">源码在 GitHub<svg class="icon icon-external" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5l-7 7"/></svg></a>。</p></li>
+    </ul>
+  </section>
+</main>
+<footer class="site-footer">
+  <svg class="horizon" width="100%" height="96" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
+    <defs><pattern id="street" width="1440" height="96" patternUnits="userSpaceOnUse"><g transform="scale(4)"><rect class="px-b" x="2" y="5" width="10" height="17"/><rect class="px-dim" x="3" y="7" width="1" height="1"/><rect class="px-dim" x="5" y="7" width="1" height="1"/><rect class="px-dim" x="7" y="7" width="1" height="1"/><rect class="px-dim" x="7" y="10" width="1" height="1"/><rect class="px-dim" x="5" y="13" width="1" height="1"/><rect class="px-dim" x="9" y="13" width="1" height="1"/><rect class="px-dim" x="5" y="16" width="1" height="1"/><rect class="px-dim" x="7" y="16" width="1" height="1"/><rect class="px-dim" x="3" y="19" width="1" height="1"/><rect class="px-lit" x="7" y="19" width="1" height="1"/><rect class="px-lit" x="9" y="19" width="1" height="1"/><rect class="px-b" x="13" y="15" width="8" height="7"/><rect class="px-dim" x="14" y="17" width="1" height="1"/><rect class="px-dim" x="16" y="17" width="1" height="1"/><rect class="px-a" x="23" y="11" width="8" height="11"/><rect class="px-dim" x="24" y="13" width="1" height="1"/><rect class="px-dim" x="26" y="13" width="1" height="1"/><rect class="px-dim" x="24" y="16" width="1" height="1"/><rect class="px-dim" x="26" y="16" width="1" height="1"/><rect class="px-dim" x="24" y="19" width="1" height="1"/><rect class="px-dim" x="26" y="19" width="1" height="1"/><rect class="px-a" x="33" y="10" width="8" height="12"/><rect class="px-dim" x="36" y="12" width="1" height="1"/><rect class="px-lit" x="38" y="12" width="1" height="1"/><rect class="px-dim" x="34" y="15" width="1" height="1"/><rect class="px-dim" x="38" y="15" width="1" height="1"/><rect class="px-dim" x="38" y="18" width="1" height="1"/><rect class="px-a" x="43" y="9" width="16" height="13"/><rect class="px-dim" x="46" y="11" width="1" height="1"/><rect class="px-lit" x="48" y="11" width="1" height="1"/><rect class="px-dim" x="44" y="14" width="1" height="1"/><rect class="px-dim" x="48" y="14" width="1" height="1"/><rect class="px-lit" x="50" y="14" width="1" height="1"/><rect class="px-dim" x="52" y="14" width="1" height="1"/><rect class="px-lit" x="54" y="14" width="1" height="1"/><rect class="px-dim" x="44" y="17" width="1" height="1"/><rect class="px-dim" x="46" y="17" width="1" height="1"/><rect class="px-lit" x="50" y="17" width="1" height="1"/><rect class="px-dim" x="52" y="17" width="1" height="1"/><rect class="px-dim" x="56" y="17" width="1" height="1"/><rect class="px-a" x="60" y="11" width="12" height="11"/><rect class="px-dim" x="63" y="13" width="1" height="1"/><rect class="px-dim" x="65" y="13" width="1" height="1"/><rect class="px-dim" x="61" y="16" width="1" height="1"/><rect class="px-dim" x="65" y="16" width="1" height="1"/><rect class="px-dim" x="67" y="16" width="1" height="1"/><rect class="px-dim" x="63" y="19" width="1" height="1"/><rect class="px-lit" x="65" y="19" width="1" height="1"/><rect class="px-dim" x="69" y="19" width="1" height="1"/><rect class="px-b" x="73" y="4" width="16" height="18"/><rect class="px-dim" x="74" y="6" width="1" height="1"/><rect class="px-dim" x="76" y="6" width="1" height="1"/><rect class="px-dim" x="78" y="6" width="1" height="1"/><rect class="px-dim" x="80" y="6" width="1" height="1"/><rect class="px-dim" x="82" y="6" width="1" height="1"/><rect class="px-lit" x="84" y="6" width="1" height="1"/><rect class="px-dim" x="74" y="9" width="1" height="1"/><rect class="px-dim" x="76" y="9" width="1" height="1"/><rect class="px-dim" x="78" y="9" width="1" height="1"/><rect class="px-dim" x="82" y="9" width="1" height="1"/><rect class="px-lit" x="84" y="9" width="1" height="1"/><rect class="px-dim" x="86" y="9" width="1" height="1"/><rect class="px-dim" x="76" y="12" width="1" height="1"/><rect class="px-dim" x="78" y="12" width="1" height="1"/><rect class="px-dim" x="82" y="12" width="1" height="1"/><rect class="px-lit" x="84" y="12" width="1" height="1"/><rect class="px-dim" x="86" y="12" width="1" height="1"/><rect class="px-dim" x="74" y="15" width="1" height="1"/><rect class="px-dim" x="76" y="15" width="1" height="1"/><rect class="px-dim" x="78" y="15" width="1" height="1"/><rect class="px-dim" x="80" y="15" width="1" height="1"/><rect class="px-lit" x="84" y="15" width="1" height="1"/><rect class="px-dim" x="86" y="15" width="1" height="1"/><rect class="px-dim" x="74" y="18" width="1" height="1"/><rect class="px-dim" x="78" y="18" width="1" height="1"/><rect class="px-lit" x="80" y="18" width="1" height="1"/><rect class="px-lit" x="84" y="18" width="1" height="1"/><rect class="px-dim" x="86" y="18" width="1" height="1"/><rect class="px-a" x="91" y="13" width="16" height="9"/><rect class="px-dim" x="94" y="15" width="1" height="1"/><rect class="px-dim" x="96" y="15" width="1" height="1"/><rect class="px-dim" x="98" y="15" width="1" height="1"/><rect class="px-dim" x="102" y="15" width="1" height="1"/><rect class="px-dim" x="104" y="15" width="1" height="1"/><rect class="px-dim" x="92" y="18" width="1" height="1"/><rect class="px-dim" x="94" y="18" width="1" height="1"/><rect class="px-dim" x="96" y="18" width="1" height="1"/><rect class="px-dim" x="100" y="18" width="1" height="1"/><rect class="px-dim" x="102" y="18" width="1" height="1"/><rect class="px-dim" x="104" y="18" width="1" height="1"/><rect class="px-a" x="119" y="5" width="8" height="17"/><rect class="px-dim" x="122" y="7" width="1" height="1"/><rect class="px-dim" x="120" y="10" width="1" height="1"/><rect class="px-dim" x="122" y="10" width="1" height="1"/><rect class="px-dim" x="124" y="10" width="1" height="1"/><rect class="px-dim" x="120" y="13" width="1" height="1"/><rect class="px-lit" x="122" y="13" width="1" height="1"/><rect class="px-dim" x="124" y="13" width="1" height="1"/><rect class="px-dim" x="120" y="16" width="1" height="1"/><rect class="px-dim" x="122" y="16" width="1" height="1"/><rect class="px-dim" x="124" y="16" width="1" height="1"/><rect class="px-dim" x="122" y="19" width="1" height="1"/><rect class="px-dim" x="124" y="19" width="1" height="1"/><rect class="px-a" x="133" y="7" width="8" height="15"/><rect class="px-dim" x="134" y="9" width="1" height="1"/><rect class="px-dim" x="134" y="12" width="1" height="1"/><rect class="px-dim" x="136" y="12" width="1" height="1"/><rect class="px-lit" x="138" y="12" width="1" height="1"/><rect class="px-dim" x="136" y="15" width="1" height="1"/><rect class="px-dim" x="136" y="18" width="1" height="1"/><rect class="px-dim" x="138" y="18" width="1" height="1"/><rect class="px-a" x="142" y="12" width="8" height="10"/><rect class="px-dim" x="147" y="14" width="1" height="1"/><rect class="px-dim" x="145" y="17" width="1" height="1"/><rect class="px-a" x="157" y="8" width="14" height="14"/><rect class="px-lit" x="158" y="10" width="1" height="1"/><rect class="px-dim" x="160" y="10" width="1" height="1"/><rect class="px-dim" x="164" y="10" width="1" height="1"/><rect class="px-lit" x="168" y="10" width="1" height="1"/><rect class="px-lit" x="160" y="13" width="1" height="1"/><rect class="px-dim" x="162" y="13" width="1" height="1"/><rect class="px-dim" x="164" y="13" width="1" height="1"/><rect class="px-dim" x="166" y="13" width="1" height="1"/><rect class="px-lit" x="168" y="13" width="1" height="1"/><rect class="px-lit" x="158" y="16" width="1" height="1"/><rect class="px-dim" x="162" y="16" width="1" height="1"/><rect class="px-dim" x="168" y="16" width="1" height="1"/><rect class="px-dim" x="158" y="19" width="1" height="1"/><rect class="px-lit" x="162" y="19" width="1" height="1"/><rect class="px-dim" x="164" y="19" width="1" height="1"/><rect class="px-dim" x="166" y="19" width="1" height="1"/><rect class="px-a" x="183" y="7" width="14" height="15"/><rect class="px-dim" x="184" y="9" width="1" height="1"/><rect class="px-lit" x="186" y="9" width="1" height="1"/><rect class="px-lit" x="188" y="9" width="1" height="1"/><rect class="px-dim" x="190" y="9" width="1" height="1"/><rect class="px-lit" x="192" y="9" width="1" height="1"/><rect class="px-dim" x="184" y="12" width="1" height="1"/><rect class="px-dim" x="186" y="12" width="1" height="1"/><rect class="px-dim" x="188" y="12" width="1" height="1"/><rect class="px-dim" x="184" y="15" width="1" height="1"/><rect class="px-dim" x="186" y="15" width="1" height="1"/><rect class="px-dim" x="188" y="15" width="1" height="1"/><rect class="px-dim" x="192" y="15" width="1" height="1"/><rect class="px-dim" x="194" y="15" width="1" height="1"/><rect class="px-lit" x="184" y="18" width="1" height="1"/><rect class="px-dim" x="186" y="18" width="1" height="1"/><rect class="px-lit" x="188" y="18" width="1" height="1"/><rect class="px-dim" x="192" y="18" width="1" height="1"/><rect class="px-a" x="204" y="13" width="14" height="9"/><rect class="px-dim" x="205" y="15" width="1" height="1"/><rect class="px-dim" x="207" y="15" width="1" height="1"/><rect class="px-dim" x="213" y="15" width="1" height="1"/><rect class="px-dim" x="215" y="15" width="1" height="1"/><rect class="px-dim" x="205" y="18" width="1" height="1"/><rect class="px-dim" x="207" y="18" width="1" height="1"/><rect class="px-dim" x="213" y="18" width="1" height="1"/><rect class="px-a" x="227" y="7" width="14" height="15"/><rect class="px-dim" x="228" y="9" width="1" height="1"/><rect class="px-dim" x="230" y="9" width="1" height="1"/><rect class="px-lit" x="234" y="9" width="1" height="1"/><rect class="px-dim" x="236" y="9" width="1" height="1"/><rect class="px-dim" x="238" y="9" width="1" height="1"/><rect class="px-dim" x="228" y="12" width="1" height="1"/><rect class="px-dim" x="230" y="12" width="1" height="1"/><rect class="px-dim" x="232" y="12" width="1" height="1"/><rect class="px-dim" x="234" y="12" width="1" height="1"/><rect class="px-dim" x="236" y="12" width="1" height="1"/><rect class="px-lit" x="238" y="12" width="1" height="1"/><rect class="px-lit" x="228" y="15" width="1" height="1"/><rect class="px-dim" x="234" y="15" width="1" height="1"/><rect class="px-lit" x="236" y="15" width="1" height="1"/><rect class="px-dim" x="230" y="18" width="1" height="1"/><rect class="px-dim" x="232" y="18" width="1" height="1"/><rect class="px-lit" x="236" y="18" width="1" height="1"/><rect class="px-lit" x="238" y="18" width="1" height="1"/><rect class="px-b" x="243" y="8" width="12" height="14"/><rect class="px-dim" x="246" y="10" width="1" height="1"/><rect class="px-dim" x="248" y="10" width="1" height="1"/><rect class="px-dim" x="250" y="10" width="1" height="1"/><rect class="px-dim" x="246" y="13" width="1" height="1"/><rect class="px-dim" x="252" y="13" width="1" height="1"/><rect class="px-dim" x="246" y="16" width="1" height="1"/><rect class="px-dim" x="250" y="16" width="1" height="1"/><rect class="px-dim" x="252" y="16" width="1" height="1"/><rect class="px-dim" x="244" y="19" width="1" height="1"/><rect class="px-dim" x="246" y="19" width="1" height="1"/><rect class="px-lit" x="248" y="19" width="1" height="1"/><rect class="px-a" x="257" y="14" width="14" height="8"/><rect class="px-dim" x="258" y="16" width="1" height="1"/><rect class="px-lit" x="262" y="16" width="1" height="1"/><rect class="px-dim" x="266" y="16" width="1" height="1"/><rect class="px-dim" x="268" y="16" width="1" height="1"/><rect class="px-dim" x="262" y="19" width="1" height="1"/><rect class="px-dim" x="264" y="19" width="1" height="1"/><rect class="px-b" x="272" y="12" width="14" height="10"/><rect class="px-dim" x="273" y="14" width="1" height="1"/><rect class="px-dim" x="275" y="14" width="1" height="1"/><rect class="px-dim" x="279" y="14" width="1" height="1"/><rect class="px-dim" x="281" y="14" width="1" height="1"/><rect class="px-dim" x="273" y="17" width="1" height="1"/><rect class="px-dim" x="275" y="17" width="1" height="1"/><rect class="px-dim" x="279" y="17" width="1" height="1"/><rect class="px-dim" x="281" y="17" width="1" height="1"/><rect class="px-dim" x="283" y="17" width="1" height="1"/><rect class="px-a" x="287" y="7" width="14" height="15"/><rect class="px-lit" x="290" y="9" width="1" height="1"/><rect class="px-dim" x="292" y="9" width="1" height="1"/><rect class="px-lit" x="294" y="9" width="1" height="1"/><rect class="px-dim" x="296" y="9" width="1" height="1"/><rect class="px-dim" x="288" y="12" width="1" height="1"/><rect class="px-dim" x="290" y="12" width="1" height="1"/><rect class="px-dim" x="292" y="12" width="1" height="1"/><rect class="px-dim" x="294" y="12" width="1" height="1"/><rect class="px-dim" x="296" y="12" width="1" height="1"/><rect class="px-dim" x="298" y="12" width="1" height="1"/><rect class="px-dim" x="288" y="15" width="1" height="1"/><rect class="px-dim" x="292" y="15" width="1" height="1"/><rect class="px-dim" x="296" y="15" width="1" height="1"/><rect class="px-dim" x="298" y="15" width="1" height="1"/><rect class="px-dim" x="290" y="18" width="1" height="1"/><rect class="px-dim" x="292" y="18" width="1" height="1"/><rect class="px-dim" x="294" y="18" width="1" height="1"/><rect class="px-a" x="312" y="10" width="8" height="12"/><rect class="px-dim" x="313" y="12" width="1" height="1"/><rect class="px-dim" x="315" y="12" width="1" height="1"/><rect class="px-dim" x="317" y="12" width="1" height="1"/><rect class="px-dim" x="313" y="15" width="1" height="1"/><rect class="px-dim" x="315" y="15" width="1" height="1"/><rect class="px-dim" x="317" y="15" width="1" height="1"/><rect class="px-dim" x="315" y="18" width="1" height="1"/><rect class="px-dim" x="317" y="18" width="1" height="1"/><rect class="px-b" x="322" y="8" width="14" height="14"/><rect class="px-dim" x="323" y="10" width="1" height="1"/><rect class="px-dim" x="325" y="10" width="1" height="1"/><rect class="px-dim" x="327" y="10" width="1" height="1"/><rect class="px-dim" x="333" y="10" width="1" height="1"/><rect class="px-dim" x="323" y="13" width="1" height="1"/><rect class="px-dim" x="325" y="13" width="1" height="1"/><rect class="px-dim" x="333" y="13" width="1" height="1"/><rect class="px-dim" x="323" y="16" width="1" height="1"/><rect class="px-dim" x="325" y="16" width="1" height="1"/><rect class="px-dim" x="327" y="16" width="1" height="1"/><rect class="px-dim" x="329" y="16" width="1" height="1"/><rect class="px-dim" x="331" y="16" width="1" height="1"/><rect class="px-lit" x="333" y="16" width="1" height="1"/><rect class="px-dim" x="323" y="19" width="1" height="1"/><rect class="px-dim" x="325" y="19" width="1" height="1"/><rect class="px-lit" x="327" y="19" width="1" height="1"/><rect class="px-dim" x="329" y="19" width="1" height="1"/><rect class="px-dim" x="331" y="19" width="1" height="1"/><rect class="px-dim" x="333" y="19" width="1" height="1"/><rect class="px-a" x="341" y="9" width="8" height="13"/><rect class="px-dim" x="342" y="11" width="1" height="1"/><rect class="px-dim" x="342" y="14" width="1" height="1"/><rect class="px-dim" x="344" y="14" width="1" height="1"/><rect class="px-dim" x="346" y="14" width="1" height="1"/><rect class="px-dim" x="342" y="17" width="1" height="1"/><rect class="px-dim" x="344" y="17" width="1" height="1"/><rect class="px-dim" x="346" y="17" width="1" height="1"/><rect class="px-lit" x="0" y="22" width="360" height="2"/></g></pattern></defs>
+    <rect width="100%" height="96" fill="url(#street)"/>
+  </svg>
+  <div class="col footer-grid">
+    <div class="footer-brand">
+      <a class="wordmark" href="/"><svg class="mark" viewBox="0 0 16 16" width="22" height="22" shape-rendering="crispEdges" aria-hidden="true" focusable="false"><rect class="px-a" x="2" y="6" width="4" height="8"/><rect class="px-b" x="7" y="3" width="4" height="11"/><rect class="px-a" x="12" y="8" width="2" height="6"/><rect class="px-lit" x="8" y="5" width="1" height="1"/><rect class="px-lit" x="9" y="8" width="1" height="1"/><rect class="px-lit" x="3" y="9" width="1" height="1"/><rect class="px-lit" x="0" y="14" width="16" height="2"/></svg><span>Jobs</span></a>
+      <p class="footer-tagline">发布之前，先让一座城的人用用看。</p>
+      <p>© 2026 PlutoKeating · 以 AGPL-3.0 开源</p>
+      <p>PlutoKeating 以个人身份开发与运营</p>
     </div>
-  </main>
-
-  <footer>人数是这座城里实际发生的人数，是模拟，不是对真实市场的预测。它不取代真人用户研究。<br><a href="https://github.com/PlutoKeating/Project.Jobs">源码</a> · AGPL-3.0</footer>
-</div>
-<script>
-  document.getElementById('copy').addEventListener('click', function () {
-    var b = this;
-    navigator.clipboard.writeText(document.getElementById('cmd').textContent).then(function () { b.textContent = '已复制'; setTimeout(function () { b.textContent = '复制'; }, 1600); });
-  });
-</script>
+    <div class="footer-groups">
+      <nav class="footer-group" aria-labelledby="footer-product">
+        <h2 id="footer-product">产品</h2>
+        <ul>
+          <li><a href="/#install">安装</a></li>
+          <li><a href="https://github.com/PlutoKeating/Project.Jobs/blob/main/docs/INSTALL.md" target="_blank" rel="noreferrer noopener">安装文档<svg class="icon icon-external" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5l-7 7"/></svg></a></li>
+          <li><a href="https://github.com/PlutoKeating/Project.Jobs/releases" target="_blank" rel="noreferrer noopener">版本<svg class="icon icon-external" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5l-7 7"/></svg></a></li>
+        </ul>
+      </nav>
+      <nav class="footer-group" aria-labelledby="footer-project">
+        <h2 id="footer-project">项目</h2>
+        <ul>
+          <li><a href="https://github.com/PlutoKeating/Project.Jobs" target="_blank" rel="noreferrer noopener">源码<svg class="icon icon-external" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5l-7 7"/></svg></a></li>
+          <li><a href="https://github.com/PlutoKeating/Project.Jobs/issues" target="_blank" rel="noreferrer noopener">问题反馈<svg class="icon icon-external" viewBox="0 0 12 12" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4.5 2.5h5v5M9.5 2.5l-7 7"/></svg></a></li>
+          <li><a href="mailto:PlutoKeating@outlook.com">联系</a></li>
+        </ul>
+      </nav>
+      <nav class="footer-group" aria-labelledby="footer-legal">
+        <h2 id="footer-legal">法律</h2>
+        <ul>
+          <li><a href="/about">关于</a></li>
+          <li><a href="/terms">条款与条件</a></li>
+          <li><a href="/privacy">隐私政策</a></li>
+        </ul>
+      </nav>
+    </div>
+    <div class="footer-fine">
+      <p>城里的人是虚构的，人数是这座城里实际发生的人数：是模拟，不是对真实市场的预测，也不取代真人用户研究。</p>
+      <p>Terraria 是 Re-Logic 的商标。Jobs 是独立项目，与 Re-Logic、任何模型供应商或其他被提到的公司没有隶属或背书关系。</p>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

@@ -1,10 +1,15 @@
-// jobs.plutokeating.beer：落地页与安装脚本。纯静态，没有 Worker 脚本。
+// jobs.plutokeating.beer：官网（落地页、关于、条款、隐私，中英两种语言）与安装脚本。纯静态，没有 Worker 脚本。
+// 页面由 scripts/build.mjs 从 src/ 生成并提交进仓库，线上没有构建步骤；src/ 与 scripts/ 不上传（见 .assetsignore）。
 // 在 Cloudflare 上用「连接 Git 仓库」创建 Worker 时：根目录填 site，项目名与下面的 name 相同。
 // 填写说明见 docs/INSTALL.md「对外发布（维护者）」。
 {
   "name": "jobs-site",
   "compatibility_date": "2026-11-01",
   "assets": {
-    "directory": "."
+    "directory": ".",
+    // /en/about 直接命中 en/about/index.html；带尾斜杠的地址跳到不带的（站内链接一律不带）
+    "html_handling": "drop-trailing-slash",
+    // 不存在的路径返回最近一层目录里的 404.html（/en/ 下面是英文的那一份）
+    "not_found_handling": "404-page"
   }
 }

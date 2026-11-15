@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  <url>
+    <loc>https://jobs.plutokeating.beer/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/en</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/about</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en/about"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/about"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/en/about</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/about"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en/about"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/about"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/terms</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/terms"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en/terms"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/terms"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/en/terms</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/terms"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en/terms"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/terms"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/privacy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en/privacy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/privacy"/>
+  </url>
+  <url>
+    <loc>https://jobs.plutokeating.beer/en/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://jobs.plutokeating.beer/privacy"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jobs.plutokeating.beer/en/privacy"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jobs.plutokeating.beer/privacy"/>
+  </url>
+</urlset>

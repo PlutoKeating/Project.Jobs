@@ -108,11 +108,11 @@ JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 ## 对外发布（维护者）
 
 1. 打 `v*` 标签：`.github/workflows/release.yml` 构建并推送三个镜像到 GHCR。第一次推送后，在 GitHub 的 Packages 设置里把这三个包设为 Public，匿名用户才能拉取。主镜像里是全部源码，公开镜像等于公开源码。
-2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回，`site/index.html` 是落地页。
+2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回。官网的页面（落地页、关于、条款与条件、隐私政策，中英两种语言）由 `pnpm site:build` 从 `site/src/` 生成后提交进仓库，线上没有构建步骤，见 [`site/docs/README.md`](../site/docs/README.md)。
 
 ### 在 Cloudflare 上部署 `site/`（连接 GitHub 仓库创建 Worker）
 
-`site/` 是一个纯静态的 Worker（Workers 静态资源，没有脚本）：配置在 `site/wrangler.jsonc`，`site/.assetsignore` 把配置文件排除在发出去的内容之外。对外发出去的只有 `site/` 里的落地页、图片和安装脚本；构建时 Cloudflare 会克隆整个仓库，但仓库其余部分不会被公开。
+`site/` 是一个纯静态的 Worker（Workers 静态资源，没有脚本）：配置在 `site/wrangler.jsonc`，`site/.assetsignore` 把配置文件、页面源码（`src/`）、生成脚本与说明文档排除在发出去的内容之外。对外发出去的只有 `site/` 里已经生成好的页面、样式、脚本、字体、图片和安装脚本；构建时 Cloudflare 会克隆整个仓库，但仓库其余部分不会被公开。
 
 入口：Cloudflare 控制台 → **Workers & Pages** → **Create application** → 选 **GitHub**（Import a repository）。
 

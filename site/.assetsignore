@@ -1,4 +1,7 @@
-# 这些文件在站点目录里，但不是要发出去的内容
+# 这些文件在站点目录里，但不是要发出去的内容：部署配置、页面的源码与生成脚本、说明文档
 wrangler.jsonc
 .assetsignore
 .wrangler
+src/
+scripts/
+docs/
