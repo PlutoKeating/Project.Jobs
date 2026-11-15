@@ -1,0 +1,4 @@
+# 这些文件在站点目录里，但不是要发出去的内容
+wrangler.jsonc
+.assetsignore
+.wrangler

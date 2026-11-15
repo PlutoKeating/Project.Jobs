@@ -21,3 +21,5 @@ game/**/.tshock/
 # tModLoader：本地下载的发布包、构建时复制进 mod 目录的共享源码
 game/tmodloader/.tml/
 game/tmodloader/JobsWorld/Shared/
+# Cloudflare wrangler 在本机预览或试部署时的缓存
+.wrangler/

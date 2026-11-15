@@ -108,4 +108,40 @@ JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 ## 对外发布（维护者）
 
 1. 打 `v*` 标签：`.github/workflows/release.yml` 构建并推送三个镜像到 GHCR。第一次推送后，在 GitHub 的 Packages 设置里把这三个包设为 Public，匿名用户才能拉取。主镜像里是全部源码，公开镜像等于公开源码。
-2. 把仓库里的 `site/` 作为静态站点部署并绑定 `jobs.plutokeating.beer`：`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回，`site/index.html` 是落地页。
+2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回，`site/index.html` 是落地页。
+
+### 在 Cloudflare 上部署 `site/`（连接 GitHub 仓库创建 Worker）
+
+`site/` 是一个纯静态的 Worker（Workers 静态资源，没有脚本）：配置在 `site/wrangler.jsonc`，`site/.assetsignore` 把配置文件排除在发出去的内容之外。对外发出去的只有 `site/` 里的落地页、图片和安装脚本；构建时 Cloudflare 会克隆整个仓库，但仓库其余部分不会被公开。
+
+入口：Cloudflare 控制台 → **Workers & Pages** → **Create application** → 选 **GitHub**（Import a repository）。
+
+| 表单项 | 填什么 | 说明 |
+|---|---|---|
+| Git account | 你的 GitHub 账号 | 第一次会跳到 GitHub 安装「Cloudflare Workers and Pages」应用：选 **Only select repositories**，只勾这个仓库。私有仓库可以用 |
+| Repository | `Project.Jobs` | |
+| Project name（Worker 名字） | `jobs-site` | 要与 `site/wrangler.jsonc` 里的 `name` 相同 |
+| Production branch（Git branch） | 现在填 `feature/jobs-relaunch`；合并到 `main` 之后改成 `main` | `main` 上目前没有 `site/`。创建表单里没有这一项时，先创建，再到 Settings → Build → Branch control 里改，然后重试构建 |
+| Build command | 留空 | 没有构建步骤 |
+| Deploy command | `npx wrangler deploy` | 默认值，不用改 |
+| Preview command（非生产分支用） | 保持默认 | 下面会把预览构建关掉，用不到 |
+| Root directory（Path） | `site` | **必填**。不填会在仓库根目录找配置，找不到 |
+| API token | Create new token（默认） | 让 Cloudflare 自动生成 |
+| Build variables and secrets | 名称 `SKIP_DEPENDENCY_INSTALL`，值 `1` | 跳过依赖安装：这个站点不需要仓库里的任何 npm 包 |
+
+点 **Save and Deploy**。构建成功后先打开它给的 `*.workers.dev` 地址确认落地页正常，再做下面两件事（都在这个 Worker 的 **Settings** 里）：
+
+| 位置 | 填什么 | 说明 |
+|---|---|---|
+| Domains & Routes → Add → Custom Domain | `jobs.plutokeating.beer` | 域名的解析已经在 Cloudflare 上，`jobs` 这个子域名目前没有任何记录，Cloudflare 会自动建解析记录并签发证书 |
+| Build → Branch control → Enable Preview Builds（非生产分支构建） | 取消勾选 | 否则每个分支的每次推送都会构建一次 |
+| Build → Build watch paths → Include paths | `site/*` | 只有 `site/` 下的文件变了才重新部署 |
+
+验证：
+
+```bash
+curl -sI https://jobs.plutokeating.beer/install | grep -i content-type    # text/plain; charset=utf-8
+curl -fsSL https://jobs.plutokeating.beer/install | head -3               # 安装脚本的开头
+```
+
+本机预览或试部署（不上传）：`cd site && npx wrangler dev`、`npx wrangler deploy --dry-run`。配置在本机用 wrangler 4.162 的预览与试部署验证过（`/install` 返回纯文本、配置文件不对外可见）；在 Cloudflare 账号上的实际部署还没有做过。

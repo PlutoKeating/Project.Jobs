@@ -11,6 +11,13 @@ describe('一行安装', () => {
   it('jobs.plutokeating.beer/install 发出去的就是 deploy/install.sh（改了之后要运行 node scripts/sync-install.mjs）', () => {
     expect(read('site/install')).toBe(read('deploy/install.sh'));
   });
+  it('站点目录里发出去的只有落地页、图片和安装脚本：配置文件被排除，/install 以纯文本返回', () => {
+    const cfg = JSON.parse(read('site/wrangler.jsonc').replace(/^\s*\/\/.*$/gm, '')) as { name: string; assets: { directory: string } };
+    expect(cfg.name).toBe('jobs-site'); expect(cfg.assets.directory).toBe('.');
+    const ignored = read('site/.assetsignore').split('\n');
+    for (const f of ['wrangler.jsonc', '.assetsignore', '.wrangler']) expect(ignored).toContain(f);
+    expect(read('site/_headers')).toMatch(/^\/install\n\s+Content-Type: text\/plain; charset=utf-8$/m);
+  });
   it('脚本语法正确', () => {
     for (const f of ['deploy/install.sh', 'deploy/jobs']) expect(() => execFileSync('bash', ['-n', join(REPO_ROOT, f)])).not.toThrow();
     expect(() => execFileSync('sh', ['-n', join(REPO_ROOT, 'deploy/entrypoint.sh')])).not.toThrow();

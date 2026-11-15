@@ -1,0 +1,10 @@
+// jobs.plutokeating.beer：落地页与安装脚本。纯静态，没有 Worker 脚本。
+// 在 Cloudflare 上用「连接 Git 仓库」创建 Worker 时：根目录填 site，项目名与下面的 name 相同。
+// 填写说明见 docs/INSTALL.md「对外发布（维护者）」。
+{
+  "name": "jobs-site",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "."
+  }
+}

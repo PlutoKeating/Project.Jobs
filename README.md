@@ -79,7 +79,7 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；其他支持 MCP 的
 | `packages/core` · `packages/db` · `packages/storage` | 类型与 schema · Drizzle 表与迁移 · 证据存储（MinIO/S3，内容寻址） |
 | `game/` · `infra/game/` | Terraria 两个游戏端的插件与模组（C#）· 游戏服镜像 |
 | `demos/kit` | 11 个示例产品（每个有干净版与带着已知毛病的版本），用于演示与校准 |
-| `Dockerfile` · `deploy/` · `site/` · `.github/workflows/` | 主镜像；容器入口、装好后用的编排文件、安装脚本、`jobsworld` 命令；`jobs.plutokeating.beer` 的落地页与安装脚本副本；打标签时构建并推送镜像的工作流 |
+| `Dockerfile` · `deploy/` · `site/` · `.github/workflows/` | 主镜像；容器入口、装好后用的编排文件、安装脚本、`jobsworld` 命令；`jobs.plutokeating.beer` 的落地页、安装脚本副本与 Cloudflare 部署配置（`site/wrangler.jsonc`）；打标签时构建并推送镜像的工作流 |
 | `docker-compose.yml` · `infra/` | 从源码运行时的依赖服务与游戏服的本地构建；游戏服镜像的构建文件、数据库初始化脚本 |
 | `config/` | 人口抽样表与随包居民（`population/`）、城镇布局与日程骨架（`jobsworld/`）、手写人物（`personas/`）、模型目录快照（`models/`）、全局参数（`pux.config.yaml`）、校准批次用的手写场景（`worlds/`）与儿童安全规则（`rubrics/`） |
 | `scripts/` · `tests/` · `examples/calibration/` | 启动脚本、游戏协议探针、目录与安装脚本的同步工具 · 单元与集成测试 · 校准输入的示例文件 |
