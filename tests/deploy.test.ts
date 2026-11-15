@@ -61,6 +61,18 @@ describe('升级', () => {
     expect(wf).toMatch(/release:\n\s+needs: images/);
     expect(wf).toContain("!contains(github.ref_name, '-')");
   });
+  it('三个镜像都发布 amd64 + arm64：各在原生机器上构建，合成一个多架构清单；TShock 按架构取发布包', () => {
+    const wf = read('.github/workflows/release.yml');
+    expect(wf).toContain('{ arch: amd64, runner: ubuntu-latest }');
+    expect(wf).toContain('{ arch: arm64, runner: ubuntu-24.04-arm }');
+    expect(wf).toMatch(/images:\n\s+needs: build/);
+    expect(wf).toContain('docker buildx imagetools create');
+    for (const d of ['Dockerfile', 'infra/game/tshock/Dockerfile', 'infra/game/tmodloader/Dockerfile']) expect(wf).toContain(`dockerfile: ${d} }`);
+    const tshock = read('infra/game/tshock/Dockerfile');
+    expect(tshock).toContain('ARG TARGETARCH');
+    expect(tshock).toContain('arm64) RID=linux-arm64');
+    expect(tshock).not.toMatch(/-linux-x64-Release/);
+  });
 });
 
 describe('编排', () => {

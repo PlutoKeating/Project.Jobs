@@ -1,4 +1,5 @@
-# 发布：打 v* 标签时，先确认标签与 package.json 的版本一致 → 构建并推送三个镜像到 GHCR（主镜像 + 两个可选的游戏服镜像）
+# 发布：打 v* 标签时，先确认标签与 package.json 的版本一致 → 构建并推送三个镜像到 GHCR（主镜像 + 两个可选的游戏服镜像），
+# 每个都是 linux/amd64 + linux/arm64 的多架构镜像
 # → 镜像都推上去之后才建 GitHub Release。装好的 Jobs 读的是「最新的 Release」来提示有新版本，所以提示出现时镜像一定已经可以拉取。
 # 标签带 -（如 v0.3.0-rc.1）时是预发布：不打 latest、Release 标为 prerelease，已装好的 Jobs 不会被提示。
 # 第一次推送后，需要在 GitHub 的 Packages 设置里把这三个包设为 Public，匿名用户才能拉取。
@@ -23,18 +24,68 @@ jobs:
           v="$(node -p "require('./package.json').version")"
           if [ "v$v" != "$GITHUB_REF_NAME" ]; then echo "::error::标签 $GITHUB_REF_NAME 与 package.json 的版本 $v 不一致：先改 package.json 再打标签"; exit 1; fi
 
-  images:
+  # 每个镜像 × 每个架构在对应的原生机器上构建（arm64 用 GitHub 的 arm64 机器，不走 QEMU 模拟），只按摘要推送，不打标签
+  build:
     needs: check
+    runs-on: ${{ matrix.platform.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - { name: jobs, dockerfile: Dockerfile }
+          - { name: jobs-tshock, dockerfile: infra/game/tshock/Dockerfile }
+          - { name: jobs-tml, dockerfile: infra/game/tmodloader/Dockerfile }
+        platform:
+          - { arch: amd64, runner: ubuntu-latest }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/plutokeating/${{ matrix.image.name }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          platforms: linux/${{ matrix.platform.arch }}
+          labels: ${{ steps.meta.outputs.labels }}
+          outputs: type=image,name=ghcr.io/plutokeating/${{ matrix.image.name }},push-by-digest=true,name-canonical=true,push=true
+          cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          cache-to: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.arch }},mode=max
+      - name: 记下摘要
+        run: |
+          mkdir -p /tmp/digests
+          d="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${d#sha256:}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.image.name }}-${{ matrix.platform.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  # 把同一镜像两个架构的摘要合成一个多架构清单，再打上版本号 / latest 标签：用户拉取时 Docker 自动选本机的架构
+  images:
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { name: jobs, dockerfile: Dockerfile }
-          - { name: jobs-tshock, dockerfile: infra/game/tshock/Dockerfile }
-          - { name: jobs-tml, dockerfile: infra/game/tmodloader/Dockerfile }
+        name: [jobs, jobs-tshock, jobs-tml]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.name }}-*
+          merge-multiple: true
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
@@ -49,15 +100,17 @@ jobs:
             type=semver,pattern={{version}}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
             type=sha,enable=${{ github.event_name == 'workflow_dispatch' }}
-      - uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.name }}
-          cache-to: type=gha,scope=${{ matrix.name }},mode=max
+      - name: 合成多架构清单并打标签
+        working-directory: /tmp/digests
+        run: |
+          test "$(ls | wc -l)" -eq 2 || { echo "::error::应有 amd64 与 arm64 两个摘要"; ls; exit 1; }
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf 'ghcr.io/plutokeating/${{ matrix.name }}@sha256:%s ' *)
+      - name: 确认两个架构都在
+        run: |
+          tag="$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
+          docker buildx imagetools inspect "$tag"
+          for a in linux/amd64 linux/arm64; do docker buildx imagetools inspect "$tag" | grep -q "Platform: *$a" || { echo "::error::$tag 缺少 $a"; exit 1; }; done
 
   release:
     needs: images

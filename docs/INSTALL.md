@@ -8,7 +8,7 @@
 curl -fsSL https://jobs.plutokeating.beer/install | bash
 ```
 
-需要一台能跑 Docker 的机器（Linux、macOS、Windows 的 WSL2；建议 4 核 8 G 内存以上，因为要同时开几个浏览器；主镜像约 3.4 GB）。脚本做的事：
+需要一台能跑 Docker 的机器（Linux、macOS、Windows 的 WSL2；x86_64 或 arm64（aarch64，比如 Apple 芯片的 Mac、树莓派 5、RDK X5 这类开发板），镜像会自动选对架构；建议 4 核 8 G 内存以上，因为要同时开几个浏览器；主镜像约 3.4 GB）。脚本做的事：
 
 1. 确认有 Docker 和 Compose v2。Linux 上没有 Docker 时用官方脚本安装（需要管理员权限；不想让它装就设 `JOBS_NO_DOCKER_INSTALL=1`）。macOS / Windows 请先装好 Docker Desktop 或 OrbStack。
 2. 拉取镜像，在 `~/.jobs/` 写好编排文件和 `.env`。`.env` 里的口令和密钥都是随机生成的，文件只有你自己能读。
@@ -109,7 +109,9 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；Codex、opencode 等
 |---|---|
 | `ghcr.io/plutokeating/jobs` | 我们自己的全部代码：世界服务、接口、网页、单端口网关、命令行，以及它驱动的 Chromium、ffmpeg、字体。由仓库根的 `Dockerfile` 构建。pnpm（含它的原生二进制）在构建时就装进镜像（`COREPACK_HOME=/corepack`），运行时禁止 corepack 联网：容器启动不需要访问 npm |
 | `pgvector/pgvector`、`elestio/minio`、`nats` | 数据库、对象存储、事件总线：各自的标准镜像，原样引用 |
-| `ghcr.io/plutokeating/jobs-tshock`、`jobs-tml` | 可选的两个 Terraria 游戏服（第三方服务端 + 我们的插件 / 模组），按需拉取。由 `infra/game/*/Dockerfile` 构建 |
+| `ghcr.io/plutokeating/jobs-tshock`、`jobs-tml` | 可选的两个 Terraria 游戏服（第三方服务端 + 我们的插件 / 模组），按需拉取。由 `infra/game/*/Dockerfile` 构建；TShock 按构建架构下载对应的发布包（`linux-x64` / `linux-arm64`） |
+
+我们的三个镜像都同时发布 `linux/amd64` 与 `linux/arm64`（同一个标签下的多架构清单，拉取时 Docker 自动选本机的架构）；引用的三个标准镜像本身也都有这两种架构。`v0.2.0` 及更早的版本只有 `linux/amd64`，arm64 机器从下一个版本开始能装。
 
 Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等只监听本机回环地址上的高位端口（55432、59000、54222，可在 `.env` 里改）；其他系统用端口映射（`compose.bridge.yml`）。对外只有一个端口（默认 7777）：网页、接口、WebSocket 和 Terraria 都走它。
 
@@ -124,6 +126,8 @@ Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等
 
 ## 自己构建
 
+在哪种架构的机器上构建，就得到哪种架构的镜像（x86_64 与 arm64 都行）。要在 x86_64 上构建 arm64 镜像，先装好 QEMU（`docker run --privileged --rm tonistiigi/binfmt --install arm64`），再用 `docker buildx build --platform linux/arm64 --load ...`，会慢很多。
+
 ```bash
 docker build -t jobs:local .
 JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
@@ -135,7 +139,7 @@ JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 
 ## 对外发布（维护者）
 
-1. 版本号只有一个来源：仓库根 `package.json` 的 `version`（命令行 `jobsworld -V`、MCP、`/healthz`、`/api/v1/version` 和网页都读它）。发版时先把它改成新版本并提交到 `main`，再打同名的 `v*` 标签（例如 `0.2.0` 对应 `v0.2.0`）：`.github/workflows/release.yml` 先检查标签与 `package.json` 一致，然后构建并推送三个镜像到 GHCR（`jobs`、`jobs-tshock`、`jobs-tml`，现在都是 Public；标签为版本号与 `latest`），**三个镜像都推上去之后**才建 GitHub Release（说明自动从提交生成）。装好的 Jobs 看到的是这个 Release，所以提示出现时新镜像一定已经能拉取。标签带 `-`（如 `v0.3.0-rc.1`）是预发布：不打 `latest`，Release 标为预发布，已装好的 Jobs 不会被提示。新建的包默认是私有的，可见性只能在 GitHub 网页的 Packages 设置里改，没有接口；以后如果新增镜像，要记得把它也设为 Public，匿名用户才能拉取。
+1. 版本号只有一个来源：仓库根 `package.json` 的 `version`（命令行 `jobsworld -V`、MCP、`/healthz`、`/api/v1/version` 和网页都读它）。发版时先把它改成新版本并提交到 `main`，再打同名的 `v*` 标签（例如 `0.2.0` 对应 `v0.2.0`）：`.github/workflows/release.yml` 先检查标签与 `package.json` 一致，然后构建并推送三个镜像到 GHCR（`jobs`、`jobs-tshock`、`jobs-tml`，现在都是 Public；标签为版本号与 `latest`）。每个镜像的 amd64 与 arm64 分别在 GitHub 的 x64 与 arm64 原生机器上构建（不用 QEMU 模拟），先只按摘要推送，再合成一个多架构清单打上标签，并检查两个架构都在；**三个镜像都推上去之后**才建 GitHub Release（说明自动从提交生成）。装好的 Jobs 看到的是这个 Release，所以提示出现时新镜像一定已经能拉取。标签带 `-`（如 `v0.3.0-rc.1`）是预发布：不打 `latest`，Release 标为预发布，已装好的 Jobs 不会被提示。新建的包默认是私有的，可见性只能在 GitHub 网页的 Packages 设置里改，没有接口；以后如果新增镜像，要记得把它也设为 Public，匿名用户才能拉取。
 2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回。官网的页面（落地页、关于、条款与条件、隐私政策，中英两种语言）由 `pnpm site:build` 从 `site/src/` 生成后提交进仓库，线上没有构建步骤，见 [`site/docs/README.md`](../site/docs/README.md)。同一条命令也生成两份 README 里的示意图（`docs/images/`）。
 
 ### 在 Cloudflare 上部署 `site/`（连接 GitHub 仓库创建 Worker）

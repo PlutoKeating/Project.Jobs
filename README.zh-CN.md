@@ -33,7 +33,7 @@
 curl -fsSL https://jobs.plutokeating.beer/install | bash
 ```
 
-需要一台装了 Docker 的机器。装完会打印访问地址和两个口令，然后：
+需要一台装了 Docker 的机器，x86_64 或 arm64 都行。装完会打印访问地址和两个口令，然后：
 
 1. 打开那个地址，用管理员口令进去。
 2. 在「模型」页选一家供应商，粘贴 Key，勾选模型，保存。

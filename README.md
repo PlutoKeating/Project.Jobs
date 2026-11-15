@@ -33,7 +33,7 @@ Hand Jobs a URL. Two hundred very different people live in **JobsWorld**. They g
 curl -fsSL https://jobs.plutokeating.beer/install | bash
 ```
 
-You need a machine with Docker. The script prints an address and two passcodes; then:
+You need a machine with Docker, x86_64 or arm64. The script prints an address and two passcodes; then:
 
 1. Open the address and sign in with the admin passcode.
 2. On the **Models** page, pick a provider, paste a key, tick the models, save.
