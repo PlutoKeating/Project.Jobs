@@ -232,16 +232,14 @@ code, pre { font-family: var(--ds-font-mono); }
 .fig .t-mid { text-anchor: middle; }
 .fig .t-end { text-anchor: end; }
 .fig .t-num { font-variant-numeric: tabular-nums; }
-.fig .t-8 { font-size: 8px; }
-.fig .t-10 { font-size: 10px; }
+.fig .t-9 { font-size: 9px; }
 .fig .t-11 { font-size: 11px; }
 .fig .t-12 { font-size: 12px; }
 .fig .t-13 { font-size: 13px; }
 .fig .t-14 { font-size: 14px; }
 .fig .t-15 { font-size: 15px; }
-.fig .t-17 { font-size: 17px; }
+.fig .t-16 { font-size: 16px; }
 .fig .t-19 { font-size: 19px; }
-.fig .t-22 { font-size: 22px; }
 .fig .t-24 { font-size: 24px; letter-spacing: -0.01em; }
 .fig .t-60 { font-size: 60px; letter-spacing: -0.03em; }
 

@@ -19,15 +19,15 @@ export const figureText = {
     banner: { label: 'Jobs：发布之前，先让一座城的人用用看', tagline: '发布之前，先让一座城的人用用看。' },
     journey: {
       label: '发布之后发生什么：产品被发布到城里，居民遇到它、注意到它、自己决定要不要点开、在自己的处境里使用、之后告诉别人，最后汇成一页结论。遇没遇到、注没注意由规则决定，其余由居民自己决定。',
-      rules: ['规则决定', '遇没遇到、注没注意，不调用模型'],
-      person: ['他自己决定', '点不点开、怎么用、跟谁说，模型只在这里出场'],
+      rules: ['规则决定 · 不调用模型', '遇没遇到、注没注意'],
+      person: ['他自己决定 · 模型只在这里出场', '点不点开、怎么用、跟谁说'],
       steps: [
         { title: '发布', sub: ['网址、名字、', '一句话'] },
-        { title: '遇到', sub: ['商店、广告、广告牌、', '动态、熟人提起'], count: '看到' },
-        { title: '注意', sub: ['多数曝光', '根本没被注意到'], count: '注意到' },
-        { title: '决定', sub: ['忙、累、对不上自己', '的事，就划过去'], count: '有兴趣' },
-        { title: '使用', sub: ['只看得到屏幕，', '在此时此地的处境里'], count: '打开过' },
-        { title: '之后', sub: ['评论、动态、跟谁说、', '过几天回不回来'], count: '回来再用' },
+        { title: '遇到', sub: ['商店、广告、', '广告牌、动态、', '熟人提起'], count: '看到' },
+        { title: '注意', sub: ['多数曝光根本', '没被注意到'], count: '注意到' },
+        { title: '决定', sub: ['忙、累、对不上', '自己的事，', '就划过去'], count: '有兴趣' },
+        { title: '使用', sub: ['只看得到屏幕，', '在此时此地的', '处境里'], count: '打开过' },
+        { title: '之后', sub: ['评论、动态、', '跟谁说、', '回不回来'], count: '回来再用' },
         { title: '结论', sub: ['一页人话，', '每一句都能点开'] },
       ],
       form: ['网址', '名字', '一句话', '发布'],
@@ -42,7 +42,7 @@ export const figureText = {
       blurred: ['超出阅读预算、', '字太小的地方', '是糊的'],
       who: ['赵红梅', '56 岁，退休干部'],
       where: ['12:35', '家里沙发上', '吃午饭', '手机'],
-      quote: ['“这还得先登录啊，我哪有账号。', '我点一下下面这个‘没有账号？', '注册一个’看看麻烦不麻烦，', '要是太费事我就不弄了。”'],
+      quote: ['“这还得先登录啊，', '我哪有账号。我点一下', '下面这个‘没有账号？', '注册一个’看看麻烦不', '麻烦，要是太费事我就', '不弄了。”'],
       action: '点',
       target: '没有账号？注册一个',
       before: '之前',
@@ -63,7 +63,7 @@ export const figureText = {
       section: '最让人难受的地方',
       sentence: ['大家写完标题和正文想存下来，看到页面底下写着「已自动保存」', '又没有保存按钮，就放心地退回笔记列表，结果标题全变成了', '「无标题」，再点进去，刚才打的字空空如也。三个人全都白忙活', '一场，直接气走了。'],
       who: ['周诗涵', ' · 29 岁，带货主播'],
-      quote: ['“啊？怎么全都是空的！我刚才明明写了标题和内容的，', '说好的自动保存呢？这破软件连写的东西都存不住，', '简直浪费时间，不玩了！”'],
+      quote: ['“啊？怎么全都是空的！我刚才明明写了标题', '和内容的，说好的自动保存呢？这破软件连写的', '东西都存不住，简直浪费时间，不玩了！”'],
       open: '看这次使用 →',
       thumb: ['闪念笔记', '无标题', '已自动保存'],
       more: ['一打开就要先登录，还没开始记事就觉得麻烦。'],
@@ -97,11 +97,11 @@ export const figureText = {
       ours: '我们自己的代码：一个镜像',
       gateway: ['单端口网关 :7777', 'HTTP → 接口 · Terraria → 游戏服'],
       api: ['接口与网页', 'REST · WebSocket 实时推送', '飞书机器人'],
-      world: ['世界服务', '常驻运行：时钟、日程、需求、位置', '发布引擎：遇到 → 决定 → 使用 → 口碑'],
+      world: ['世界服务', '常驻运行：时钟、日程、需求', '遇到 → 决定 → 使用 → 口碑'],
       sessions: ['使用过程', '每次使用一个独立的 Chromium', '看截图定位 · 人的手 · 录像'],
       router: ['模型路由', '每一步 · 归纳 · 定位 · 向量 · 画图', '多家供应商，失败接替，记下花费'],
       standard: '标准镜像',
-      images: [['Postgres + pgvector', '居民、记忆、发布'], ['MinIO', '截图、录像等证据'], ['NATS', '事件总线'], ['Terraria 游戏服（可选）', 'TShock · tModLoader']],
+      images: [['Postgres + pgvector', '居民、记忆、发布'], ['MinIO', '截图、录像等证据'], ['NATS', '事件总线'], ['Terraria 游戏服', '可选 · TShock · tModLoader']],
       product: ['你的产品', '这台机器访问得到的任何网址，', '本机的开发服务器也行'],
       providers: ['你接入的模型供应商', '在网页的「模型」里配置，', '保存后几秒生效'],
       data: ['居民、记忆、截图和结论都存在', '你机器上的 Docker 卷里。'],
@@ -111,15 +111,15 @@ export const figureText = {
     banner: { label: 'Jobs: before you launch, let a whole town try it', tagline: 'Before you launch, let a whole town try it.' },
     journey: {
       label: 'What happens after you launch: the product goes into the town; residents come across it, notice it, decide for themselves whether to open it, use it in their own situation, tell others afterwards, and it all rolls up into one plain page. Rules decide who comes across it and who notices; the residents decide everything else.',
-      rules: ['Rules decide', 'who sees it, who notices · no model calls'],
-      person: ['They decide', 'to open it, how to use it, whom to tell · the only model calls'],
+      rules: ['Rules decide · no model calls', 'who sees it, who notices'],
+      person: ['They decide · the only model calls', 'whether to open it, how to use it, whom to tell'],
       steps: [
         { title: 'Launch', sub: ['A URL, a name,', 'one line'] },
-        { title: 'Comes across it', sub: ['App store, ads, billboards,', 'the feed, a friend'], count: 'Saw it' },
-        { title: 'Notices', sub: ['Most impressions', 'are never noticed'], count: 'Noticed' },
-        { title: 'Decides', sub: ['Busy, tired, not for me:', 'they scroll past'], count: 'Interested' },
-        { title: 'Uses it', sub: ['Sees only the screen,', 'in their here and now'], count: 'Opened' },
-        { title: 'Afterwards', sub: ['A review, a post, a word', 'to friends, a return'], count: 'Came back' },
+        { title: 'Comes across it', sub: ['App store, ads,', 'billboards, feed,', 'a friend'], count: 'Saw it' },
+        { title: 'Notices', sub: ['Most impressions', 'go unnoticed'], count: 'Noticed' },
+        { title: 'Decides', sub: ['Busy, tired, not', 'for me: they', 'scroll past'], count: 'Interested' },
+        { title: 'Uses it', sub: ['Sees only the', 'screen, in their', 'here and now'], count: 'Opened' },
+        { title: 'Afterwards', sub: ['A review, a post,', 'word to friends,', 'a return visit'], count: 'Came back' },
         { title: 'Conclusion', sub: ['One plain page;', 'every line opens'] },
       ],
       form: ['URL', 'Name', 'One line', 'Publish'],
@@ -131,10 +131,10 @@ export const figureText = {
       app: '闪念笔记',
       fields: ['用户名', '密码', '登录', '没有账号？注册一个'],
       clear: ['What one glance', 'can take in'],
-      blurred: ['Past the reading', 'budget, or too', 'small: blurred'],
+      blurred: ['Past the', 'reading budget,', 'or too small:', 'blurred'],
       who: ['Zhao Hongmei', '56, retired civil servant'],
       where: ['12:35', 'On the sofa at home', 'Having lunch', 'Phone'],
-      quote: ['“I have to log in first? I don’t', 'have an account. Let me tap this', '‘No account? Sign up’ and see', 'how much trouble it is. If it’s', 'a hassle, I won’t bother.”'],
+      quote: ['“I have to log in first? I', 'don’t have an account. Let', 'me tap this ‘No account?', 'Sign up’ and see how much', 'trouble it is. If it’s a', 'hassle, I won’t bother.”'],
       action: 'Tap',
       target: '没有账号？注册一个',
       before: 'Before',
@@ -153,9 +153,9 @@ export const figureText = {
       headline: ['Auto-save saved nothing.', 'All three who tried it left.'],
       status: ['Most people give up', ' · 3 used it'],
       section: 'What hurt most',
-      sentence: ['They wrote a title and a note, saw “Auto-saved” at the bottom and', 'no save button, and went back to the list. Every title now read', '“Untitled”, and the note they had just typed was empty. All three', 'had wasted their effort and left.'],
+      sentence: ['They wrote a title and a note, saw “Auto-saved” at the', 'bottom and no save button, and went back to the list.', 'Every title now read “Untitled”, and the note they had', 'just typed was empty. All three had wasted their effort', 'and left.'],
       who: ['Zhou Shihan', ' · 29, livestream seller'],
-      quote: ['“What? It’s all empty! I wrote a title and the text just', 'now. What happened to auto-save? This thing can’t even', 'keep what I type. What a waste of time. I’m done!”'],
+      quote: ['“What? It’s all empty! I wrote a title and the', 'text just now. What happened to auto-save? This', 'thing can’t even keep what I type. What a waste', 'of time. I’m done!”'],
       open: 'Open session →',
       thumb: ['闪念笔记', '无标题', '已自动保存'],
       more: ['It asks you to log in before you can write anything.'],
@@ -170,33 +170,33 @@ export const figureText = {
     loop: {
       label: 'The loop for coding agents: write the code, launch over MCP, let the town use it, pull back the conclusion and a list of issues with steps to reproduce, fix, and launch again.',
       steps: [
-        { title: 'Write the code', sub: 'Any agent that speaks MCP', mono: false },
+        { title: 'Write the code', sub: 'Any MCP agent', mono: false },
         { title: 'Launch', sub: 'publish_product', mono: true },
         { title: 'The town uses it', sub: 'product_status', mono: true },
-        { title: 'Pull back the issues', sub: 'product_report', mono: true },
+        { title: 'Pull back issues', sub: 'product_report', mono: true },
       ],
       back: ['Fix it,', 'launch again'],
       carries: ['Issues with steps', 'to reproduce'],
-      issue: 'Auto-save fails: what you typed is gone on reopening',
+      issue: 'Auto-save fails: what you typed is gone',
       met: '4 people hit it',
       // 那次运行里合成出来的问题的复现步骤（第 5–8 步，产品界面上的原文）
       repro: [[5, 'click "+ 新建笔记"'], [6, 'type "内容" → "测试一下"'], [7, 'click "← 返回列表"'], [8, 'click "无标题"']],
     },
     stack: {
       label: 'How Jobs is put together: the web page, the command line, coding agents, Feishu and Terraria are five ways into the same capabilities; our own code ships as one image (single-port gateway, API and web, world service, usage sessions, model router) next to standard images (Postgres, MinIO, NATS, optional game servers); everything runs on your own machine and reaches out only to your product and the model providers you connect.',
-      entries: [['Web', 'The town comes first'], ['Command line', 'jobsworld'], ['Coding agent', 'MCP'], ['Feishu', 'Bot'], ['Terraria', 'Walk into the same town']],
+      entries: [['Web', 'The town comes first'], ['Command line', 'jobsworld'], ['Coding agent', 'MCP'], ['Feishu', 'Bot'], ['Terraria', 'Walk into the town']],
       machine: 'Your machine · Docker',
       ours: 'Our own code: one image',
       gateway: ['Single-port gateway :7777', 'HTTP → API · Terraria → game servers'],
-      api: ['API and web', 'REST · live updates over WebSocket', 'Feishu bot'],
-      world: ['World service', 'Always on: clock, schedules, needs', 'Engine: meet → decide → use → talk'],
-      sessions: ['Usage sessions', 'One separate Chromium per session', 'Screenshot only · human hand · video'],
-      router: ['Model router', 'Step · Think · Locate · Embed · Image', 'Many providers, failover, spend recorded'],
+      api: ['API and web', 'REST · WebSocket live updates', 'Feishu bot'],
+      world: ['World service', 'Always on: clock, schedules', 'Meet → decide → use → talk'],
+      sessions: ['Usage sessions', 'One Chromium per session', 'Screenshot only · human hand'],
+      router: ['Model router', 'Five model groups, by role', 'Many providers, failover'],
       standard: 'Standard images',
-      images: [['Postgres + pgvector', 'Residents, memories, launches'], ['MinIO', 'Screenshots, recordings, evidence'], ['NATS', 'Event bus'], ['Terraria servers (optional)', 'TShock · tModLoader']],
+      images: [['Postgres + pgvector', 'Residents, memories, launches'], ['MinIO', 'Screenshots, recordings'], ['NATS', 'Event bus'], ['Terraria servers', 'Optional · TShock · tModLoader']],
       product: ['Your product', 'Any URL this machine can reach,', 'a local dev server included'],
-      providers: ['The model providers you connect', 'Configured on the Models page,', 'live a few seconds after saving'],
-      data: ['Residents, memories, screenshots and', 'conclusions stay in Docker volumes', 'on your machine.'],
+      providers: ['Your model providers', 'Configured on the Models page,', 'live seconds after saving'],
+      data: ['Residents, memories, screenshots', 'and conclusions stay in Docker', 'volumes on your machine.'],
     },
   },
 };
@@ -236,19 +236,19 @@ function widthOf(s, size) {
 }
 
 /** 一排胶囊，放不下就换行。返回 { svg, bottom }。 */
-function chips(x, y, maxW, items, { size = 12, h = 24, gap = 8, struck = false } = {}) {
+function chips(x, y, maxW, items, { size = 14, h = 28, gap = 8, struck = false } = {}) {
   let cx = x;
   let cy = y;
   let svg = '';
   for (const s of items) {
-    const w = Math.ceil(widthOf(s, size) + 22);
+    const w = Math.ceil(widthOf(s, size) + 24);
     if (cx > x && cx + w > x + maxW) {
       cx = x;
       cy += h + gap;
     }
     svg += rect(cx, cy, w, h, h / 2, struck ? 'no-fill s-line dashed' : 'no-fill s-strong');
-    svg += text(cx + w / 2, cy + h / 2 + size * 0.36, s, `t-mid ${struck ? 't-s' : 't-m'} ${size === 12 ? 't-12' : 't-11'}`);
-    if (struck) svg += line(cx + 9, cy + h / 2, cx + w - 9, cy + h / 2, 's-muted');
+    svg += text(cx + w / 2, cy + h / 2 + size * 0.36, s, `t-mid ${struck ? 't-s' : 't-m'} t-${size}`);
+    if (struck) svg += line(cx + 10, cy + h / 2, cx + w - 10, cy + h / 2, 's-muted');
     cx += w + gap;
   }
   return { svg, bottom: cy + h };
@@ -267,6 +267,11 @@ function prng(seed) {
 
 /** 「此刻」的叠加层：第 i 步（从 1 起）时亮起。 */
 const now = (i, body) => group(`now now-${i}`, body, ' aria-hidden="true"');
+
+/*
+ * 字号：这些图在 README 里只有约 850px 宽（画布 960，缩到 0.88 倍），所以图里承载内容的字最小 13px、
+ * 说明文字 14px、正文 15px，缩小后仍在 11px 以上。只有手机示意和缩略图里的界面文字更小（它们画的是界面，不是用来读的）。
+ */
 
 /* ---------------------------------------------------------------- 字标条幅（只给 README 用） */
 
@@ -293,15 +298,16 @@ const FUNNEL = [194, 148, 11, 9, 1];
 function journey(t) {
   const W = 960;
   const xs = [72, 208, 344, 480, 616, 752, 888];
-  const trackY = 100;
-  const colTop = 84;
-  const gridTop = 262;
+  const trackY = 106;
+  const colTop = 90;
+  const countY = 246;
+  const gridTop = 286;
   const cols = 12;
   const pitch = 7.5;
   const rows = Math.ceil(RESIDENTS / cols);
   const gridBottom = gridTop + rows * pitch;
   const colBottom = gridBottom + 14;
-  const H = colBottom + 60;
+  const H = colBottom + 66;
 
   // 每位居民在每一格里的位置相同；人数少的一层是人数多的一层的子集
   const rand = prng(194148);
@@ -319,12 +325,12 @@ function journey(t) {
     const x1 = xs[from] - 58;
     const x2 = xs[to] + 58;
     const mid = (x1 + x2) / 2;
-    return text(mid, 30, label[0], 't-d t-sb t-13 t-mid') + text(mid, 48, label[1], 't-m t-12 t-mid') + path(`M${n(x1)} 68v-7h${n(x2 - x1)}v7`, 's-strong no-fill');
+    return text(mid, 30, label[0], 't-d t-sb t-15 t-mid') + text(mid, 51, label[1], 't-m t-14 t-mid') + path(`M${n(x1)} 72v-7h${n(x2 - x1)}v7`, 's-strong no-fill');
   };
   s += bracket(1, 2, t.rules) + bracket(3, 5, t.person);
 
   // 「此刻」：整列铺一层琥珀薄雾
-  xs.forEach((cx, i) => (s += now(i + 1, rect(cx - 60, colTop, 120, colBottom - colTop, 14, 'f-accent-soft'))));
+  xs.forEach((cx, i) => (s += now(i + 1, rect(cx - 62, colTop, 124, colBottom - colTop, 14, 'f-accent-soft'))));
 
   // 轨道与站点
   s += line(xs[0], trackY, xs[6], trackY, 's-strong');
@@ -336,15 +342,15 @@ function journey(t) {
     s += circle(cx, trackY, 6, 'f-bg s-strong');
     s += now(i + 1, circle(cx, trackY, 6, 'f-accent') + circle(cx, trackY, 11, 'no-fill s-accent faint'));
     const st = t.steps[i];
-    s += text(cx, trackY + 34, st.title, 't-d t-b t-15 t-mid');
-    s += lines(cx, trackY + 56, st.sub, 't-m t-12 t-mid', 17);
+    s += text(cx, trackY + 36, st.title, 't-d t-b t-16 t-mid');
+    s += lines(cx, trackY + 60, st.sub, 't-m t-14 t-mid', 19);
   });
 
   // 五层人数：每格 201 个点，亮着的是这一层的人
   FUNNEL.forEach((count, k) => {
     const cx = xs[k + 1];
-    s += text(cx, 222, String(count), 't-d t-b t-22 t-mid t-num');
-    s += text(cx, 242, t.steps[k + 1].count, 't-m t-12 t-mid');
+    s += text(cx, countY, String(count), 't-d t-b t-24 t-mid t-num');
+    s += text(cx, countY + 22, t.steps[k + 1].count, 't-m t-14 t-mid');
     const x0 = cx - ((cols - 1) * pitch) / 2;
     let on = '';
     let off = '';
@@ -357,26 +363,28 @@ function journey(t) {
   });
 
   // 第一列：发布对话框的三项
-  const fx = xs[0] - 52;
+  const fx = xs[0] - 54;
+  const fy = countY - 18;
   t.form.slice(0, 3).forEach((label, i) => {
-    s += rect(fx, 204 + i * 34, 104, 26, 8, 'f-raised s-line');
-    s += text(fx + 10, 221 + i * 34, label, 't-s t-11');
+    s += rect(fx, fy + i * 38, 108, 30, 8, 'f-raised s-line');
+    s += text(fx + 11, fy + 20 + i * 38, label, 't-s t-13');
   });
-  s += rect(fx, 312, 104, 28, 8, 'f-fg');
-  s += text(xs[0], 330.5, t.form[3], 't-inv t-sb t-12 t-mid');
+  s += rect(fx, fy + 122, 108, 32, 8, 'f-fg');
+  s += text(xs[0], fy + 143, t.form[3], 't-inv t-sb t-14 t-mid');
 
   // 最后一列：一页结论的缩影
-  const px = xs[6] - 52;
-  s += rect(px, 204, 104, 178, 10, 'f-raised s-line');
-  s += rect(px + 10, 218, 76, 6, 3, 'f-fg') + rect(px + 10, 230, 52, 6, 3, 'f-fg');
-  [84, 78, 60].forEach((w, i) => (s += rect(px + 10, 250 + i * 9, w, 3, 1.5, 'f-subtle')));
-  s += line(px + 10, 284, px + 94, 284, 's-line');
-  [80, 66].forEach((w, i) => (s += rect(px + 10, 294 + i * 9, w, 3, 1.5, 'f-muted')));
-  s += circle(px + 16, 326, 6, 'f-sage') + rect(px + 28, 320, 36, 3, 1.5, 'f-muted') + rect(px + 28, 329, 28, 3, 1.5, 'f-subtle') + rect(px + 70, 316, 24, 18, 3, 'f-hover s-line');
-  s += line(px + 10, 346, px + 94, 346, 's-line');
-  [72, 82].forEach((w, i) => (s += rect(px + 10, 356 + i * 9, w, 3, 1.5, 'f-subtle')));
+  const px = xs[6] - 54;
+  const py = fy;
+  s += rect(px, py, 108, 186, 10, 'f-raised s-line');
+  s += rect(px + 11, py + 15, 78, 7, 3.5, 'f-fg') + rect(px + 11, py + 28, 54, 7, 3.5, 'f-fg');
+  [86, 80, 62].forEach((w, i) => (s += rect(px + 11, py + 50 + i * 10, w, 3.5, 1.75, 'f-subtle')));
+  s += line(px + 11, py + 86, px + 97, py + 86, 's-line');
+  [82, 68].forEach((w, i) => (s += rect(px + 11, py + 97 + i * 10, w, 3.5, 1.75, 'f-muted')));
+  s += circle(px + 17, py + 131, 6, 'f-sage') + rect(px + 29, py + 125, 36, 3.5, 1.75, 'f-muted') + rect(px + 29, py + 134, 28, 3.5, 1.75, 'f-subtle') + rect(px + 72, py + 121, 25, 19, 3, 'f-hover s-line');
+  s += line(px + 11, py + 152, px + 97, py + 152, 's-line');
+  [74, 84].forEach((w, i) => (s += rect(px + 11, py + 163 + i * 10, w, 3.5, 1.75, 'f-subtle')));
 
-  s += lines(W / 2, colBottom + 26, t.note, 't-s t-12 t-mid', 18);
+  s += lines(W / 2, colBottom + 28, t.note, 't-s t-13 t-mid', 19);
   return { w: W, h: H, steps: 7, body: s };
 }
 
@@ -386,86 +394,87 @@ function screen(t) {
   const W = 960;
   const px = [24, 336, 648];
   const pw = 288;
-  const top = 50;
-  const ph = 292;
+  const top = 52;
+  const ph = 336;
   let s = '<defs><filter id="fig-blur" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="2.4"/></filter></defs>';
 
   px.forEach((x, i) => {
-    s += text(x + 2, 34, t.titles[i], 't-d t-b t-14');
+    s += text(x + 2, 35, t.titles[i], 't-d t-b t-16');
     s += rect(x, top, pw, ph, 14, 'f-raised s-line');
     s += now(i + 1, rect(x, top, pw, ph, 14, 'no-fill s-accent'));
     if (i < 2) s += arrow(x + pw + 6, top + ph / 2, x + pw + 18, top + ph / 2);
   });
 
   // ---- 1. 这一眼：手机上的登录页，下半截是余光
-  const sx = px[0] + 24;
-  const sy = top + 22;
-  const sw = 132;
-  const sh = 248;
-  const phone = (x, y, w, h) => rect(x, y, w, h, 16, 'f-bg s-strong');
-  s += phone(sx, sy, sw, sh);
-  s += rect(sx + 7, sy + 7, sw - 14, 30, 9, 'f-hover') + text(sx + 18, sy + 27, t.app, 't-d t-sb t-11');
-  s += text(sx + 16, sy + 60, t.fields[0], 't-m t-10') + rect(sx + 16, sy + 66, sw - 32, 20, 5, 'no-fill s-strong');
-  s += text(sx + 16, sy + 104, t.fields[1], 't-m t-10') + rect(sx + 16, sy + 110, sw - 32, 20, 5, 'no-fill s-strong');
-  s += rect(sx + 16, sy + 142, sw - 32, 22, 6, 'f-fg') + text(sx + sw / 2, sy + 157, t.fields[2], 't-inv t-sb t-10 t-mid');
-  s += text(sx + sw / 2, sy + 184, t.fields[3], 't-d t-10 t-mid') + line(sx + 24, sy + 188, sx + sw - 24, sy + 188, 's-muted');
+  const sx = px[0] + 20;
+  const sw = 126;
+  const sh = 256;
+  const sy = top + (ph - sh) / 2;
+  s += rect(sx, sy, sw, sh, 16, 'f-bg s-strong');
+  s += rect(sx + 7, sy + 7, sw - 14, 32, 9, 'f-hover') + text(sx + 17, sy + 28, t.app, 't-d t-sb t-12');
+  s += text(sx + 15, sy + 62, t.fields[0], 't-m t-11') + rect(sx + 15, sy + 68, sw - 30, 21, 5, 'no-fill s-strong');
+  s += text(sx + 15, sy + 108, t.fields[1], 't-m t-11') + rect(sx + 15, sy + 114, sw - 30, 21, 5, 'no-fill s-strong');
+  s += rect(sx + 15, sy + 147, sw - 30, 24, 6, 'f-fg') + text(sx + sw / 2, sy + 163, t.fields[2], 't-inv t-sb t-11 t-mid');
+  s += text(sx + sw / 2, sy + 192, t.fields[3], 't-d t-11 t-mid') + line(sx + 16, sy + 197, sx + sw - 16, sy + 197, 's-muted');
   // 糊掉的部分：页脚的小字
   let small = '';
-  [0, 1, 2, 3].forEach((i) => (small += rect(sx + 18, sy + 204 + i * 9, [92, 80, 96, 56][i], 3.5, 1.5, 'f-muted')));
+  [0, 1, 2, 3].forEach((i) => (small += rect(sx + 17, sy + 212 + i * 9, [90, 78, 92, 54][i], 3.5, 1.5, 'f-muted')));
   s += group('', small, ' filter="url(#fig-blur)"');
-  const ax = sx + sw + 18;
-  s += line(sx + sw + 4, sy + 98, ax - 4, sy + 98, 's-strong') + lines(ax, sy + 92, t.clear, 't-m t-12', 17);
-  s += line(sx + sw + 4, sy + 218, ax - 4, sy + 218, 's-strong') + lines(ax, sy + 203, t.blurred, 't-m t-12', 17);
+  const ax = sx + sw + 16;
+  s += line(sx + sw + 4, sy + 100, ax - 4, sy + 100, 's-strong') + lines(ax, sy + 96, t.clear, 't-m t-14', 19);
+  s += line(sx + sw + 4, sy + 226, ax - 4, sy + 226, 's-strong') + lines(ax, sy + 231 - (t.blurred.length - 1) * 19, t.blurred, 't-m t-14', 19);
 
   // ---- 2. 心里的话：是谁、此时此地、原话
   const qx = px[1] + 20;
-  s += circle(qx + 16, top + 38, 16, 'f-sage') + circle(qx + 16, top + 33, 5.5, 'f-bg') + path(`M${n(qx + 6)} ${top + 49}a10 9 0 0 1 20 0z`, 'f-bg');
-  s += text(qx + 42, top + 35, t.who[0], 't-d t-b t-14') + text(qx + 42, top + 53, t.who[1], 't-m t-12');
-  const where = chips(qx, top + 70, pw - 40, t.where);
+  s += circle(qx + 17, top + 40, 17, 'f-sage') + circle(qx + 17, top + 35, 5.8, 'f-bg') + path(`M${n(qx + 6.5)} ${top + 52}a10.5 9.5 0 0 1 21 0z`, 'f-bg');
+  s += text(qx + 45, top + 37, t.who[0], 't-d t-b t-16') + text(qx + 45, top + 57, t.who[1], 't-m t-14');
+  const where = chips(qx, top + 74, pw - 40, t.where);
   s += where.svg;
   const by = where.bottom + 14;
-  const bh = t.quote.length * 20 + 22;
+  const bh = top + ph - 20 - by;
   s += rect(qx, by, pw - 40, bh, 12, 'f-surface s-line');
-  s += lines(qx + 14, by + 26, t.quote, 't-d t-13', 20);
+  s += lines(qx + 14, by + 28, t.quote, 't-d t-15', 22);
 
   // ---- 3. 手上的一个动作：点哪里；屏幕变了才算
   const hx = px[2] + 20;
   const hw = pw - 40;
-  s += rect(hx, top + 22, 44, 24, 12, 'f-hover') + text(hx + 22, top + 38.5, t.action, 't-d t-sb t-12 t-mid');
-  s += rect(hx, top + 60, hw, 58, 10, 'f-bg s-strong');
-  s += text(hx + 106, top + 94, t.target, 't-d t-14 t-mid') + line(hx + 42, top + 100, hx + 170, top + 100, 's-muted');
+  const aw = Math.ceil(widthOf(t.action, 14) + 28);
+  s += rect(hx, top + 22, aw, 28, 14, 'f-hover') + text(hx + aw / 2, top + 41, t.action, 't-d t-sb t-14 t-mid');
+  s += rect(hx, top + 64, hw, 62, 10, 'f-bg s-strong');
+  s += text(hx + 100, top + 100.5, t.target, 't-d t-16 t-mid') + line(hx + 28, top + 107, hx + 172, top + 107, 's-muted');
   // 手指落点：琥珀表示「指向的就是它」
-  s += circle(hx + hw - 36, top + 96, 15, 'no-fill s-accent ripple') + circle(hx + hw - 36, top + 96, 5.5, 'f-accent');
+  s += circle(hx + hw - 34, top + 98, 15, 'no-fill s-accent ripple') + circle(hx + hw - 34, top + 98, 5.5, 'f-accent');
   // 之前 → 之后
   const tx = hx + 34;
-  const ty = top + 152;
+  const ty = top + 168;
   const mini = (x, label, after) => {
-    let m = text(x + 32, ty - 8, label, 't-m t-11 t-mid') + rect(x, ty, 64, 88, 9, 'f-bg s-strong') + rect(x + 5, ty + 5, 54, 12, 4, 'f-hover');
+    let m = text(x + 32, ty - 10, label, 't-m t-13 t-mid') + rect(x, ty, 64, 88, 9, 'f-bg s-strong') + rect(x + 5, ty + 5, 54, 13, 4, 'f-hover');
     if (after) {
-      m += text(x + 10, ty + 14, t.register[0], 't-d t-sb t-8');
-      [0, 1, 2].forEach((i) => (m += rect(x + 9, ty + 24 + i * 14, 46, 9, 2.5, 'no-fill s-strong')));
-      m += rect(x + 9, ty + 68, 46, 10, 3, 'f-fg');
+      m += text(x + 10, ty + 15, t.register[0], 't-d t-sb t-9');
+      [0, 1, 2].forEach((i) => (m += rect(x + 9, ty + 25 + i * 14, 46, 9, 2.5, 'no-fill s-strong')));
+      m += rect(x + 9, ty + 69, 46, 10, 3, 'f-fg');
     } else {
-      [0, 1].forEach((i) => (m += rect(x + 9, ty + 26 + i * 16, 46, 9, 2.5, 'no-fill s-strong')));
-      m += rect(x + 9, ty + 58, 46, 10, 3, 'f-fg') + rect(x + 16, ty + 75, 32, 2.5, 1, 'f-muted');
+      [0, 1].forEach((i) => (m += rect(x + 9, ty + 27 + i * 16, 46, 9, 2.5, 'no-fill s-strong')));
+      m += rect(x + 9, ty + 59, 46, 10, 3, 'f-fg') + rect(x + 16, ty + 76, 32, 2.5, 1, 'f-muted');
     }
     return m;
   };
   s += mini(tx, t.before, false) + arrow(tx + 78, ty + 44, tx + 104, ty + 44) + mini(tx + 118, t.after, true);
-  s += lines(hx + hw / 2, top + 264, t.changed, 't-m t-12 t-mid', 17);
+  s += lines(hx + hw / 2, ty + 116, t.changed, 't-m t-14 t-mid', 19);
 
   // ---- 回到下一眼
-  const ry = top + ph + 26;
+  const ry = top + ph + 28;
   const x1 = px[2] + pw / 2;
   const x0 = px[0] + pw / 2;
   s += path(`M${n(x1)} ${top + ph}V${ry}H${n(x0)}V${top + ph + 2}M${n(x0 - 4)} ${top + ph + 6}l4 -4l4 4`, 's-strong no-fill');
-  const nw = widthOf(t.next, 12) + 24;
-  s += rect(W / 2 - nw / 2, ry - 11, nw, 22, 11, 'f-card') + text(W / 2, ry + 4, t.next, 't-m t-12 t-mid');
+  const nw = widthOf(t.next, 14) + 28;
+  s += rect(W / 2 - nw / 2, ry - 12, nw, 24, 12, 'f-card') + text(W / 2, ry + 5, t.next, 't-m t-14 t-mid');
 
   // ---- 不会交给他的
-  const ny = ry + 36;
-  s += text(24, ny + 16, t.never, 't-d t-sb t-12');
-  const never = chips(24 + widthOf(t.never, 12) + 18, ny, W - 48 - widthOf(t.never, 12) - 18, t.neverItems, { struck: true });
+  const ny = ry + 38;
+  const lw = widthOf(t.never, 14) + 20;
+  s += text(24, ny + 19, t.never, 't-d t-sb t-14');
+  const never = chips(24 + lw, ny, W - 48 - lw, t.neverItems, { struck: true });
   s += never.svg;
   return { w: W, h: never.bottom + 24, steps: 3, body: s };
 }
@@ -484,101 +493,101 @@ function verdict(t) {
   let s = '';
   let marks = '';
   const marker = (i, x, y) => {
-    marks += circle(x, y, 9, 'f-card s-sage') + now(i, circle(x, y, 9, 'f-accent-soft s-accent')) + text(x, y + 4, String(i), 't-m t-sb t-11 t-mid t-num');
+    marks += circle(x, y, 10, 'f-card s-sage') + now(i, circle(x, y, 10, 'f-accent-soft s-accent')) + text(x, y + 4.5, String(i), 't-m t-sb t-13 t-mid t-num');
   };
 
   // 产品页头与标签
-  s += text(L, 62, t.product[0], 't-d t-b t-17') + text(L, 82, t.product[1], 't-m t-12');
+  s += text(L, 62, t.product[0], 't-d t-b t-19') + text(L, 84, t.product[1], 't-m t-14');
   let tx = L;
-  const tabW = t.tabs.map((x) => Math.ceil(widthOf(x, 12) + 24));
-  s += rect(L, 100, tabW.reduce((a, b) => a + b, 0) + 6, 30, 10, 'f-raised s-line');
+  const tabW = t.tabs.map((x) => Math.ceil(widthOf(x, 14) + 26));
+  s += rect(L, 102, tabW.reduce((a, b) => a + b, 0) + 6, 34, 10, 'f-raised s-line');
   t.tabs.forEach((label, i) => {
-    if (i === 0) s += rect(tx + 3, 103, tabW[i], 24, 6, 'f-hover');
-    s += text(tx + 3 + tabW[i] / 2, 119.5, label, `t-12 t-mid ${i === 0 ? 't-d t-sb' : 't-m'}`);
+    if (i === 0) s += rect(tx + 3, 105, tabW[i], 28, 7, 'f-hover');
+    s += text(tx + 3 + tabW[i] / 2, 124, label, `t-14 t-mid ${i === 0 ? 't-d t-sb' : 't-m'}`);
     tx += tabW[i];
   });
-  s += text(R, 119.5, t.engineering, 't-m t-12 t-end');
+  s += text(R, 124, t.engineering, 't-m t-14 t-end');
 
   // 结论
-  let y = 174;
+  let y = 182;
   s += lines(L, y, t.headline, 't-d t-b t-24', 32);
   marker(1, 48, y - 8);
-  y += (t.headline.length - 1) * 32 + 30;
-  s += circle(L + 5, y - 4.5, 4, 'f-danger') + pair(L + 18, y, t.status[0], 't-d t-sb', t.status[1], 't-m', 't-13');
-  y += 40;
-  s += text(L, y, t.section, 't-d t-b t-14');
-  y += 14;
+  y += (t.headline.length - 1) * 32 + 32;
+  s += circle(L + 5, y - 5, 4.5, 'f-danger') + pair(L + 19, y, t.status[0], 't-d t-sb', t.status[1], 't-m', 't-15');
+  y += 42;
+  s += text(L, y, t.section, 't-d t-b t-16');
+  y += 15;
   s += line(L, y, R, y, 's-line');
 
   // 一句话，展开着
-  y += 26;
-  s += lines(L, y, t.sentence, 't-d t-13', 21);
-  marker(2, 48, y - 4);
+  y += 29;
+  s += lines(L, y, t.sentence, 't-d t-15', 23);
+  marker(2, 48, y - 5);
   const ay = y + 6;
   [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, ay, 9, 'f-avatar s-card')));
   s += path(`M${R - 10} ${ay + 2}l5 -5l5 5`, 's-muted no-fill');
-  y += (t.sentence.length - 1) * 21 + 34;
+  y += (t.sentence.length - 1) * 23 + 38;
 
   // 证据：谁、原话、当时的屏幕
-  marker(3, 48, y - 4);
-  s += circle(L + 12, y + 2, 12, 'f-sage') + circle(L + 12, y - 2, 4.2, 'f-bg') + path(`M${L + 4.5} ${y + 11}a7.5 7 0 0 1 15 0z`, 'f-bg');
-  s += pair(L + 36, y, t.who[0], 't-d t-b', t.who[1], 't-m', 't-13');
-  s += lines(L + 36, y + 24, t.quote, 't-d t-13', 21);
-  const qy = y + 24 + t.quote.length * 21;
-  s += text(L + 36, qy + 6, t.open, 't-link t-12');
+  marker(3, 48, y - 5);
+  s += circle(L + 12, y + 1, 12, 'f-sage') + circle(L + 12, y - 3, 4.2, 'f-bg') + path(`M${L + 4.5} ${y + 10}a7.5 7 0 0 1 15 0z`, 'f-bg');
+  s += pair(L + 36, y, t.who[0], 't-d t-b', t.who[1], 't-m', 't-15');
+  s += lines(L + 36, y + 26, t.quote, 't-d t-15', 23);
+  const qy = y + 26 + t.quote.length * 23;
+  s += text(L + 36, qy + 6, t.open, 't-link t-14');
   // 当时的屏幕：空的笔记，底下却写着「已自动保存」
-  const hx = R - 112;
-  const hy = y - 12;
-  s += rect(hx, hy, 112, 84, 8, 'f-surface s-strong');
-  s += rect(hx + 5, hy + 5, 102, 16, 4, 'f-hover') + text(hx + 12, hy + 16.5, t.thumb[0], 't-d t-sb t-8');
-  s += rect(hx + 10, hy + 29, 92, 14, 3, 'no-fill s-strong') + text(hx + 16, hy + 39, t.thumb[1], 't-s t-8');
-  s += rect(hx + 10, hy + 48, 92, 18, 3, 'no-fill s-strong');
-  s += text(hx + 56, hy + 78, t.thumb[2], 't-m t-8 t-mid');
-  y = Math.max(qy + 6, hy + 84) + 22;
+  const hx = R - 116;
+  const hy = y - 14;
+  s += rect(hx, hy, 116, 88, 8, 'f-surface s-strong');
+  s += rect(hx + 5, hy + 5, 106, 17, 4, 'f-hover') + text(hx + 12, hy + 17, t.thumb[0], 't-d t-sb t-9');
+  s += rect(hx + 10, hy + 30, 96, 15, 3, 'no-fill s-strong') + text(hx + 16, hy + 41, t.thumb[1], 't-s t-9');
+  s += rect(hx + 10, hy + 50, 96, 19, 3, 'no-fill s-strong');
+  s += text(hx + 58, hy + 82, t.thumb[2], 't-m t-9 t-mid');
+  y = Math.max(qy + 6, hy + 88) + 24;
   s += line(L, y, R, y, 's-line');
 
   // 下一句，收着
-  y += 26;
-  s += lines(L, y, t.more, 't-d t-13', 21);
-  [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, y - 4, 9, 'f-avatar s-card')));
-  s += path(`M${R - 10} ${y - 7}l5 5l5 -5`, 's-muted no-fill');
-  y += 22;
+  y += 28;
+  s += lines(L, y, t.more, 't-d t-15', 23);
+  [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, y - 5, 9, 'f-avatar s-card')));
+  s += path(`M${R - 10} ${y - 8}l5 5l5 -5`, 's-muted no-fill');
+  y += 23;
   s += line(L, y, R, y, 's-line');
   const frameBottom = y + 26;
 
   // 右栏：人数（模拟）、宣发强度、把手机递给几个人
   marker(4, C - 22, 57);
-  const sw = Math.ceil(widthOf(t.simulated, 11) + 18);
-  const pwid = widthOf(t.people, 14);
-  s += text(C, 62, t.people, 't-d t-b t-14') + rect(C + pwid + 10, 48, sw, 20, 10, 'no-fill s-strong') + text(C + pwid + 10 + sw / 2, 62, t.simulated, 't-m t-11 t-mid');
-  const labelW = Math.max(...t.funnel.map((x) => widthOf(x, 12))) + 14;
-  const barW = E - C - labelW - 40;
+  const sw = Math.ceil(widthOf(t.simulated, 13) + 20);
+  const pwid = widthOf(t.people, 16);
+  s += text(C, 63, t.people, 't-d t-b t-16') + rect(C + pwid + 12, 46, sw, 24, 12, 'no-fill s-strong') + text(C + pwid + 12 + sw / 2, 62.5, t.simulated, 't-m t-13 t-mid');
+  const labelW = Math.max(...t.funnel.map((x) => widthOf(x, 14))) + 16;
+  const barW = E - C - labelW - 46;
   VERDICT_FUNNEL.forEach((v, i) => {
-    const ry = 98 + i * 30;
-    s += text(C, ry, t.funnel[i], 't-m t-12');
-    if (v > 0) s += rect(C + labelW, ry - 9, Math.max(2, (barW * v) / VERDICT_FUNNEL[0]), 10, 5, 'f-sage');
-    s += text(E, ry, String(v), `t-b t-14 t-end t-num ${v ? 't-d' : 't-s'}`);
+    const ry = 104 + i * 32;
+    s += text(C, ry, t.funnel[i], 't-m t-14');
+    if (v > 0) s += rect(C + labelW, ry - 10, Math.max(2, (barW * v) / VERDICT_FUNNEL[0]), 11, 5.5, 'f-sage');
+    s += text(E, ry, String(v), `t-b t-16 t-end t-num ${v ? 't-d' : 't-s'}`);
   });
-  s += line(C, 240, E, 240, 's-line');
-  s += text(C, 268, t.intensity, 't-d t-b t-13') + text(E, 268, '90%', 't-d t-13 t-end t-num');
-  s += line(C, 290, E, 290, 's-strong') + path(`M${C} 290H${n(C + (E - C) * 0.9)}`, 's-fg sw-2') + circle(C + (E - C) * 0.9, 290, 7, 'f-fg s-card sw-2');
-  s += line(C, 316, E, 316, 's-line');
-  s += text(C, 344, t.hand, 't-d t-b t-13');
-  s += rect(C, 358, 84, 32, 10, 'f-raised s-line') + text(C + 16, 379, '−', 't-m t-14 t-mid') + text(C + 42, 379, '3', 't-d t-13 t-mid t-num') + text(C + 68, 379, '+', 't-m t-14 t-mid');
-  s += rect(C + 94, 358, E - C - 94, 32, 10, 'no-fill s-strong') + text(C + 94 + (E - C - 94) / 2, 379, t.handButton, 't-d t-sb t-13 t-mid');
+  s += line(C, 254, E, 254, 's-line');
+  s += text(C, 284, t.intensity, 't-d t-b t-15') + text(E, 284, '90%', 't-d t-15 t-end t-num');
+  s += line(C, 308, E, 308, 's-strong') + path(`M${C} 308H${n(C + (E - C) * 0.9)}`, 's-fg sw-2') + circle(C + (E - C) * 0.9, 308, 7, 'f-fg s-card sw-2');
+  s += line(C, 336, E, 336, 's-line');
+  s += text(C, 366, t.hand, 't-d t-b t-15');
+  s += rect(C, 382, 88, 36, 10, 'f-raised s-line') + text(C + 17, 405.5, '−', 't-m t-16 t-mid') + text(C + 44, 405, '3', 't-d t-15 t-mid t-num') + text(C + 71, 405.5, '+', 't-m t-16 t-mid');
+  s += rect(C + 98, 382, E - C - 98, 36, 10, 'no-fill s-strong') + text(C + 98 + (E - C - 98) / 2, 405, t.handButton, 't-d t-sb t-15 t-mid');
 
   // 页面的框，画在最底下
   const frame = rect(24, 24, W - 48, frameBottom - 24, 18, 'f-bg s-line') + line(C - 28, 44, C - 28, frameBottom - 20, 's-line');
 
   // 图例
-  const ly = frameBottom + 34;
+  const ly = frameBottom + 36;
   let legend = '';
   t.legend.forEach((item, i) => {
     const x = 36 + i * 228;
-    legend += circle(x, ly - 4, 9, 'no-fill s-sage') + now(i + 1, circle(x, ly - 4, 9, 'f-accent-soft s-accent')) + text(x, ly, String(i + 1), 't-m t-sb t-11 t-mid t-num');
-    legend += lines(x + 18, ly, item, 't-m t-12', 17);
+    legend += circle(x, ly - 5, 10, 'no-fill s-sage') + now(i + 1, circle(x, ly - 5, 10, 'f-accent-soft s-accent')) + text(x, ly - 0.5, String(i + 1), 't-m t-sb t-13 t-mid t-num');
+    legend += lines(x + 20, ly, item, 't-m t-14', 19);
   });
-  return { w: W, h: ly + 17 + 22, steps: 4, body: frame + s + marks + legend };
+  return { w: W, h: ly + 19 + 22, steps: 4, body: frame + s + marks + legend };
 }
 
 /* ---------------------------------------------------------------- coding agent 的循环 */
@@ -586,7 +595,7 @@ function verdict(t) {
 function loop(t) {
   const W = 960;
   const bw = 200;
-  const bh = 78;
+  const bh = 86;
   const gap = (W - 48 - bw * 4) / 3;
   const top = 28;
   let s = '';
@@ -594,29 +603,29 @@ function loop(t) {
   xs.forEach((x, i) => {
     const st = t.steps[i];
     s += rect(x, top, bw, bh, 12, 'f-raised s-line') + now(i + 1, rect(x, top, bw, bh, 12, 'no-fill s-accent'));
-    s += text(x + 18, top + 33, st.title, 't-d t-b t-14') + text(x + 18, top + 56, st.sub, `t-m t-12${st.mono ? ' t-mono' : ''}`);
+    s += text(x + 18, top + 36, st.title, 't-d t-b t-16') + text(x + 18, top + 61, st.sub, `t-m t-14${st.mono ? ' t-mono' : ''}`);
     if (i < 3) s += arrow(x + bw + 8, top + bh / 2, x + bw + gap - 8, top + bh / 2);
   });
 
   // 回路：从最后一步带着问题清单回到第一步
-  const ry = top + bh + 86;
+  const cx1 = 262;
+  const cx2 = W - 262;
+  const cy = top + bh + 24;
+  const ch = 138;
+  const ry = cy + ch - 34;
   const xr = xs[3] + bw / 2;
   const xl = xs[0] + bw / 2;
   s += path(`M${n(xr)} ${top + bh}V${ry}H${n(xl)}V${top + bh + 2}M${n(xl - 4)} ${top + bh + 6}l4 -4l4 4`, 's-strong no-fill');
-  const cx1 = 262;
-  const cx2 = W - 262;
-  const cy = top + bh + 22;
-  const ch = 126;
-  s += lines((xl + cx1) / 2, ry - 27, t.back, 't-m t-12 t-mid', 17) + lines((xr + cx2) / 2, ry - 27, t.carries, 't-m t-12 t-mid', 17);
+  s += lines((xl + cx1) / 2, ry - 31, t.back, 't-m t-14 t-mid', 19) + lines((xr + cx2) / 2, ry - 31, t.carries, 't-m t-14 t-mid', 19);
   // 取回的东西：一个问题，带复现步骤
   s += rect(cx1, cy, cx2 - cx1, ch, 12, 'f-surface s-line');
-  s += rect(cx1 + 16, cy + 14, 30, 20, 6, 'no-fill s-danger') + text(cx1 + 31, cy + 28, 'P0', 't-danger t-sb t-11 t-mid');
-  s += text(cx1 + 56, cy + 28.5, t.issue, 't-d t-sb t-12') + text(cx1 + 56, cy + 48, t.met, 't-m t-11');
+  s += rect(cx1 + 16, cy + 15, 34, 22, 6, 'no-fill s-danger') + text(cx1 + 33, cy + 30.5, 'P0', 't-danger t-sb t-13 t-mid');
+  s += text(cx1 + 60, cy + 31, t.issue, 't-d t-sb t-14') + text(cx1 + 60, cy + 52, t.met, 't-m t-13');
   t.repro.forEach(([num, step], i) => {
     const col = i % 2;
     const row = Math.floor(i / 2);
-    const x = cx1 + 16 + col * ((cx2 - cx1 - 32) / 2);
-    s += text(x + 12, cy + 80 + row * 22, String(num), 't-s t-11 t-mono t-end t-num') + text(x + 22, cy + 80 + row * 22, step, 't-m t-11 t-mono');
+    const x = cx1 + 16 + col * ((cx2 - cx1 - 32) / 2 + 4);
+    s += text(x + 10, cy + 88 + row * 25, String(num), 't-s t-13 t-mono t-end t-num') + text(x + 20, cy + 88 + row * 25, step, 't-m t-13 t-mono');
   });
   return { w: W, h: cy + ch + 24, steps: 4, body: s };
 }
@@ -632,54 +641,55 @@ function stack(t) {
   t.entries.forEach(([title, sub], i) => {
     const x = 24 + i * (ew + eg);
     const mono = /^[a-z]+$/.test(sub) || sub === 'MCP';
-    s += rect(x, 20, ew, 50, 10, 'f-raised s-line') + text(x + ew / 2, 41, title, 't-d t-b t-13 t-mid') + text(x + ew / 2, 59, sub, `t-m t-11 t-mid${mono ? ' t-mono' : ''}`);
-    s += arrow(x + ew / 2, 74, x + ew / 2, 96);
+    s += rect(x, 20, ew, 56, 10, 'f-raised s-line') + text(x + ew / 2, 43, title, 't-d t-b t-15 t-mid') + text(x + ew / 2, 63, sub, `t-m t-13 t-mid${mono ? ' t-mono' : ''}`);
+    s += arrow(x + ew / 2, 80, x + ew / 2, 102);
   });
 
   // 你的机器
-  const mTop = 102;
-  const mBottom = 458;
-  s += rect(24, mTop, W - 48, mBottom - mTop, 20, 'no-fill s-strong dashed');
-  s += text(44, mTop + 26, t.machine, 't-m t-sb t-12');
+  const mTop = 108;
+  s += text(44, mTop + 28, t.machine, 't-m t-sb t-14');
 
   // 我们自己的代码
   const ox = 44;
   const ow = 566;
-  const oy = mTop + 40;
-  const oh = mBottom - oy - 20;
-  s += rect(ox, oy, ow, oh, 14, 'f-raised s-line') + text(ox + 18, oy + 26, t.ours, 't-d t-sb t-12') + text(ox + ow - 18, oy + 26, 'ghcr.io/plutokeating/jobs', 't-s t-11 t-mono t-end');
+  const oy = mTop + 44;
   const ix = ox + 16;
   const iw = ow - 32;
-  const gy = oy + 40;
-  s += rect(ix, gy, iw, 38, 10, 'f-surface s-line') + text(ix + 16, gy + 24, t.gateway[0], 't-d t-b t-13') + text(ix + iw - 16, gy + 24, t.gateway[1], 't-m t-12 t-end');
+  const gy = oy + 44;
   const cw = (iw - 12) / 2;
-  const cell = (x, y, h, c) => rect(x, y, cw, h, 10, 'f-surface s-line') + text(x + 16, y + 27, c[0], 't-d t-b t-13') + lines(x + 16, y + 49, c.slice(1), 't-m t-12', 18);
-  const r1 = gy + 50;
-  const chh = 88;
+  const chh = 96;
+  const r1 = gy + 54;
   const r2 = r1 + chh + 12;
+  const oh = r2 + chh + 16 - oy;
+  const mBottom = oy + oh + 20;
+  s += rect(24, mTop, W - 48, mBottom - mTop, 20, 'no-fill s-strong dashed');
+  s += rect(ox, oy, ow, oh, 14, 'f-raised s-line') + text(ox + 18, oy + 28, t.ours, 't-d t-sb t-14') + text(ox + ow - 18, oy + 28, 'ghcr.io/plutokeating/jobs', 't-s t-13 t-mono t-end');
+  s += rect(ix, gy, iw, 42, 10, 'f-surface s-line') + text(ix + 16, gy + 26.5, t.gateway[0], 't-d t-b t-15') + text(ix + iw - 16, gy + 26.5, t.gateway[1], 't-m t-14 t-end');
+  const cell = (x, y, h, c) => rect(x, y, cw, h, 10, 'f-surface s-line') + text(x + 16, y + 30, c[0], 't-d t-b t-15') + lines(x + 16, y + 54, c.slice(1), 't-m t-14', 21);
   s += cell(ix, r1, chh, t.api) + cell(ix + cw + 12, r1, chh, t.world);
   // 世界服务常驻运行：一盏一直亮着的灯
-  s += circle(ix + cw + 12 + cw - 20, r1 + 22, 4, 'f-accent breath');
+  s += circle(ix + cw + 12 + cw - 20, r1 + 24, 4.5, 'f-accent breath');
   s += cell(ix, r2, chh, t.sessions) + cell(ix + cw + 12, r2, chh, t.router);
 
   // 标准镜像
   const bx = ox + ow + 20;
   const bw = W - 44 - bx;
-  s += rect(bx, oy, bw, oh, 14, 'f-raised s-line') + text(bx + 18, oy + 26, t.standard, 't-d t-sb t-12');
-  const ih = (oh - 40 - 16 - 3 * 10) / 4;
+  s += rect(bx, oy, bw, oh, 14, 'f-raised s-line') + text(bx + 18, oy + 28, t.standard, 't-d t-sb t-14');
+  const ih = (oh - 44 - 16 - 3 * 10) / 4;
   t.images.forEach(([title, sub], i) => {
-    const y = oy + 40 + i * (ih + 10);
-    s += rect(bx + 16, y, bw - 32, ih, 10, `f-surface s-line${i === 3 ? ' dashed' : ''}`) + text(bx + 32, y + ih / 2 - 3, title, 't-d t-b t-13') + text(bx + 32, y + ih / 2 + 15, sub, 't-m t-11');
+    const y = oy + 44 + i * (ih + 10);
+    s += rect(bx + 16, y, bw - 32, ih, 10, `f-surface s-line${i === 3 ? ' dashed' : ''}`) + text(bx + 32, y + ih / 2 - 3, title, 't-d t-b t-15') + text(bx + 32, y + ih / 2 + 17, sub, 't-m t-13');
   });
   s += path(`M${ox + ow + 2} ${oy + oh / 2}h16`, 's-strong no-fill');
 
   // 机器外面：你的产品、你的模型供应商
   const ey = mBottom + 34;
-  const ext = (x, c) => rect(x, ey, cw, 82, 10, 'no-fill s-strong') + text(x + 16, ey + 27, c[0], 't-d t-b t-13') + lines(x + 16, ey + 48, c.slice(1), 't-m t-12', 18);
+  const eh = 96;
+  const ext = (x, c) => rect(x, ey, cw, eh, 10, 'no-fill s-strong') + text(x + 16, ey + 30, c[0], 't-d t-b t-15') + lines(x + 16, ey + 54, c.slice(1), 't-m t-14', 21);
   s += arrow(ix + cw / 2, r2 + chh + 4, ix + cw / 2, ey - 4) + arrow(ix + cw + 12 + cw / 2, r2 + chh + 4, ix + cw + 12 + cw / 2, ey - 4);
   s += ext(ix, t.product) + ext(ix + cw + 12, t.providers);
-  s += lines(bx + 16, ey + 27, t.data, 't-m t-12', 18);
-  return { w: W, h: ey + 82 + 24, steps: 0, body: s };
+  s += lines(bx + 16, ey + 30, t.data, 't-m t-14', 21);
+  return { w: W, h: ey + eh + 24, steps: 0, body: s };
 }
 
 /* ---------------------------------------------------------------- 出口 */
