@@ -1,6 +1,6 @@
 # 安装与运维
 
-> **现状（2026-11-15）**：安装脚本、镜像构建文件和编排文件都在仓库里，并且在一个全新的 Docker 环境（Linux）里用本机构建的镜像完整装过、用过。但三个镜像还没有推到公开的镜像仓库，`jobs.plutokeating.beer/install` 上也还没有放安装脚本——**在那之前，下面这一行在别人的机器上跑不通**，要用文末「自己构建」的方式。macOS / Windows 的安装路径只有单元测试，没有在真机上装过。
+> **现状（2026-11-15）**：`v0.1.0` 的三个镜像已经构建并推送到 GHCR，`jobs.plutokeating.beer/install` 放的就是仓库里的安装脚本，下面这一行在一个全新的 Docker 环境（Linux）里装成功过。但镜像包的可见性在 GitHub 上要单独设置，目前三个包还是私有的，匿名拉取会被拒绝——**在三个包设为 Public 之前，要先 `docker login ghcr.io`**，或者用文末「自己构建」的方式。macOS / Windows 的安装路径只有单元测试，没有在真机上装过。
 
 ## 一行安装
 
@@ -121,7 +121,7 @@ JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 | Git account | 你的 GitHub 账号 | 第一次会跳到 GitHub 安装「Cloudflare Workers and Pages」应用：选 **Only select repositories**，只勾这个仓库。私有仓库可以用 |
 | Repository | `Project.Jobs` | |
 | Project name（Worker 名字） | `jobs-site` | 要与 `site/wrangler.jsonc` 里的 `name` 相同 |
-| Production branch（Git branch） | 现在填 `feature/jobs-relaunch`；合并到 `main` 之后改成 `main` | `main` 上目前没有 `site/`。创建表单里没有这一项时，先创建，再到 Settings → Build → Branch control 里改，然后重试构建 |
+| Production branch（Git branch） | `main` | 默认就是仓库的默认分支 |
 | Build command | 留空 | 没有构建步骤 |
 | Deploy command | `npx wrangler deploy` | 默认值，不用改 |
 | Preview command（非生产分支用） | 保持默认 | 下面会把预览构建关掉，用不到 |
@@ -144,4 +144,6 @@ curl -sI https://jobs.plutokeating.beer/install | grep -i content-type    # text
 curl -fsSL https://jobs.plutokeating.beer/install | head -3               # 安装脚本的开头
 ```
 
-本机预览或试部署（不上传）：`cd site && npx wrangler dev`、`npx wrangler deploy --dry-run`。配置在本机用 wrangler 4.162 的预览与试部署验证过（`/install` 返回纯文本、配置文件不对外可见）；在 Cloudflare 账号上的实际部署还没有做过。
+本机预览或试部署（不上传）：`cd site && npx wrangler dev`、`npx wrangler deploy --dry-run`。
+
+现在线上的就是这样部署的（2026-11-15）：Worker 名 `jobs-site`，跟随 `main`；推送到 `main` 后约半分钟构建并上线，构建结果会作为一条检查（Workers Builds: jobs-site）出现在那次提交上。
