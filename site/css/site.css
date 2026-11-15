@@ -35,13 +35,11 @@
   /* 阅读行长：中日韩文字约 41 字一行；词间有空格的文字（html[data-spaced]）收窄到约 72 个字符一行 */
   --site-measure: var(--ds-container-prose);
   --site-measure-sm: 40rem;
-  --site-measure-xs: 40rem;
   scrollbar-color: var(--ds-color-border-strong) transparent;
 }
 :root[data-spaced] {
   --site-measure: 38rem;
   --site-measure-sm: 33rem;
-  --site-measure-xs: 30rem;
 }
 @media (min-width: 40rem) {
   :root { --site-gutter: 2.5rem; }
@@ -253,11 +251,6 @@ code, pre { font-family: var(--ds-font-mono); }
 .footer-group ul { display: grid; gap: 0.125rem; }
 .footer-group a { display: inline-flex; align-items: center; min-height: 1.875rem; color: var(--ds-color-fg-muted); font-size: var(--ds-text-sm); text-decoration: none; transition: color var(--ds-duration-fast) var(--ds-ease-standard); }
 .footer-group a:hover { color: var(--ds-color-fg); }
-.footer-fine { display: grid; gap: 0.5rem; padding-top: 1.5rem; border-top: var(--ds-border-hairline) solid var(--ds-color-border); }
-.footer-fine p { max-width: var(--site-measure-xs); text-wrap: pretty; }
-@media (min-width: 56rem) {
-  .footer-fine { grid-column: 1 / -1; }
-}
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; }

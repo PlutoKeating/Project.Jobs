@@ -238,10 +238,6 @@ export function footer({ lang, year }) {
       item(pathFor(lang, 'privacy'), f.privacy),
     ])}
     </div>
-    <div class="footer-fine">
-      <p>${esc(f.simulated)}</p>
-      <p>${esc(f.trademarks)}</p>
-    </div>
   </div>
 </footer>`;
 }
