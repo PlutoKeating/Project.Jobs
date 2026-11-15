@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { ArrowUpCircle, Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
 import { ApiError, get, post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
+import { copyText } from '../lib/clipboard.ts';
 import { setLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
 import { CityCanvas } from './city/CityCanvas.tsx';
@@ -39,7 +40,7 @@ function JoinGame({ port, admin }: { port: number; admin: boolean }) {
   const q = useQuery({ queryKey: ['game'], queryFn: () => get<GameState>('/game'), enabled: open, refetchInterval: open ? 3000 : false });
   useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
   const addr = `${location.hostname}:${port}`;
-  const copy = (text: string) => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1600); };
+  const copy = (text: string) => { void copyText(text).then((ok) => { if (!ok) return; setDone(true); setTimeout(() => setDone(false), 1600); }); };
   const toggle = async (kind: 'tshock' | 'tml', on: boolean) => { setCmd(null); try { await post('/game', { kind, on }); } catch (e) { if (e instanceof ApiError && e.status === 409) setCmd(String(e.body?.command ?? `jobsworld game ${on ? 'on' : 'off'} ${kind}`)); } void q.refetch(); };
   return (
     <div ref={box} className="relative hidden sm:block">
@@ -88,7 +89,7 @@ function UpdateNotice() {
     try { await post('/update'); setStarted({ from: d.version, at: Date.now() }); }
     catch (e) { if (e instanceof ApiError && e.status === 409) void q.refetch(); }
   };
-  const copy = (text: string) => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1600); };
+  const copy = (text: string) => { void copyText(text).then((ok) => { if (!ok) return; setDone(true); setTimeout(() => setDone(false), 1600); }); };
   return (
     <div ref={box} className="relative">
       <Button variant="ghost" size="sm" aria-expanded={open} title={t('up_title')} onClick={() => setOpen(!open)} className="text-fg">

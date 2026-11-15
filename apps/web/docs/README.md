@@ -25,7 +25,7 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 | `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、累计花费、有新版本时的升级浮层（仅管理员：当前与最新版本、改了什么、「立即升级」或要运行的命令、升级中与失败的状态；新版本起来后自动刷新）、世界时钟、Terraria 浮层：地址与两个游戏服的开关、飞书浮层：扫码接入、语言、明暗主题、模型入口、「发布」）、登录页（标志的悬停提示是当前版本）、页脚街道（跟在内容后面，不盖住内容） |
 | `src/components/Publish.tsx` | 发布对话框：网址、名字、一句话（`openPublish()` 可从任意页面打开）；有随包示例产品在跑时，左下角的「示例」可以一键填好 |
 | `src/pages/` | `World`、`Products`（含 `useLiveFunnel`：接口人数 + 实时帧）、`Launch`、`People`、`Person`、`Session`、`Human`、`Models` |
-| `src/lib/` | API 客户端与查询（`useLaunches`、`useLaunch`、`useLaunchReport`、`useEngineering` …）、WebSocket 实时 store（`snapshot`、`live`、`say`、`launches`）、中英双语文案与标签 |
+| `src/lib/` | API 客户端与查询（`useLaunches`、`useLaunch`、`useLaunchReport`、`useEngineering` …）、WebSocket 实时 store（`snapshot`、`live`、`say`、`launches`）、中英双语文案与标签；`clipboard.ts` 复制到剪贴板（局域网 IP 走纯 http 时 `navigator.clipboard` 不存在，退回 `execCommand`）|
 | `src/design-system/tokens.css` | PlutoKeating design system token 副本（整体替换更新） |
 | `.impeccable/surfaces/apps-web.md` | 设计方向契约（开发用，不打包） |
 
