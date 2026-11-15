@@ -2,7 +2,7 @@
 
 Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Query + PixiJS）。第一眼是城；结论在第二层。
 
-- 开发：先 `pnpm world`、`pnpm api`，再 `pnpm web`（`http://127.0.0.1:5321/`，代理 `/api`、`/evidence` 与 WebSocket 到 API）。
+- 开发：先 `pnpm world`、`pnpm api`，再 `pnpm web`（`http://127.0.0.1:5321/`，代理 `/api`、`/evidence`、`/reports` 与 WebSocket 到 API）。
 - 构建：`pnpm web:build` → `apps/web/dist`，由 API 托管（`pnpm jobsworld` 首次启动会自动构建）。
 
 ## 页面
@@ -22,7 +22,7 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 | 路径 | 说明 |
 |---|---|
 | `src/components/city/` | 侧视像素城市（PixiJS）：`draw.ts` 把 `TownLayout` 图元与人物外观画成像素，`palette.ts` 天空随模拟时钟变化，`CityCanvas.tsx` 负责拖拽、缩放、聚焦与 HTML 叠加层（气泡、名牌、地名）。`mode="horizon"` 是其他页面页脚的街道 |
-| `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、世界时钟、Terraria 浮层：地址与两个游戏服的开关、飞书浮层：扫码接入、语言、明暗主题、模型入口、「发布」）、登录页、页脚街道（跟在内容后面，不盖住内容） |
+| `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、累计花费、世界时钟、Terraria 浮层：地址与两个游戏服的开关、飞书浮层：扫码接入、语言、明暗主题、模型入口、「发布」）、登录页、页脚街道（跟在内容后面，不盖住内容） |
 | `src/components/Publish.tsx` | 发布对话框：网址、名字、一句话（`openPublish()` 可从任意页面打开）；有随包示例产品在跑时，左下角的「示例」可以一键填好 |
 | `src/pages/` | `World`、`Products`（含 `useLiveFunnel`：接口人数 + 实时帧）、`Launch`、`People`、`Person`、`Session`、`Human`、`Models` |
 | `src/lib/` | API 客户端与查询（`useLaunches`、`useLaunch`、`useLaunchReport`、`useEngineering` …）、WebSocket 实时 store（`snapshot`、`live`、`say`、`launches`）、中英双语文案与标签 |
@@ -32,5 +32,5 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 ## 约定
 
 - 不在功能旁加说明性小字；用布局、图标、交互表达。
-- 颜色只来自 token。琥珀只用于「此刻 / 正在发生 / 指向的就是它」；每个视图至多一个骨白主按钮（顶栏的「发布」）。
+- 颜色只来自 token，两处例外：城市画布上的地名用固定的浅色（天空只跟世界时钟走，不跟界面主题）；飞书二维码用白底（为了能扫）。琥珀只用于「此刻 / 正在发生 / 指向的就是它」；每个视图至多一个骨白主按钮（顶栏的「发布」；「模型」页上是「保存」，这一页不显示「发布」）。
 - 人数一律标注「模拟」；技术信号只出现在「工程附录」。

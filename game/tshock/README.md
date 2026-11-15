@@ -1,6 +1,6 @@
 # game/tshock：JobsWorld TShock 插件
 
-TShock 6.2.1（Terraria 1.4.5.8，原版客户端）服务端插件。总体架构、命令与验证结果见 [`../README.md`](../README.md)，这里只记 TShock 特有的实现要点。
+TShock 6.2.1（Terraria 1.4.5.8，原版客户端）服务端插件。总体架构、命令与验证记录见 [`../README.md`](../README.md)，这里只记 TShock 特有的实现要点。
 
 ## 文件
 
@@ -8,7 +8,7 @@ TShock 6.2.1（Terraria 1.4.5.8，原版客户端）服务端插件。总体架�
 |---|---|
 | `JobsWorld.TShock.csproj` | net9.0；`<Compile Include="../shared/**/*.cs" />` 共用源码；引用 TShock 发布包中的 `TShockAPI.dll`、`TerrariaServer.dll`、`OTAPI.dll`、`OTAPI.Runtime.dll`、`ModFramework.dll`（`Private=false`，不随插件输出） |
 | `JobsWorldPlugin.cs` | 钩子、NATS 订阅、主线程消息泵、建镇、时间同步、旁观者保护 |
-| `JwCommands.cs` | `/jw` 命令（中文默认，`/jw lang en` 切英文） |
+| `JwCommands.cs` | `/jw` 命令（中文默认，`/jw lang en` 切英文）。发布相关的四个命令交给 `shared/Personas/LaunchCommands.cs` |
 | `TShockFakePlayers.cs` | `IFakePlayerHost` 实现：假玩家发包 |
 | `TShockTileWriter.cs` | `ITileWriter` 实现：`Main.tile`（OTAPI `ITile`）+ `WorldGen.PlaceObject/PlaceTile/GrowTree` + `Sign` |
 
@@ -35,8 +35,8 @@ docker run --rm -v "$PWD/game:/src/game" -v "$PWD/game/tshock/.tshock:/tshock:ro
 | 变量 | 默认 | 说明 |
 |---|---|---|
 | `NATS_URL` | `nats://127.0.0.1:4222`（compose 中为 `nats://nats:4222`） | 世界服务所在 NATS |
-| `JW_ADMIN_PASSCODE` | 空 | `/jw login` 口令，空则禁用 |
-| `JW_GAME_PASSWORD` | 空 | 游戏服密码（写入 TShock `ServerPassword`） |
+| `JW_ADMIN_PASSCODE` | 空 | `/jw login` 口令，空则禁用（装好的 Jobs 里就是管理员口令） |
+| `JW_GAME_PASSWORD` | 空 | 游戏服密码（写入 TShock `ServerPassword`；装好的 Jobs 安装时随机生成，`jobsworld passcode` 可查） |
 | `JW_WORLD_NAME` / `JW_WORLD_FILE` / `JW_WORLD_SIZE` | `JobsWorld` / `jobsworld` / `1` | 世界名、文件名、自动创建尺寸（1 小 / 2 中 / 3 大） |
 | `JW_MAX_PLAYERS` | `16` | 真实玩家上限（TShock `MaxSlots`） |
 | `JW_FAKE_TOP_SLOT` / `JW_FAKE_MIN_SLOT` | `254` / `180` | 假玩家槽位范围 |

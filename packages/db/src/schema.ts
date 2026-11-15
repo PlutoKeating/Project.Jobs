@@ -1,4 +1,4 @@
-// ===== 数据模型 v0.2（docs/SPEC_v0.2.md §16）=====
+// ===== 数据模型（基础实体出自早期设计稿 docs/history/SPEC_v0.2.md §16；居民、发布、模型配置等表是后来加的）=====
 // PostgreSQL 为唯一权威数据源；大文件存对象存储（MinIO），由 evidence 统一登记
 import { sql } from 'drizzle-orm';
 import { boolean, doublePrecision, index, integer, jsonb, pgTable, primaryKey, real, text, timestamp, uniqueIndex, vector } from 'drizzle-orm/pg-core';

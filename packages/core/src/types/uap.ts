@@ -1,4 +1,4 @@
-// ===== UAP v0.2：统一动作名、语义、成功标准、观察结构、错误分类、证据（见 docs/SPEC_v0.2.md §10）=====
+// ===== UAP v0.2：统一动作名、语义、成功标准、观察结构、错误分类、证据（出自早期设计稿 docs/history/SPEC_v0.2.md §10，后有扩展）=====
 
 export type Verb =
   | 'navigate' | 'back' | 'reload' | 'click' | 'long_press' | 'hover' | 'type' | 'key'

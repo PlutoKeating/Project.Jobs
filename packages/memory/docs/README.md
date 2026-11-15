@@ -34,3 +34,7 @@
 `withTree(personaId, fn)`、`loadTree`、`listMemories`、`memoryCounts`、`MemoryTree`（`add / seedCore / recall / list / stats / enforceCap`）、`BRANCH`、`compact`。
 
 态度更新规则（对某个产品的态度有界可变；全局信念要多次独立经历才动）在 `@pux/engine` 的 `human/memory.ts`（`updateAttitudes`）。
+
+## 向量从哪来
+
+记忆的向量由 `@pux/llm` 的 `gateway().embed()` 给出：接入了向量模型时用它，没接入时用本地的字符哈希向量。两种向量不在同一个空间里，所以中途接入或更换向量模型后，旧记忆被想起来的概率会下降（旧向量不会重算）。

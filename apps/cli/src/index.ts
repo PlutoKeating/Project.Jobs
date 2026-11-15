@@ -44,7 +44,7 @@ db.command('migrate').action(wrap(async () => { await runMigrations(); console.l
 
 // ---------------------------------------------------------------- 内部与校准用：旧式的指派评测（选人、派任务、跑批次）。日常使用请用 publish
 const dev = program.command('dev').description('内部与校准用：指派式评测批次（已知缺陷校准、回归）。日常使用请用 jobsworld publish');
-const app = dev.command('app').description('被测应用（灌入新项目）');
+const app = dev.command('app').description('被测应用（校准批次用）');
 app.command('add').description('注册一个被测应用及版本').requiredOption('--name <name>').requiredOption('--url <url>', '测试环境入口 URL').option('--version <v>', '版本号', 'v1').option('--form <form>', 'web | h5', 'web').option('--prd <file>', 'PRD/产品说明文件（Markdown/文本）').option('--desc <text>', '一句话描述').option('--seeded <file>', '已知缺陷清单 YAML/JSON（植入缺陷版本，用于校准）').option('--reset-url <url>', '每次 Study 开始前调用的测试环境重置地址（可选）')
   .action(wrap(async (o: { name: string; url: string; version: string; form: 'web' | 'h5'; prd?: string; desc?: string; seeded?: string; resetUrl?: string }) => {
     const appId = await E.addApp({ name: o.name, form: o.form, description: o.desc });
@@ -70,7 +70,7 @@ product.command('crawl').description('爬取并让 LLM 归纳功能清单/任务
     console.log(`🕸️ 爬取 ${cr.pages.length} 个页面`);
     const spec = await E.induceProductSpec(a.name, av.version, cr, av.prd ?? a.description ?? undefined);
     const p = await E.saveDraft(spec);
-    console.log(`📝 草稿：${p}\n   功能 ${spec.features.length} · 任务 ${spec.tasks.length} · 假设 ${spec.hypotheses.length}\n   请检查后把 confirmed 改为 true，再运行：pux product import ${p}`);
+    console.log(`📝 草稿：${p}\n   功能 ${spec.features.length} · 任务 ${spec.tasks.length} · 假设 ${spec.hypotheses.length}\n   请检查后把 confirmed 改为 true，再运行：jobsworld dev product import ${p}`);
   }));
 product.command('import').argument('<file>').option('--auto-confirm', '全部功能视为已确认（全自动模式）').action(wrap(async (file: string, o: { autoConfirm?: boolean }) => out(await E.importProductSpec(file, { autoConfirm: o.autoConfirm }))));
 
@@ -111,7 +111,6 @@ study.command('status').argument('<studyId>').action(wrap(async (id: string) => 
 }));
 study.command('finalize').argument('<studyId>').description('重新合成问题、校准并生成报告').action(wrap(async (id: string) => { await E.finalizeStudy(id, progress); }));
 
-/** 全自动：灌入新项目一步到位（注册 → 爬取 → 归纳 → 自动确认 → 运行 → 报告） */
 
 const issueCmd = dev.command('issue').description('问题分诊（人工确认 / 驳回，用于误报率下界与校准）');
 issueCmd.command('confirm').argument('<issueId>').action(wrap(async (id: string) => { await getDb().update(issues).set({ status: 'confirmed' }).where(eq(issues.id, id)); console.log('✅ 已确认为真实问题'); }));

@@ -18,7 +18,7 @@
 
 如任务明显涉及启动、环境、部署或本地运行，还必须阅读：
 
-- `docs/QUICK_START.md`（若存在）
+- `docs/QUICK_START.md`、`docs/INSTALL.md`（若存在）
 
 ### 1.2 必读模块文档
 
@@ -40,7 +40,12 @@
 - `**/docker-compose.yml`
 - `**/.dockerignore`
 
-注：本项目已确认（2026-11-14）：**依赖服务（Postgres+pgvector、MinIO、LiteLLM、Temporal）使用 Docker Compose 运行，应用、worker 与 Demo 在宿主机原生运行**。另据 2026-11-14 JobsWorld 决策：**NATS 事件总线与两个游戏服（TShock、tModLoader，`profiles: [game]`，镜像见 `infra/game/*/Dockerfile`）同样在 Docker Compose 中运行**；世界服务、API、网页与单端口网关（`apps/world`、`apps/api`、`apps/web`、`apps/gateway`）在宿主机原生运行。因此上述 Docker 相关阅读要求保留，涉及依赖服务时须阅读根目录 `docker-compose.yml` 与 `.dockerignore`。
+注：本项目的运行形态（2026-11-15 重塑后）：
+
+- **从源码开发**：依赖服务（Postgres+pgvector、MinIO、NATS）用根目录的 `docker-compose.yml` 运行；两个游戏服（TShock、tModLoader，`profiles: [game]`，镜像见 `infra/game/*/Dockerfile`）同样在 Docker Compose 里按需启动；世界服务、接口、网页、单端口网关（`apps/world`、`apps/api`、`apps/web`、`apps/gateway`）与示例产品在宿主机用 pnpm 运行。模型不再经独立的网关容器：由应用内的 `packages/llm` 路由，在网页的「模型」页配置。
+- **装好的 Jobs**：我们自己的代码打成一个镜像（根目录 `Dockerfile`），配合 `deploy/compose*.yml` 引用的标准镜像运行，由 `deploy/install.sh` 安装。
+
+因此上述 Docker 相关阅读要求保留：涉及依赖服务或游戏服时须阅读根目录 `docker-compose.yml` 与 `.dockerignore`；涉及安装与打包时须阅读 `Dockerfile`、`Dockerfile.dockerignore`、`deploy/` 与 `docs/INSTALL.md`。
 
 ### 1.3 阅读后的执行要求
 

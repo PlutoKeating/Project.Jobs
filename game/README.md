@@ -1,6 +1,11 @@
-# game：JobsWorld 游戏端（TShock 插件 + 共享 C# 源码）
+# game：JobsWorld 游戏端（TShock 插件 + tModLoader 模组 + 共享 C# 源码）
 
-把世界服务（`apps/world`）通过 NATS 发布的城镇、人物、想法气泡、时钟呈现在 Terraria 里。玩家用**原版 Terraria 1.4.5.8** 客户端连入 TShock 服务器旁观；tModLoader 1.4.4 版本的 mod 后续复用 `shared/` 源码。
+把世界服务（`apps/world`）通过 NATS 发布的城镇、居民、想法气泡、时钟呈现在 Terraria 里，并把发布相关的操作带进游戏。两个游戏服各自生成同一座城：
+
+- **TShock**：玩家用原版 Terraria 1.4.5.8 客户端连入（本文后半）。
+- **tModLoader**：稳定版 1.4.4 线，多一个可点击的人物面板和右上角状态栏（[`tmodloader/README.md`](tmodloader/README.md)）。
+
+两边共用 `shared/` 里的源码：NATS 客户端、城镇构建、假玩家调度、命令的文字与发布相关命令的逻辑。
 
 ## 目录
 
@@ -16,10 +21,11 @@ game/
 │   ├── Schematics/TEditSchematic.cs  # .TEditSch V4/V5 读取与粘贴（移植自 TEdit，MS-PL，许可证见 TEdit-LICENSE.txt）
 │   └── Personas/                 # 假玩家调度（槽位、插值、气泡限流）、/jw 文本与时钟换算、发布相关命令（`LaunchCommands.cs`，两个游戏端共用）
 ├── tshock/                     # TShock 6.2.1 插件（见 tshock/README.md）
+├── tmodloader/                 # tModLoader 模组与协议探针（见 tmodloader/README.md）
 └── schematics/                 # 可入库的自制 .TEditSch 地标（构建镜像时复制进容器）
 ```
 
-相关文件：`infra/game/tshock/Dockerfile`、`infra/game/tshock/entrypoint.sh`、`docker-compose.yml` 中的 `tshock` 服务（`profiles: [game]`）、`scripts/jw-probe.ts`、`scripts/download-community-assets.sh`。
+相关文件：`infra/game/{tshock,tmodloader}/Dockerfile` 与 `entrypoint.sh`；从源码运行时用 `docker-compose.yml` 里的 `tshock` / `tml` 服务（`profiles: [game]`，本地构建）；装好的 Jobs 用 `deploy/compose.yml` 里的同名服务（预先构建好的镜像 `jobs-tshock` / `jobs-tml`）；`scripts/jw-probe.ts`、`scripts/download-community-assets.sh`。
 
 ## 架构
 
@@ -35,7 +41,7 @@ apps/world ──NATS──▶ jw.town（请求/应答，~84KB）  ──▶ Tow
 - **重建条件**：布局 `version` 或 `TownBuilder.BuilderVersion` 变化时，在原位置重建（清空城镇上空、填平到 `ground_depth`）；否则跳过。管理员也可 `/jw rebuild`。
 - **假玩家**：真正的“玩家”（出现在玩家列表、可定制外观、聊天显示在头顶），不是 NPC。服务器端槽位保持非活动，只向真实客户端同步，详见 `tshock/README.md`。
 
-### tModLoader 端需要实现的接口
+### 每个游戏端各自实现的两个接口
 
 ```csharp
 // shared/Town/ITileWriter.cs —— 城镇构建与蓝图粘贴只通过它改世界（世界图格坐标）
@@ -60,21 +66,24 @@ void Despawn(int slot);
 void Say(int slot, string text, byte r, byte g, byte b);
 ```
 
-tML 的 `Tile` 是结构体（`HasTile`/`TileType`/`WallType`/`LiquidAmount`…），不能照搬 OTAPI 的 `ITile` 写法；`WorldGen.PlaceObject`、`TileObjectData.GetTileData`、`Sign.ReadSign/TextSign`、`WorldGen.GrowTree` 两边同名可用。csproj 里用 `<Compile Include="../shared/**/*.cs" />` 引入共享源码。
+TShock 端的实现在 `tshock/TShockTileWriter.cs`、`tshock/TShockFakePlayers.cs`，tModLoader 端在 `tmodloader/JobsWorld/Server/TmlTileWriter.cs`、`TmlFakePlayers.cs`。两边的图格 API 不同（OTAPI 的 `ITile` 对 tML 的 `Tile` 结构体），所以各写一份；`WorldGen.PlaceObject`、`TileObjectData.GetTileData`、`Sign.ReadSign/TextSign`、`WorldGen.GrowTree` 两边同名可用。TShock 的 csproj 用 `<Compile Include="../shared/**/*.cs" />` 引入共享源码；tModLoader 在构建镜像时把 `shared/` 复制进模组目录。
 
-## 构建与运行
+## 构建与运行（TShock）
 
-宿主机不需要 .NET SDK，全部在 Docker 里构建（镜像构建阶段下载 TShock 6.2.1 for 1.4.5.8 发布包并编译插件）。前提：`nats` 与世界服务（`apps/world`）已在运行。
+宿主机不需要 .NET SDK，全部在 Docker 里构建（镜像构建阶段下载 TShock 6.2.1 for 1.4.5.8 发布包并编译插件）。前提：NATS 与世界服务已在运行。
 
 ```bash
-# 构建并只启动游戏服（不会重建 / 重启其他依赖容器）
+# 从源码运行：构建并只启动游戏服（不会重建 / 重启其他依赖容器）
 docker compose --profile game up -d --build --no-deps tshock
 docker logs -f pux-tshock-1          # 首次会生成小世界并建镇，看到“城镇构建完成”即可
+
+# 装好的 Jobs：网页右上角手柄里的开关，或者
+jobsworld game on tshock             # 容器名 jobs-tshock-1
 ```
 
 - 端口：`127.0.0.1:${TSHOCK_PORT:-57777}`（只绑本机；对外由 gateway 的 `0.0.0.0:7777` 转发）。
 - 环境变量（`.env`）：`TSHOCK_PORT`、`JW_GAME_PASSWORD`（游戏服密码，可空）、`JW_ADMIN_PASSCODE`（`/jw login` 口令，可空则禁用）。
-- 数据：命名卷 `pux_tshockdata` 挂在 `/data`（`tshock/` 配置与 SQLite、`worlds/` 世界与建镇标记、`logs/`）。删除该卷即可从新世界重来。
+- 数据：命名卷 `pux_tshockdata`（装好的 Jobs 里是 `jobs_tshockdata`）挂在 `/data`（`tshock/` 配置与 SQLite、`worlds/` 世界与建镇标记、`logs/`）。删除该卷即可从新世界重来。
 - 握手版本串：原版 1.4.5.8 客户端发送的 ConnectRequest(1) 为 **`Terraria326`**（`Main.curRelease = 326`）。
 
 ## 游戏内命令
@@ -83,11 +92,11 @@ docker logs -f pux-tshock-1          # 首次会生成小世界并建镇，看�
 
 | 命令 | 说明 |
 |---|---|
-| `/jw who` | 所有人物：地点 + 正在做什么（使用软件的排在前面） |
+| `/jw who` | 所有可见的居民：地点 + 正在做什么（正在用产品的排在前面） |
 | `/jw goto <地点\|人名>` | 传送到地点（id、中文名、英文名或类型均可）或人物身边 |
 | `/jw follow <人名>` | 跟随（每秒检查，远了就传送过去）；再输一次或 `/jw follow off` 取消 |
-| `/jw info <人名>` | 详情：职业、当前活动、打算、身心状态（很饿、很累、心情不好…，手机是否在手边）、上一段/下一段日程；在用软件时显示软件、步数、独白、动作。tModLoader 的人物面板另显示熟人 |
-| `/jw ask <人名> <问题>` | Session 结束后的追问访谈（走 `jw.ask`；正在用软件时提示忙，没有完成过 Session 时提示无） |
+| `/jw info <人名>` | 详情：职业、当前活动、打算、身心状态（很饿、很累、心情不好…，手机是否在手边）、上一段/下一段日程；正在用产品时显示产品名、第几步、心里的话、动作。tModLoader 的人物面板另显示熟人 |
+| `/jw ask <人名> <问题>` | 向用过产品的人追问（走 `jw.ask`，基于他最近一次已结束的使用；正在用时提示忙，从没用过任何产品时提示无） |
 | `/jw lang en\|zh` | 切换输出语言（默认中文；子命令也接受中文别名，如 `/jw 谁`） |
 | `/jw launches` | 已发布的产品和各自的人数：看到 → 注意到 → 有兴趣 → 打开过 → 回来再用，此刻几人在用，宣发强度，评分（`jw.launches.get`） |
 | `/jw status` | NATS、城镇版本与原点、假玩家数量、世界时钟 |
@@ -121,17 +130,23 @@ npx tsx scripts/jw-probe.ts --port 57777 --secs 25 --cmd "/jw who" --cmd "/jw in
 
 探针是一个最小的原版协议客户端：握手 `Terraria326` →（密码）→ PlayerInfo/ClientUUID/生命/魔力/Buff → 请求世界 → 请求出生分区 → SpawnPlayer，然后打印收到的 PlayerInfo(4)/PlayerActive(14)、每个玩家的 PlayerUpdate(13) 次数与位置、聊天（NetTextModule，含作者槽位）、SetTime(18)，并从图格分区（Deflate 解压）中解出告示牌文字。
 
-### 已验证结果（2026-11-14，本机）
+### 验证记录
 
-- 首次启动自动生成小世界（4200×1200），建镇约 0.1–0.2 秒：建筑 11、门 22、窗 345、家具 333、告示牌 15、树 7、长椅 5、路灯 8、火把 454、地铁隧道/站厅/台阶 3/站台/5 节车厢、公交亭、水池，无放置失败；原点 (1508, 291)，出生点设在公园。第二次启动识别标记并跳过构建；构建器版本变化时在原位置自动重建。
-- 探针以原版协议连入：收到 16 个假玩家（slot 254→239，人物名如“陈小敏”“Emily Carter”）的 PlayerActive + PlayerInfo，持续收到 PlayerUpdate，走动中的人物位置平滑变化；后加入的客户端同样收到全部假玩家。
-- 气泡：`/jw event home_a noise 3` 后收到作者为假玩家槽位的聊天（如 `[#246] 陈小敏: 这也太吵了`，黄色 confused）；正在跑 Session 的人物独白也以气泡出现，按语气着色，同一人 6 秒内最多一条。
-- 图格分区中解出“幸福里公寓 A 座 / Sunny Court A”“人民广场地铁站 / People's Square Station”“公交站 / Bus Stop”等告示牌文字。
-- SetTime 每秒一次，与世界时钟一致（如 20:16 → 夜晚 time=2780）。
-- `/jw who`、`/jw info`、`/jw goto`、`/jw follow`、`/jw login`、`/jw clock speed`、`/jw event`、`/jw rebuild`、`/jw paste`、`/jw lang en`、`/jw ask` 均走通。
-- `.TEditSch` 读取器对下载的 432 个社区蓝图（V4/V5，版本 279）全部解析成功。
+2026-11-15（当前代码，约两百位居民）：
 
-未验证：真实 Terraria 图形客户端里的观感（外观颜色、头顶气泡渲染、门/家具样式）、GodMode 与禁建造在真实客户端上的表现、`/jw replay`。
+- 两个游戏服的镜像都重新编译通过（含 `/jw launches | publish | promote | invite`）。
+- 在一个用安装脚本装好的实例上，经对外的 7777 端口用探针以原版协议进服：进服密码生效；居民以玩家身份出现并持续移动；`/jw launches` 返回各产品的人数，例如「闪念笔记 — 看到 126 → 注意到 11 → 有兴趣 2 → 打开过 2 → 回来再用 0（此刻 1 人在用） · 宣发 80%」。
+- 产品负责人已用真实的 Terraria 客户端进过这座城并确认可用（没有逐项记录覆盖到哪些细节）。
+- 这一天没有重新验证的：`/jw publish`、`/jw promote`、`/jw invite` 在游戏里的实际执行（它们背后的 NATS 主题经接口与命令行验证过）；tModLoader 服务端只做了编译，没有重新进服。
+
+2026-11-14（当时城里只有 16 个人）：
+
+- 首次启动自动生成小世界（4200×1200），建镇约 0.1–0.2 秒，无放置失败；第二次启动识别标记并跳过构建；构建器版本变化时在原位置自动重建。（城镇此后从 3 栋住宅扩到 5 栋，建筑与家具数量随之变化。）
+- 探针收到全部假玩家的 PlayerActive + PlayerInfo，并持续收到 PlayerUpdate；后加入的客户端同样收到。
+- 气泡：`/jw event home_a noise 3` 后收到作者为假玩家槽位的聊天（如 `陈小敏: 这也太吵了`，黄色）；正在用产品的人心里的话也以气泡出现，按语气着色，同一人 6 秒内最多一条。
+- 图格分区中解出“幸福里公寓 A 座 / Sunny Court A”“人民广场地铁站 / People's Square Station”等告示牌文字；SetTime 每秒一次，与世界时钟一致。
+- `/jw who`、`/jw info`、`/jw goto`、`/jw follow`、`/jw login`、`/jw clock speed`、`/jw event`、`/jw rebuild`、`/jw paste`、`/jw lang en`、`/jw ask` 均走通；`/jw replay` 没有实际触发过。
+- `.TEditSch` 读取器对下载的 432 个社区蓝图（V4/V5）全部解析成功。
 
 ## 排错
 
@@ -140,18 +155,17 @@ npx tsx scripts/jw-probe.ts --port 57777 --secs 25 --cmd "/jw who" --cmd "/jw in
 | 日志反复“获取城镇布局失败” | 世界服务未运行或 NATS 不通；容器内 NATS 地址为 `nats://nats:4222`（compose 默认网络） |
 | 客户端提示版本不符 | 必须是原版 1.4.5.8（`Terraria326`）；tModLoader 客户端连 tML 服务端 |
 | 看不到人物 | `/jw status` 看假玩家数量；世界服务的 `jw.snapshot` 是否在发（`nats sub jw.snapshot`） |
-| 想换新世界 | `docker compose --profile game rm -sf tshock` 后 `docker volume rm pux_tshockdata` 再启动 |
+| 想换新世界 | 从源码运行：`docker compose --profile game rm -sf tshock` 后 `docker volume rm pux_tshockdata` 再启动（装好的 Jobs：在 `~/.jobs` 下执行同样的命令，卷名是 `jobs_tshockdata`） |
 | 城镇被改坏 | 管理员 `/jw rebuild` |
 
 ---
 
 ## tModLoader 端（game/tmodloader）
 
-> 本节由 tModLoader 端维护，详细说明见 [`tmodloader/README.md`](tmodloader/README.md)。
+详细说明见 [`tmodloader/README.md`](tmodloader/README.md)。要点：
 
-- **版本**：tModLoader 稳定版 `v2026.09.3.1`（Terraria 1.4.4.9），握手版本串 **`tModLoader v2026.9.3.1!2026.9.3`**（gateway 按 `tModLoader` 前缀分流）。
-- **构建**：`docker compose --profile game up -d --build --no-deps tml`。镜像构建时把 `game/shared` 复制到 `tmodloader/JobsWorld/Shared/`，再用 tModLoader 自带的 Roslyn（`dotnet tModLoader.dll -server -build`）编译出 `JobsWorld.tmod`，不需要 .NET SDK；共享源码不在 mod 目录里重复入库。
-- **端口与数据**：`127.0.0.1:${TML_PORT:-57778}`，命名卷 `pux_tmldata`。
-- **适配实现**：`Server/TmlTileWriter.cs`（`ITileWriter`，tML `Tile` 结构体 API）、`Server/TmlFakePlayers.cs`（`IFakePlayerHost`，与 TShock 端同样只向真实客户端同步非活动槽位）；建镇、假玩家调度、命令文本全部复用 `shared/`。
-- **相对 TShock 端的差异**：平坦世界生成（`ModifyWorldGenTasks`）；客户端可悬停 / 点击人物打开面板（软件、步骤、在想、动作、实时截图、日程、跟随、追问、主页）和右上角 HUD（时钟、在用软件人数）；服务端逻辑挂在 `Main.OnTickForThirdPartySoftwareOnly`（无人在线时原版不跑 `Main.Update`）。
-- **验证**：`node game/tmodloader/tools/tml-probe.mjs 127.0.0.1 57778`（完整走 tML 握手、进入世界，解析假玩家、气泡与 JobsWorld ModPacket）。
+- **版本**：tModLoader 稳定版 `v2026.09.3.1`（Terraria 1.4.4.9），握手版本串 **`tModLoader v2026.9.3.1!2026.9.3`**（网关按 `tModLoader` 前缀分流）。
+- **构建**：从源码运行 `docker compose --profile game up -d --build --no-deps tml`；装好的 Jobs `jobsworld game on tml`。镜像构建时把 `game/shared` 复制到 `tmodloader/JobsWorld/Shared/`，再用 tModLoader 自带的编译器编译出 `JobsWorld.tmod`，不需要 .NET SDK。
+- **端口与数据**：`127.0.0.1:${TML_PORT:-57778}`，命名卷 `pux_tmldata`（装好的 Jobs 里是 `jobs_tmldata`）。
+- **相对 TShock 端的差异**：平坦世界生成；客户端可以悬停、点击居民打开面板（正在用的产品、第几步、心里的话、动作、实时截图、身心状态、熟人、日程、跟随、追问、主页）和右上角状态栏（时钟、此刻几人在用产品）。
+- **验证**：`node game/tmodloader/tools/tml-probe.mjs 127.0.0.1 57778`（完整走 tML 握手、进入世界，解析假玩家、气泡与模组自己的数据包）。

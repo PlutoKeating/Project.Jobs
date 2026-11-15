@@ -1,4 +1,6 @@
-# 校准验收记录（助手 Demo · 植入缺陷版，11 个已知缺陷）
+# 校准验收记录（2026-11-14；助手 Demo · 植入缺陷版，11 个已知缺陷）
+
+> **历史记录。** 下面的数字来自 2026-11-14、重塑之前的系统：那时虚拟人读的是从页面结构里抽出的元素文字，点击由 Stagehand 执行，模型经 LiteLLM 调用。这三样现在都换掉了（只看截图、Midscene 定位、应用内模型路由），**这些检出率与误报率没有在当前代码上重跑过，不代表现在的系统**。文中的命令是当时的写法；现在对应 `pnpm jobs dev study create …`、`pnpm jobs dev study run <id>`（见 [`../CALIBRATION.md`](../CALIBRATION.md)）。文中的「spec §」指 [`SPEC_v0.2.md`](SPEC_v0.2.md)。
 
 基线：干净版 Study `std_uq0x8lp3uo15`（6 个 Session）+ 未匹配问题在干净版本上的自动重放。
 阈值：检出率 ≥ 60%，误报率 ≤ 30%（`config/pux.config.yaml` → `thresholds`）。

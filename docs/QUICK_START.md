@@ -36,7 +36,7 @@ pnpm jobsworld             # 世界服务 + API（含网页）+ 单端口网关�
 
 ## 4. 发布第一个产品
 
-没有现成产品时，先起示例产品：`pnpm demos`（另开终端；`http://127.0.0.1:5508/` 是一个「显示已自动保存但其实没存」的笔记应用）。
+没有现成产品时，先起示例产品：`pnpm demos`（另开终端；也可以用 `JOBS_DEMOS=1 pnpm jobsworld` 一起启动）。`http://127.0.0.1:5508/` 是一个「显示已自动保存但其实没存」的笔记应用。示例在跑的时候，发布对话框左下角有「示例」可选。
 
 网页右上角「发布」，或者：
 
@@ -61,22 +61,26 @@ claude mcp add jobs -- pnpm --dir /path/to/Project.Jobs -s jobs mcp
 
 ## 6. 访问控制
 
-`.env`：`JW_PASSCODE`（网页共享口令）、`JW_ADMIN_PASSCODE`（管理员口令：发布、调宣发、控制世界）。都不设置时，能访问这个端口的任何人都是管理员。命令行与 MCP 用 `Authorization: Bearer <口令>`（环境变量 `JOBS_KEY`）。
+`.env`：`JW_PASSCODE`（访客口令：只能看）、`JW_ADMIN_PASSCODE`（管理员口令：发布、调宣发、接入模型、控制世界）。都不设置时，能访问这个端口的任何人都是管理员。命令行与 MCP 用 `Authorization: Bearer <口令>`（环境变量 `JOBS_KEY`）。
 
-## 7. 用 Terraria 进入同一座城（可选）
+## 7. 飞书（可选）
+
+管理员在网页右上角点对话气泡图标，用飞书扫码接入；之后可以在飞书里发布、看状况、要结论、向居民追问，并收到进展推送。说明见 [`INSTALL.md`](INSTALL.md) 的「飞书」一节。
+
+## 8. 用 Terraria 进入同一座城（可选）
 
 ```bash
 docker compose --profile game up -d --build --no-deps tshock   # 原版 Terraria 1.4.5.x 客户端
 docker compose --profile game up -d --build --no-deps tml      # tModLoader（稳定版 1.4.4，带可点击的人物面板）
 ```
 
-在游戏里「加入 → 通过 IP 加入」，地址与网页相同（端口 `7777`），网关按客户端类型自动分流。服务器密码为 `.env` 的 `JW_GAME_PASSWORD`（留空则无）。
+在游戏里「加入 → 通过 IP 加入」，地址与网页相同（端口 `7777`），网关按客户端类型自动分流。服务器密码为 `.env` 的 `JW_GAME_PASSWORD`（留空则无）。从源码运行时，网页手柄里的开关不会替你启动游戏服，它会给出上面这条命令。
 
 游戏内：`/jw who`、`/jw goto 地铁站`、`/jw follow 林薇`、`/jw info 林薇`、`/jw ask 林薇 你刚才为什么关掉了？`、`/jw launches`。管理员先 `/jw login <JW_ADMIN_PASSCODE>`，再用 `/jw publish <网址> <名字> <一句话>`、`/jw promote <产品> <0-100|pause|resume|end>`、`/jw invite <产品> [人数]`、`/jw clock`、`/jw event`、`/jw replay`。详见 [`game/README.md`](../game/README.md)。
 
 没有游戏客户端也能验证：`npx tsx scripts/jw-probe.ts --port 7777 --secs 15`。
 
-## 8. 常用命令
+## 9. 常用命令
 
 | 命令 | 作用 |
 |---|---|
@@ -92,10 +96,10 @@ docker compose --profile game up -d --build --no-deps tml      # tModLoader（�
 
 开发网页：`pnpm world`、`pnpm api` 后 `pnpm web`（Vite，`http://127.0.0.1:5321/`，代理到 API）。
 
-## 9. 故障排查
+## 10. 故障排查
 
 - 城里一直没人用产品、世界服务日志里有「还没有接入可用的模型」：到「模型」页看上方三项哪一项标红。
 - 模型调用报凭证无效：到「模型」页给对应连接换一把凭证并保存（旧的删掉）。用 gcloud 的 ADC 文件做凭证时它会过期，过期后重新粘贴。
-- 世界页没有人在动 / 时钟显示 `--:--`：确认 `docker compose up -d nats` 且世界服务在运行。
+- 城里没有人在动 / 时钟显示 `--:--`：确认 NATS 容器在运行、世界服务在运行。
 - 发布之后一直没人打开：看 `pnpm jobs status <产品>` 里路过的人怎么想；提高宣发强度、换一句话介绍，或 `pnpm jobs invite <产品>`。世界服务以 `JW_RUNNER=0` 启动时不会驱动发布引擎。
 - 浏览器启动失败：`npx playwright install chromium`。

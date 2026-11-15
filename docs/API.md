@@ -2,14 +2,16 @@
 
 ## 1. REST API（`apps/api`，默认 `http://127.0.0.1:5320`，对外经网关 `:7777`）
 
-前缀统一为 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）。设置 `JW_PASSCODE` 后，除 `/me`、`/auth/*`、`/inbox/*`、`/healthz` 外都需要登录（否则 401）。身份有两种带法：网页登录后的 HttpOnly Cookie；命令行、MCP 与脚本用 `Authorization: Bearer <口令>`。
+下面的路径都省略了前缀 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）；没设置管理员口令时，能进来的人都是管理员。设置 `JW_PASSCODE`（访客口令）后，除 `/me`、`/auth/*`、`/inbox/*` 外都需要登录（否则 401）。身份有两种带法：网页登录后的 HttpOnly Cookie；命令行、MCP、示例产品与脚本用 `Authorization: Bearer <口令>`。装好的 Jobs 两个口令都在安装时随机生成。
+
+不在 `/api/v1` 下的：`GET /healthz`（`{ ok, nats }`，免登录）；`/reports/…`（内部校准批次的离线报告，需登录）；其余 GET 返回网页。
 
 ### 身份
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /me` | `{ viewer, admin, auth_required, game_port }` |
-| `POST /auth/login` `{ passcode }` | 共享口令或管理员口令；写入 HttpOnly Cookie |
+| `GET /me` | `{ viewer, admin, auth_required, game_port, models_ready }`。`models_ready`：每一步、归纳、定位三个模型组此刻是否各有可用的模型 |
+| `POST /auth/login` `{ passcode }` | 访客口令或管理员口令；写入 HttpOnly Cookie（30 天） |
 | `POST /auth/logout` | 清除登录 |
 
 ### 发布
@@ -46,14 +48,14 @@
 |---|---|
 | `GET /personas` | 每个人物的最新版本 + 使用统计（次数、用过的产品、记忆数）+ 此刻位置、需求、手机在不在手边、所在家庭 |
 | `GET /personas/:id` | 画像、今天的日程、记忆（最近 120 条，来自他的记忆树）、使用历史（`sessions`；`launch_of` 把 `app_id` 对到发布 id）、信任状态、实时状态与世界时钟；`resident`（家庭、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境） |
-| `GET /personas/:id/avatar` | 头像：`image.gen` 生成后缓存到 MinIO；生成前返回确定性像素头像 SVG |
+| `GET /personas/:id/avatar` | 头像：接入了画图模型时生成并缓存到 MinIO；还没有生成的（或没接入画图模型时）返回确定性的像素头像 SVG |
 | `POST /personas/generate`（管理员） `{ n, locale }` | 生成新居民并住进城里（1–12 人） |
 
 ### 世界
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /overview` | 人数、使用次数、已发布产品数、待人工处理的任务数、最近一次快照 |
+| `GET /overview` | `personas`（居民数）、`sessions`（使用次数）、`issues`、`live`（此刻进行中的使用）、`launches`（已发布产品数）、`spend_usd`（模型调用累计花费的估算；目录里没有价格的模型按 0 计）、`human_pending`（待人介入的任务数）、`snapshot`（最近一次快照） |
 | `GET /world/town` | 城镇布局（图元、地点、落脚点） |
 | `GET /world/snapshot` | 最近一次世界快照（时钟、人物位置与状态、世界事件） |
 | `POST /world/clock`（管理员） `{ paused?, speed?, jump_to? }` | 控制世界时钟 |
@@ -89,15 +91,15 @@
 
 ### NATS（JobsWorld 事件总线）
 
-主题与消息格式见 `packages/jobsworld/src/protocol.ts` 与 [`JOBSWORLD.md`](JOBSWORLD.md) §3.2。发布相关：`jw.launches`（广播各产品的人数）、`jw.launches.get`、`jw.cmd.publish`、`jw.cmd.promote`、`jw.cmd.invite`（请求/应答；游戏端与 API 共用）。
+主题与消息格式见 `packages/jobsworld/src/protocol.ts` 与 [`JOBSWORLD.md`](JOBSWORLD.md) §3。
 
 ## 2. 命令行与 MCP
 
-`jobs`（仓库内为 `pnpm jobs`）通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`；`jobsworld mcp` 以 stdio 启动 MCP 服务，工具为 `publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`；`jobsworld mcp` 以 stdio 启动 MCP 服务，工具为 `publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ## 3. UAP v0.2（执行层接口）
 
-定义：`packages/core/src/types/uap.ts`（在 spec §10 基础上扩展了 `visual` 定位方式（`TargetRef.text` + `value`）、`risk_tags`、`injected`、`effects.visible_change`，以及 `PRODUCT_SMALL_TARGET`、`SIM_MOTOR_MISS` 错误码）。人物可用的动词不含 `navigate`。
+UAP 是「人物的手」与被测产品之间的统一接口。定义：`packages/core/src/types/uap.ts`（出自早期设计稿 [`history/SPEC_v0.2.md`](history/SPEC_v0.2.md) §10，后来加了 `visual` 定位方式（`TargetRef.text` + `value`）、`risk_tags`、`injected`、`effects.visible_change`，以及 `PRODUCT_SMALL_TARGET`、`SIM_MOTOR_MISS` 错误码）。人物可用的动词不含 `navigate`（真人不会凭空改网址）。
 
 ```ts
 interface Executor {
@@ -108,7 +110,7 @@ interface Executor {
 
 实现：`packages/executor/src/session.ts`（`BrowserSession`）。执行器名：`midscene`（人物使用：目标是 `{ by: 'visual', text, value }`，看截图定位）、`playwright`（只用于干净重放，按选择器，不调用模型）。动作结果的 `status` 按屏幕上有没有肉眼可见的变化判定（`effects.visible_change`）。
 
-错误分层与默认归因（spec §10.2）：`product` → 产品问题候选；`environment` / `simulator` → 不计入产品问题；`executor` → 不计入产品问题（人物眼里是「在屏幕上没找到想点的东西」）；`policy` → 记录并检查产品保护机制；`injected` → 只评估产品如何应对。
+错误分层与默认归因：`product` → 产品问题候选；`environment` / `simulator` → 不计入产品问题；`executor` → 不计入产品问题（人物眼里是「在屏幕上没找到想点的东西」）；`policy` → 记录并检查产品保护机制；`injected` → 只评估产品如何应对。
 
 ## 4. 模型
 
@@ -141,14 +143,17 @@ interface Executor {
 
 ### OpenAI 兼容入口
 
-`POST /llm/<step|think|locate>[/<定位家族>]/v1/chat/completions`（需登录；Bearer 口令即可）：请求体按 OpenAI 的 chat/completions 格式，`model` 字段会被换成实际目标的上游模型名，支持流式。示例产品里的 AI 功能用它。
+`POST /llm/<step|think|locate>[/<定位家族>]/v1/chat/completions`（仅管理员，因为它花的是真钱；带 `Authorization: Bearer <管理员口令>`）：请求体按 OpenAI 的 chat/completions 格式，`model` 字段会被换成实际目标的上游模型名，支持流式。示例产品里的 AI 功能用它。
 
 ## 5. 数据文件格式
 
-- Persona：`config/personas/**/*.yaml`（`PersonaSpecSchema`）
+- 手写人物：`config/personas/{hero,child}/*.yaml`（`PersonaSpecSchema`，共 14 位）
 - 场景模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）。默认不用：每次使用发生在人物此时此地的处境里（`sessions.world_context`，`world_template_id = 'live'`）；只有内部校准批次显式指定 `world_ids` 时才用模板
 - 人口抽样表：`config/population/{zh-CN,en-US}.json`；随包居民：`config/population/residents.jsonl`（每行 `{ spec, household, skeleton }`）
-- ProductSpec：`data/apps/<app>/<version>/product.yaml`（`ProductSpecSchema`）
-- 测试环境重置（`jobsworld dev app add --reset-url`）：每个校准批次开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。
-- 已知缺陷清单（`jobsworld dev app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
+- 城镇与日程：`config/jobsworld/town.yaml`、`agenda.yaml`
+- 模型目录的随包快照：`config/models/catalog.json`（`npx tsx scripts/update-model-catalog.ts` 更新）
+- 全局参数：`config/pux.config.yaml`（预算、护栏、阈值、记忆检索权重等；可在不入库的 `config/pux.config.local.yaml` 里覆盖）
+- 产品理解草稿（只有校准批次在用）：`data/apps/<app>/<version>/product.yaml`（`ProductSpecSchema`）
+- 测试环境重置（`pnpm jobs dev app add --reset-url`）：每个校准批次开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。
+- 已知缺陷清单（`pnpm jobs dev app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
 - 校准输入：见 [`CALIBRATION.md`](CALIBRATION.md)

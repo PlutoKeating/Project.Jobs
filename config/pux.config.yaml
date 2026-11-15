@@ -1,8 +1,9 @@
 # Jobs · 全局配置。可在 config/pux.config.local.yaml 中覆盖（该文件不入库）。
 
-# 模型不在这里配置：在网页的「模型」里接入供应商、勾选模型、排好顺序后发布（见 docs/MODELS.md）。
+# 模型不在这里配置：在网页的「模型」里接入供应商、勾选模型、排好顺序后保存（见 docs/MODELS.md）。
 
-# strict：judge 与 mind 同厂商时拒绝启动 Study；warn：放行但在报告中标注「未隔离」并把可信度降一级
+# 只影响内部校准批次：「每一步」与「归纳」两个模型组的首选模型出自同一家厂商时，
+# strict 拒绝创建批次；warn 放行，但在批次报告里标注并把评审相关结论的可信度降一级
 vendor_isolation: warn
 
 budgets: { max_steps_per_session: 40, max_sessions: 8, concurrency: 3, round_size: 4 }
@@ -14,10 +15,10 @@ guards:
   max_consecutive_violations: 4
   trust_abandon_threshold: 0.15
 
-# 自适应采样权重（§8.2，初始值，待实测调整；calibration 会写入 data/learning.json 进行修正）
+# 内部校准批次的采样权重（初始值；校准的学习回路会把修正写入 data/learning.json）
 sampler_weights: { uncovered_feature: 3, open_hypothesis: 2, low_trust: 1.5, near_new_issue: 2, uncovered_segment: 1.5, uncovered_scenario: 1, repeat_penalty: 2.5 }
 
-# 严重度口径（开放问题 17 的默认值）
+# 问题的严重度口径
 severity:
   P0: 阻断核心任务（大多数人群无法完成），或涉及安全/隐私/儿童保护/资金风险
   P1: 严重摩擦，导致明显流失或某一人群大面积卡住，或 AI 回答出现事实性错误/编造

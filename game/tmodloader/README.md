@@ -1,6 +1,6 @@
 # game/tmodloader：JobsWorld tModLoader mod
 
-tModLoader 稳定版（1.4.4 线，当前 `v2026.09.3.1`，内核 Terraria 1.4.4.9）专用服务器上的 JobsWorld mod。功能与 TShock 插件一致（平坦世界 + 城镇、假玩家人物、头顶气泡、`/jw` 命令、旁观者保护、昼夜跟随世界时钟），另外因为客户端也装了 mod，多了**可点击的人物面板**和**右上角 HUD**。
+tModLoader 稳定版（1.4.4 线，当前 `v2026.09.3.1`，内核 Terraria 1.4.4.9）专用服务器上的 JobsWorld mod。功能与 TShock 插件一致（平坦世界 + 城镇、以假玩家出现的居民、头顶气泡、`/jw` 命令含发布相关的四个、旁观者保护、昼夜跟随世界时钟），另外因为客户端也装了 mod，多了**可点击的人物面板**和**右上角 HUD**。
 
 ## 目录
 
@@ -14,7 +14,7 @@ game/tmodloader/
 │   ├── World/FlatWorldGen.cs     # 新建世界时只保留 Reset，替换为一条平地
 │   ├── Server/JwServerSystem.cs  # NATS、建镇、假玩家调度、昼夜、加入检测、拦截假玩家槽位与改图消息
 │   ├── Server/JwServerNet.cs     # HUD / 名册广播，面板请求转 jw.detail / jw.ask
-│   ├── Server/JwCommand.cs       # /jw 命令（CommandType.World：在服务器执行）
+│   ├── Server/JwCommand.cs       # /jw 命令（CommandType.World：在服务器执行）；发布相关的交给 shared/Personas/LaunchCommands.cs
 │   ├── Server/TmlTileWriter.cs   # ITileWriter 的 tML 实现（Tile 结构体 API）
 │   ├── Server/TmlFakePlayers.cs  # IFakePlayerHost 的 tML 实现
 │   └── Client/                   # JwClientSystem（悬停/点击、HUD）、PersonaPanel（UIState）、JwTextBox、DetailDto
@@ -25,18 +25,22 @@ game/tmodloader/
 
 ## 构建与运行
 
-前提：`nats` 与世界服务（`apps/world`）已在运行。宿主机不需要 .NET。
+前提：NATS 与世界服务已在运行。宿主机不需要 .NET。
 
 ```bash
+# 从源码运行
 docker compose --profile game up -d --build --no-deps tml
 docker logs -f pux-tml-1        # 看到“城镇构建完成”“假玩家上线 #254 …”即可
+
+# 装好的 Jobs：网页右上角手柄里的开关，或者
+jobsworld game on tml           # 容器名 jobs-tml-1
 ```
 
 - 镜像（`infra/game/tmodloader/Dockerfile`）：阶段 1 在 `dotnet/runtime:8.0` 里下载 GitHub 发布包 `tModLoader.zip`（构建参数 `TML_VERSION`），执行 `dotnet tModLoader.dll -server -build /src/JobsWorld -tmlsavedirectory /build-save` 得到 `JobsWorld.tmod`；阶段 2 只带 tModLoader 与 `.tmod`。
 - 启动（`entrypoint.sh`）：把 `.tmod` 装进 `/data/tModLoader/Mods` 并写 `enabled.json`，生成 `serverconfig.txt`（端口 7777、`autocreate` 小世界、密码 `JW_GAME_PASSWORD`、最多 `JW_MAX_PLAYERS` 人），以 `-tmlsavedirectory /data/tModLoader` 启动。
 - 端口：`127.0.0.1:${TML_PORT:-57778}`；对外由 gateway 的 `0.0.0.0:7777` 按握手版本串转发。
-- 环境变量：`NATS_URL`（compose 内为 `nats://nats:4222`）、`JW_GAME_PASSWORD`、`JW_ADMIN_PASSCODE`、`JW_API_BASE`（可空，见下文）、`JW_FAKE_MIN_SLOT`/`JW_FAKE_TOP_SLOT`（默认 180..254）、`JW_WORLD_NAME`、`JW_MAX_PLAYERS`。
-- 数据：命名卷 `pux_tmldata` → `/data`（`tModLoader/Worlds/` 世界与建镇标记 `jobsworld.jobsworld.json`、`logs/`）。删卷即从新世界重来。
+- 环境变量：`NATS_URL`（compose 内为 `nats://nats:4222`）、`JW_GAME_PASSWORD`、`JW_ADMIN_PASSCODE`、`JW_PASSCODE`（网页的访客口令；设置了才需要，用来给面板下发截图令牌）、`JW_API_BASE`（可空，见下文）、`JW_FAKE_MIN_SLOT`/`JW_FAKE_TOP_SLOT`（默认 180..254）、`JW_WORLD_NAME`、`JW_MAX_PLAYERS`。
+- 数据：命名卷 `pux_tmldata`（装好的 Jobs 里是 `jobs_tmldata`）→ `/data`（`tModLoader/Worlds/` 世界与建镇标记 `jobsworld.jobsworld.json`、`logs/`）。删卷即从新世界重来。
 
 ### 握手版本串（gateway 分流依据）
 
@@ -53,14 +57,14 @@ tModLoader v2026.9.3.1!2026.9.3
 玩家用 tModLoader（Steam 上的 tModLoader，稳定版）连 `服务器IP:7777`，加入时自动从服务器下载 JobsWorld mod（客户端设置“从服务器下载 mod”默认开启）。
 
 - **人物**：每个可见人物都是一个假玩家（玩家列表里能看到，外观按年龄/性别/职业映射），位置每秒随 `jw.snapshot` 平滑移动；想法以该玩家身份发聊天，显示在头顶，按语气着色（愤怒红、困惑黄、开心绿），同一人 6 秒最多一条。
-- **悬停**：鼠标移到人物上显示名字、年龄·职业、正在做什么 / 正在用的软件。
-- **点击（左键或右键）打开面板**：名字、年龄·性别·职业、地点（楼层）、状态；正在用软件时显示软件名与版本、第几步、“在想”（独白）、动作、意图和**当前截图**；之前 / 现在 / 接下来三段日程及意图；最近记忆。打开期间每 2 秒刷新。按钮：
+- **悬停**：鼠标移到人物上显示名字、年龄·职业、正在做什么 / 正在用的产品。
+- **点击（左键或右键）打开面板**：名字、年龄·性别·职业、地点（楼层）、状态；身心状态（很饿、很累、心情不好…）与手机在不在手边；熟人；正在用产品时显示产品名、第几步、“在想”（心里的话）、动作、意图和**当前截图**；之前 / 现在 / 接下来三段日程及意图；最近记忆。打开期间每 2 秒刷新。按钮：
   - **跟随 / 取消跟随**：服务器每秒检查，远了就把你传送到他身边；
   - **传送过去**；
-  - **问他**：输入框（支持中文输入法，Enter 提交、Esc 取消）→ 服务器请求 `jw.ask` → 回答显示在面板并进聊天栏（正在用软件时提示忙，没有完成过 Session 时提示无）；
+  - **问他**：输入框（支持中文输入法，Enter 提交、Esc 取消）→ 服务器请求 `jw.ask` → 回答显示在面板并进聊天栏（正在用产品时提示忙，从没用过任何产品时提示无）；
   - **打开主页**：`http://<主机>:<端口>/people/<id>`，复制到剪贴板、打印在聊天栏并尝试用浏览器打开。
-- **截图**：客户端直接 HTTP 下载 `http://<连接的主机>:<连接的端口>/api/v1/evidence/<screenshot_ev>`（gateway 同一端口也提供 HTTP；后台线程下载，主线程创建纹理，失败只显示原因）。服务器设置了 `JW_API_BASE` 时改用该地址。网页开启了共享口令（`JW_PASSCODE`）时 API 返回 401，面板会提示“截图需要网页口令”。
-- **HUD**（右上角，小地图下方）：世界时钟（暂停 / 倍速）与“N 人正在用软件 · 共 M 人”。Terraria 昼夜按世界时钟流速推进（`ModifyTimeRate`），偏差超过 1.5 分钟时校正。
+- **截图**：客户端直接 HTTP 下载 `http://<连接的主机>:<连接的端口>/api/v1/evidence/<screenshot_ev>`（gateway 同一端口也提供 HTTP；后台线程下载，主线程创建纹理，失败只显示原因）。服务器设置了 `JW_API_BASE` 时改用该地址。网页开了访客口令（`JW_PASSCODE`）时，服务端在 `Hello` 里把截图令牌发给客户端（由口令算出，只对截图接口有效），客户端带着它下载；游戏服没拿到这个口令时接口返回 401，面板会提示“截图需要网页口令”。
+- **状态栏**（右上角，小地图下方）：世界时钟（暂停 / 倍速）与“N 人正在用产品 · 共 M 人”。Terraria 昼夜按世界时钟流速推进（`ModifyTimeRate`），偏差超过 1.5 分钟时校正。
 
 ## 命令
 
@@ -91,22 +95,25 @@ node game/tmodloader/tools/tml-probe.mjs 127.0.0.1 57778 --wait 60 --ask 周静 
 
 探针完整走一遍 tML 握手：ConnectRequest → SyncMods(251) 回空包 → 槽位(3) → PlayerInfo/UUID/生命/魔力 → 请求世界 → 请求分区 → SpawnPlayer，然后解析假玩家（14/4/13）、头顶气泡（NetTextModule 作者为假玩家槽位）、JobsWorld 的 ModPacket（Hello/Roster/Hud/Detail/AskAnswer），并发送聊天命令与 `DetailReq`/`AskReq`。
 
-### 已验证结果（2026-11-14，本机）
+### 验证记录
 
-- 镜像构建：mod 用 tML 自带 Roslyn 编译 0 错误（警告只有共享源码的可空注解 CS8632）。
-- 启动：`Terraria Server v1.4.4.9 - tModLoader v2026.9.3.1`，日志 `Network compatibility version is 2026.9.3`；mod 加载、NATS 连接；平坦世界生成约 0.1 秒（4200×1200）；建镇约 0.24 秒：建筑 11、门 22、窗 345、家具 333、告示牌 15、树 7、长椅 5、路灯 8、火把 454、地铁隧道/站厅/台阶 3/站台/5 节车厢、公交亭、水池，无放置失败；原点 (1510,360)，出生点在公园。重启后识别标记跳过构建；构建器版本变化时原位重建。
-- 握手：`tModLoader v2026.9.3.1!2026.9.3` → 服务端回 SyncMods(251)（mod 列表 `JobsWorld v0.1.0`）；`tModLoader v2025.1.1.1!2025.1.1` 被拒（“You are on tModLoader v2025.1.1.1, server is on tModLoader v2026.9.3.1”）；`Terraria279` 被拒（unmodded client）。经 gateway `127.0.0.1:7777` 结果相同（被路由到 tML）；`Terraria318` 经 gateway 去了 TShock。
-- 进入世界后：收到 16 个假玩家（槽位 254→239，如“Emily Carter”“周静”）的 PlayerActive + PlayerInfo + 持续 PlayerUpdate；Hello（城镇“乔布斯镇”、14 个地点）、Roster（16 人）、HUD（`20:34`、0/16）；`DetailReq` 收到约 5.9KB 的 `jw.detail` JSON；`/jw who`、`/jw status`、`/jw goto 地铁`、`/jw follow 周静`、`/jw info 周静`、`/jw lang en` 回复正确；`/jw ask`（面板的 `AskReq`）在 60 秒等待内收到人物回答（走真实 `askPersona`，会产生一次模型调用）。
-- 气泡：向 NATS 发布 `jw.persona.<id>.say` 后探针收到作者为该假玩家槽位的聊天；管理员 `/jw login` → `/jw event home_a noise 3` 后收到 7 个人物的反应气泡（“这也太吵了”“So noisy here”）。
-- mod 下载：探针请求 `JobsWorld` 后收到约 99KB 的 `.tmod` 分块（客户端可从服务器自动下载 mod）。
-- 截图接口：经 gateway `GET /api/v1/evidence/<id>` 返回 `200 image/jpeg`（FNA 的 `Texture2D.FromStream` 支持 JPEG/PNG）；`/people/<id>` 返回 200。
+2026-11-15（当前代码）：镜像重新编译通过（含发布相关的四个命令、面板里的身心状态与熟人）。这一天没有重新启动 tModLoader 服务端做进服验证；产品负责人确认已用真实客户端进过这座城并可用（没有逐项记录覆盖到哪些面板细节）。
 
-### 未验证 / 限制
+2026-11-14（当时城里只有 16 个人，用无界面的协议探针）：
 
-- **没有真实 tModLoader 图形客户端**：面板、HUD、悬停提示、输入框（含中文输入法）、截图纹理、外观颜色与头顶气泡的实际渲染都只经过编译，没有在游戏里看过。
-- 客户端无敌 / 禁用物品在真实客户端上的表现未验证（服务端改图拦截已在代码层面实现，探针未发送改图消息）。
-- `/jw replay` 未实际触发；`/jw paste` 只编译通过（仓库内尚无蓝图）。
-- 网页开启共享口令时客户端拿不到截图（API 401）；如需要，可让服务端代理下载或下发令牌。
+- 镜像构建：模组用 tML 自带的编译器编译 0 错误。
+- 启动：`Terraria Server v1.4.4.9 - tModLoader v2026.9.3.1`，网络兼容版本 `2026.9.3`；模组加载、NATS 连接；平坦世界生成约 0.1 秒（4200×1200）；建镇约 0.24 秒，无放置失败，出生点在公园。重启后识别标记跳过构建；构建器版本变化时原位重建。
+- 握手：`tModLoader v2026.9.3.1!2026.9.3` → 服务端回模组列表；版本不符的 tModLoader 客户端与原版客户端被拒。经网关 `127.0.0.1:7777` 结果相同（被路由到 tML）；原版握手串经网关去了 TShock。
+- 进入世界后：收到全部假玩家的 PlayerActive + PlayerInfo + 持续 PlayerUpdate；`Hello`（城镇“乔布斯镇”）、名册、状态栏；`DetailReq` 收到 `jw.detail` 的 JSON；`/jw who`、`/jw status`、`/jw goto 地铁`、`/jw follow`、`/jw info`、`/jw lang en` 回复正确；面板的追问在 60 秒内收到回答（会产生一次模型调用）。
+- 气泡：向 NATS 发布 `jw.persona.<id>.say` 后探针收到作者为该假玩家槽位的聊天；管理员 `/jw login` → `/jw event home_a noise 3` 后收到多个人的反应气泡。
+- 模组下载：探针请求 `JobsWorld` 后收到 `.tmod` 分块（客户端可以从服务器自动下载模组）。
+- 截图接口：经网关 `GET /api/v1/evidence/<id>` 返回图片；`/people/<id>` 返回 200。
+
+### 没有用探针覆盖到的 / 限制
+
+- 面板、状态栏、悬停提示、输入框（含中文输入法）、截图贴图、外观颜色与头顶气泡的实际渲染，探针看不到；只有产品负责人在真实客户端里的整体确认。
+- 客户端无敌 / 禁用物品在真实客户端上的表现没有逐项验证（服务端的改图拦截在代码里，探针没有发送改图消息）。
+- `/jw replay`、`/jw publish`、`/jw promote`、`/jw invite` 没有在 tModLoader 服务端上实际触发过；`/jw paste` 只编译通过（仓库内没有蓝图）。
 - 假玩家槽位与真实玩家共用 0..254：`JW_FAKE_MIN_SLOT` 必须大于 `maxplayers`；同屏上限受槽位数限制（默认 75）。
 
 ## 排错
@@ -117,4 +124,4 @@ node game/tmodloader/tools/tml-probe.mjs 127.0.0.1 57778 --wait 60 --ask 周静 
 | 客户端提示版本不符 | 客户端 tModLoader 版本的网络兼容号必须与服务器一致（`2026.9.3`）；原版客户端请连 TShock |
 | 客户端卡在下载 mod | 客户端设置里开启“从服务器下载 mod” |
 | 面板截图一直失败 | 看面板里的原因；客户端不是经 gateway 连接时设置 `JW_API_BASE=http://<api 地址>` |
-| 想换新世界 | `docker compose --profile game rm -sf tml` 后 `docker volume rm pux_tmldata` 再启动 |
+| 想换新世界 | 从源码运行：`docker compose --profile game rm -sf tml` 后 `docker volume rm pux_tmldata` 再启动（装好的 Jobs：在 `~/.jobs` 下执行，卷名 `jobs_tmldata`） |
