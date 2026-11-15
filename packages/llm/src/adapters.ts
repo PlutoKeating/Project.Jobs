@@ -1,7 +1,9 @@
-// 上游协议适配：OpenAI 兼容（绝大多数供应商）、Anthropic Messages、Vertex AI（Google 凭证 JSON 换访问令牌后走 OpenAI 兼容入口）。
+// 上游协议适配：OpenAI 兼容（绝大多数供应商）、Anthropic Messages、Vertex AI（Google 凭证 JSON 或凭证文件的引用换访问令牌后走 OpenAI 兼容入口）。
 // 这一层只管「把一次请求发给一个目标」，不做重试与换目标（那是路由的事）。
 import { createSign } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
+import { readFileSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
 import type { ModelEntry, ProviderConn } from './config.ts';
 
 export type ContentPart = { type: 'text'; text: string } | { type: 'image'; data: Buffer | string; mime?: string };
@@ -43,14 +45,30 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
 }
 
 // ---- Google 凭证 JSON → 访问令牌（服务账号或 gcloud 的 application default credentials）----
+// 也可以只保存一个文件引用 { "file": "<容器里的路径>", "project_id"?: "<项目>" }：每次换令牌前重新读这个文件，
+// 这样宿主机上 gcloud 重新登录、文件内容换了之后不用回到「模型」页重新粘贴。
 interface GoogleCred { type?: string; client_id?: string; client_secret?: string; refresh_token?: string; client_email?: string; private_key?: string; token_uri?: string; project_id?: string; quota_project_id?: string }
 const tokens = new Map<string, { token: string; exp: number }>();
 const b64u = (b: Buffer | string) => Buffer.from(b).toString('base64url');
-export function googleProject(secret: string): string | undefined { try { const j = JSON.parse(secret) as GoogleCred; return j.quota_project_id ?? j.project_id; } catch { return undefined; } }
+
+/** 保存的凭证 → 实际的 Google 凭证（文件引用时现读文件；引用里写的项目优先于文件里的） */
+export function googleCred(secret: string): GoogleCred {
+  let j: GoogleCred & { file?: unknown };
+  try { j = JSON.parse(secret) as typeof j; } catch { throw new UpstreamError('这里需要粘贴 Google 凭证的 JSON（服务账号密钥，gcloud auth application-default login 生成的文件内容，或 {"file": "凭证文件在容器里的路径"}）', 401); }
+  if (typeof j.file !== 'string') return j;
+  if (!isAbsolute(j.file)) throw new UpstreamError('凭证文件的路径要写成绝对路径', 401);
+  let text: string;
+  try { text = readFileSync(j.file, 'utf8'); } catch (e) { throw new UpstreamError(`读不到凭证文件 ${j.file}（${(e as NodeJS.ErrnoException).code ?? 'error'}）：确认它挂进了容器`, 401); }
+  let f: GoogleCred; try { f = JSON.parse(text) as GoogleCred; } catch { throw new UpstreamError(`凭证文件 ${j.file} 不是 JSON`, 401); }
+  const project = j.project_id ?? j.quota_project_id;
+  return project ? { ...f, quota_project_id: project } : f;
+}
+export function googleProject(secret: string): string | undefined { try { const j = googleCred(secret); return j.quota_project_id ?? j.project_id; } catch { return undefined; } }
 
 export async function googleToken(secret: string): Promise<string> {
-  const hit = tokens.get(secret); if (hit && hit.exp > Date.now() + 60_000) return hit.token;
-  let j: GoogleCred; try { j = JSON.parse(secret) as GoogleCred; } catch { throw new UpstreamError('这里需要粘贴 Google 凭证的 JSON（服务账号密钥，或 gcloud auth application-default login 生成的文件内容）', 401); }
+  const j = googleCred(secret);
+  const key = JSON.stringify(j);                                                     // 文件内容换了（重新登录）就是新的缓存键
+  const hit = tokens.get(key); if (hit && hit.exp > Date.now() + 60_000) return hit.token;
   const tokenUri = 'https://oauth2.googleapis.com/token';
   let form: URLSearchParams;
   if (j.type === 'authorized_user' && j.refresh_token) form = new URLSearchParams({ grant_type: 'refresh_token', client_id: j.client_id ?? '', client_secret: j.client_secret ?? '', refresh_token: j.refresh_token });
@@ -64,7 +82,8 @@ export async function googleToken(secret: string): Promise<string> {
   try { r = await fetch(tokenUri, { method: 'POST', body: form, signal: AbortSignal.timeout(20_000) }); } catch (e) { throw new UpstreamError(String((e as Error).message)); }
   const t = (await r.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error?: string; error_description?: string };
   if (!r.ok || !t.access_token) throw new UpstreamError(`Google 凭证换不到访问令牌：${t.error_description ?? t.error ?? r.status}`, r.status === 400 ? 401 : r.status);
-  tokens.set(secret, { token: t.access_token, exp: Date.now() + (t.expires_in ?? 3000) * 1000 });
+  if (tokens.size > 50) tokens.clear();
+  tokens.set(key, { token: t.access_token, exp: Date.now() + (t.expires_in ?? 3000) * 1000 });
   return t.access_token;
 }
 

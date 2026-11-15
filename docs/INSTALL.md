@@ -71,6 +71,32 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash  # 重新运行安装�
   jobsworld up
   ```
 
+### 用本机 gcloud 登录的 Vertex 凭证
+
+如果这台机器上已经用 gcloud 登录了 Google Cloud，可以让 Jobs 直接读 gcloud 的凭证文件，而不是粘贴一份副本。组织策略要求每天重新登录时尤其合适：每天在宿主机上重新登录一次，Jobs 下一次换访问令牌就用上新的凭证，不用回到「模型」页。
+
+1. 把 gcloud 的配置目录**按原路径**、只读地挂进 `jobs` 容器。在 `~/.jobs/` 下新建 `compose.local.yml`（`jobsworld update` 和重新运行安装脚本都不会动它；路径写成绝对路径，不要用 `~` 或 `$HOME`，网页上的一键升级由 systemd 执行，那里不一定有 `HOME`）：
+
+   ```yaml
+   services:
+     jobs:
+       volumes:
+         - /home/<你>/.config/gcloud:/home/<你>/.config/gcloud:ro
+   ```
+
+   按原路径挂载是因为 `application_default_credentials.json` 常常是指向同目录下其他文件的绝对路径符号链接（比如指向 `legacy_credentials/<账号>/adc.json`）；挂整个目录而不是单个文件，是因为 gcloud 写文件时会整份替换，单个文件的挂载会一直停在旧内容上。
+
+2. 在 `~/.jobs/.env` 的 `COMPOSE_FILE` 末尾加上 `:compose.local.yml`（例如 Linux 上是 `COMPOSE_FILE=compose.yml:compose.host.yml:compose.local.yml`），运行 `jobsworld up`。
+3. 「模型」页里 Vertex 连接的凭证框粘贴：
+
+   ```json
+   {"file": "/home/<你>/.config/gcloud/application_default_credentials.json", "project_id": "<你的项目>"}
+   ```
+
+   `gcloud auth login` 写出的用户凭证里没有项目，所以要写 `project_id`；文件里有 `quota_project_id` 时可以省略。保存后点「测试」确认。
+
+之后每天只需要在宿主机上重新登录（让上面那个文件更新：`gcloud auth application-default login`，或者像上面那样把它链接到 `gcloud auth login` 写出的文件）。登录过期的那段时间里模型调用会失败、这把凭证暂时跳过 10 分钟，所以重新登录后最迟约 10 分钟恢复。细节见 [`MODELS.md`](MODELS.md)。
+
 ### Coding agent（MCP）
 
 ```bash
@@ -93,6 +119,7 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；Codex、opencode 等
 |---|---|
 | `~/.jobs/.env` | 配置：端口、监听地址、口令、密钥。改完运行 `jobsworld up` |
 | `~/.jobs/compose*.yml`、`~/.jobs/jobs` | 编排文件与命令入口。它们随镜像发布，`jobsworld update` 会重新取一遍，不要手改 |
+| `~/.jobs/compose.local.yml`（可选） | 你自己的补充编排（比如把 gcloud 的配置目录挂进容器），要在 `.env` 的 `COMPOSE_FILE` 里列上才生效；升级不会动它 |
 | `~/.jobs/control/` | 网页向宿主机提出的请求（只有「开 / 关某个游戏服」「升级」这几种）、升级的进度与输出（`update-status`、`update.log`）、宿主机命令认得哪些动作（`host-features`） |
 | `~/.jobs/backups/` | 每次升级前自动导出的数据库（`jobs-<时间>-v<版本>.dump`，最近 5 份）；`jobsworld backup` 手动导出一份 |
 | Docker 卷 `jobs_pgdata` | 数据库：居民、记忆、发布、使用过程、模型配置（凭证是密文） |

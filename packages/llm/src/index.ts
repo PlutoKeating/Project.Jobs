@@ -12,7 +12,7 @@ export * from './config.ts';
 export * from './store.ts';
 export * from './catalog.ts';
 export { proxyChat, startLocalEndpoint, handleProxy } from './endpoint.ts';
-export { UpstreamError, googleProject } from './adapters.ts';
+export { UpstreamError, googleCred, googleProject } from './adapters.ts';
 export { seal, open, _setMasterKey } from './secrets.ts';
 export type { ContentPart, Msg } from './adapters.ts';
 

@@ -8,7 +8,7 @@
 | `src/store.ts` | 配置版本的读取与保存：`snapshot()`（每 5 秒核对版本号）、`publish()`（同一事务内的冲突保护、凭证写入与撤销）、`rollback()`、`instances()`、进程内的健康状态 `health` |
 | `src/secrets.ts` | 凭证的 AES-256-GCM 加密（密文绑定所属连接；主密钥来自 `JOBS_SECRET_KEY`） |
 | `src/catalog.ts` | models.dev 目录的拉取、收敛与缓存；随包快照 `config/models/catalog.json`（`npx tsx scripts/update-model-catalog.ts` 更新） |
-| `src/adapters.ts` | 上游协议：OpenAI 兼容、Anthropic Messages、Vertex（Google 凭证 JSON 换访问令牌）；对话、向量、画图；出站地址检查 |
+| `src/adapters.ts` | 上游协议：OpenAI 兼容、Anthropic Messages、Vertex（Google 凭证 JSON，或凭证文件的引用 `{ file, project_id? }`——每次换令牌前现读文件——换访问令牌）；对话、向量、画图；出站地址检查 |
 | `src/endpoint.ts` | OpenAI 兼容入口（给 Midscene 与示例产品）：`proxyChat`、`handleProxy`、`startLocalEndpoint` |
 | `src/index.ts` | `gateway()`：`chat`（固定快照 → 候选 → 尝试 → 记录）、`embed`、`generateImage`、`ping`；`testTarget`；`modelsReady`；`vertexAccess`；`checkVendorIsolation` |
 

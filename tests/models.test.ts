@@ -2,10 +2,13 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { randomBytes } from 'node:crypto';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
-  LlmError, _setMasterKey, _setSnapshot, candidates, classifyError, defaultUses, diffConfig, gateway, health, hintOf, locateFamily, normalizeCatalog, normalizeConfig, open, proxyChat, reaction, seal, solidPng, useOfRole,
+  LlmError, _setMasterKey, _setSnapshot, candidates, classifyError, defaultUses, diffConfig, gateway, googleCred, googleProject, health, hintOf, locateFamily, normalizeCatalog, normalizeConfig, open, proxyChat, reaction, seal, solidPng, useOfRole,
   type LlmConfig, type ModelEntry, type ProviderConn,
 } from '@pux/llm';
 
@@ -99,6 +102,18 @@ describe('凭证', () => {
     expect(c).not.toContain('abcdef'); expect(open(c, 'prov_a')).toBe('sk-live-abcdef123456'); expect(() => open(c, 'prov_b')).toThrow(/解不开/);
     _setMasterKey(randomBytes(32)); expect(() => open(c, 'prov_a')).toThrow(/解不开/); _setMasterKey(undefined);
     expect(hintOf('sk-live-abcdef123456')).toBe('…3456'); expect(hintOf('{"type":"service_account","client_email":"bot@p.iam.gserviceaccount.com","private_key":"x"}')).toBe('bot@p.iam.gserviceaccount.com');
+  });
+  it('Google 凭证可以是文件引用：每次现读文件，文件换了内容就用新的；引用里的项目优先', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'jobs-gcred-')); const f = join(dir, 'adc.json');
+    writeFileSync(f, JSON.stringify({ type: 'authorized_user', client_id: 'c', client_secret: 's', refresh_token: 'r1' }));
+    const ref = JSON.stringify({ file: f, project_id: 'proj-a' });
+    expect(googleCred(ref)).toMatchObject({ refresh_token: 'r1', quota_project_id: 'proj-a' }); expect(googleProject(ref)).toBe('proj-a');
+    writeFileSync(f, JSON.stringify({ type: 'authorized_user', client_id: 'c', client_secret: 's', refresh_token: 'r2', quota_project_id: 'proj-file' }));
+    expect(googleCred(ref).refresh_token).toBe('r2'); expect(googleProject(JSON.stringify({ file: f }))).toBe('proj-file');
+    expect(() => googleCred(JSON.stringify({ file: join(dir, 'missing.json') }))).toThrow(/读不到凭证文件/);
+    expect(() => googleCred(JSON.stringify({ file: 'adc.json' }))).toThrow(/绝对路径/);
+    expect(hintOf(ref)).toBe('proj-a · adc.json');
+    rmSync(dir, { recursive: true, force: true });
   });
 });
 

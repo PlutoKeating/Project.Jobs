@@ -159,7 +159,7 @@ export function reaction(cls: ErrorClass, retryAfterMs?: number): { retrySame: b
   }
 }
 
-export const hintOf = (secret: string) => { const s = secret.trim(); if (s.startsWith('{')) { try { const j = JSON.parse(s) as { client_email?: string; quota_project_id?: string; project_id?: string; type?: string }; return (j.client_email ?? j.quota_project_id ?? j.project_id ?? j.type ?? 'json').slice(0, 40); } catch { return 'json'; } } return s.length > 8 ? `…${s.slice(-4)}` : '…'; };
+export const hintOf = (secret: string) => { const s = secret.trim(); if (s.startsWith('{')) { try { const j = JSON.parse(s) as { client_email?: string; quota_project_id?: string; project_id?: string; type?: string; file?: unknown }; const f = typeof j.file === 'string' ? `${j.file.split('/').pop()}` : undefined; return ([j.client_email ?? j.quota_project_id ?? j.project_id, f].filter(Boolean).join(' · ') || j.type || 'json').slice(0, 40); } catch { return 'json'; } } return s.length > 8 ? `…${s.slice(-4)}` : '…'; };
 
 /** 两份配置差在哪（发布前给管理员看） */
 export function diffConfig(a: LlmConfig, b: LlmConfig) {
