@@ -5,10 +5,13 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG TSHOCK_VERSION=6.2.1
 ARG TERRARIA_VERSION=1.4.5.8
+# 构建平台由 buildx 给出（amd64 / arm64），对应 TShock 发布包里的 linux-x64 / linux-arm64
+ARG TARGETARCH
 RUN apt-get update && apt-get install -y --no-install-recommends unzip && rm -rf /var/lib/apt/lists/*
 WORKDIR /tshock
-RUN curl -fsSL -o tshock.zip "https://github.com/Pryaxis/TShock/releases/download/v${TSHOCK_VERSION}/TShock-${TSHOCK_VERSION}-for-Terraria-${TERRARIA_VERSION}-linux-x64-Release.zip" \
- && unzip -q tshock.zip && tar -xf TShock-*-linux-x64-Release.tar && rm -f tshock.zip TShock-*-linux-x64-Release.tar \
+RUN case "${TARGETARCH:-$(dpkg --print-architecture)}" in amd64) RID=linux-x64;; arm64) RID=linux-arm64;; *) echo "不支持的架构 ${TARGETARCH}" >&2; exit 1;; esac \
+ && curl -fsSL --retry 5 -o tshock.zip "https://github.com/Pryaxis/TShock/releases/download/v${TSHOCK_VERSION}/TShock-${TSHOCK_VERSION}-for-Terraria-${TERRARIA_VERSION}-${RID}-Release.zip" \
+ && unzip -q tshock.zip && tar -xf TShock-*-${RID}-Release.tar && rm -f tshock.zip TShock-*-${RID}-Release.tar \
  && test -f ServerPlugins/TShockAPI.dll && test -f bin/OTAPI.dll
 WORKDIR /src
 COPY game/shared game/shared
