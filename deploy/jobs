@@ -30,7 +30,7 @@ backup() {  # 把数据库导出到 ~/.jobs/backups（只留最近 5 份）；�
   if [ -z "$(dc ps --status running -q postgres 2>/dev/null)" ]; then echo "数据库没在运行，跳过备份。"; return 0; fi
   mkdir -p "$dir"; v="$(running_version)"
   f="$dir/jobs-$(date -u +%Y%m%dT%H%M%SZ)${v:+-v$v}.dump"
-  if ! (umask 077; dc exec -T postgres pg_dump -U jobs -Fc jobs > "$f.part"); then rm -f "$f.part"; echo "数据库备份失败。" >&2; return 1; fi
+  if ! (umask 077; dc exec -T postgres pg_dump -U jobs -Fc jobs < /dev/null > "$f.part"); then rm -f "$f.part"; echo "数据库备份失败。" >&2; return 1; fi
   mv "$f.part" "$f"
   ls -1t "$dir"/jobs-*.dump 2>/dev/null | tail -n +6 | while IFS= read -r old; do rm -f "$old"; done
   echo "数据库已备份：$f"

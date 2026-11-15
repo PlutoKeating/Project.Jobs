@@ -9,6 +9,9 @@
 #                 JOBS_IMAGE（镜像；已经装过时默认沿用 .env 里的，显式给出时会写回 .env）、JOBS_SKIP_PULL=1（镜像已在本机）、
 #                 JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）、JOBS_SKIP_BACKUP=1（升级前不备份数据库）
 set -euo pipefail
+# 整个脚本包在一对花括号里：bash 要先读完到收尾的 } 才开始执行。用 curl … | bash 运行时，脚本本身就是标准输入，
+# 如果边读边执行，中途任何读标准输入的命令（例如 docker compose exec）都会把还没执行的部分吃掉，脚本就会悄悄提前结束。
+{
 
 JOBS_HOME="${JOBS_HOME:-$HOME/.jobs}"
 ENV_FILE="$JOBS_HOME/.env"
@@ -168,3 +171,5 @@ case ":$PATH:" in *":$BIN:"*) ;; *) echo "  （jobsworld 命令装在 $BIN，它
 V="$(curl -fsS -m 3 "http://127.0.0.1:$PORT/healthz" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' || true)"
 [ -n "$V" ] && echo "  版本：        $V"
 [ -n "$FIRST" ] || echo "  这是一次重装 / 升级：口令和数据都没有变（升级前的数据库备份在 $JOBS_HOME/backups）。"
+exit 0
+}
