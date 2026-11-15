@@ -6,7 +6,7 @@ import { Command } from 'commander';
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { env, logger, REPO_ROOT, dataPath, type StudyInput } from '@pux/core';
+import { env, jobsVersion, logger, REPO_ROOT, dataPath, type StudyInput } from '@pux/core';
 import { closeDb, desc, eq, getDb, humanTasks, issues, runMigrations, sessions, studies, apps, appVersions, personas, calibrationResults } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { blobs } from '@pux/storage';
@@ -14,7 +14,7 @@ import * as E from '@pux/engine';
 import { userCommands } from './user.ts';
 
 const program = new Command();
-program.name('jobsworld').description('Jobs：把产品发布到 JobsWorld——一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、跟谁说。').version('0.2.0', '-V, --jobs-version', '显示 Jobs 版本');
+program.name('jobsworld').description('Jobs：把产品发布到 JobsWorld——一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、跟谁说。').version(jobsVersion(), '-V, --jobs-version', '显示 Jobs 版本');
 
 const out = (x: unknown) => console.log(typeof x === 'string' ? x : JSON.stringify(x, null, 2));
 const progress = (m: string) => console.log(m);

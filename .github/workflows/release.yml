@@ -1,4 +1,6 @@
-# 发布：打 v* 标签时构建并推送三个镜像到 GHCR（主镜像 + 两个可选的游戏服镜像）。
+# 发布：打 v* 标签时，先确认标签与 package.json 的版本一致 → 构建并推送三个镜像到 GHCR（主镜像 + 两个可选的游戏服镜像）
+# → 镜像都推上去之后才建 GitHub Release。装好的 Jobs 读的是「最新的 Release」来提示有新版本，所以提示出现时镜像一定已经可以拉取。
+# 标签带 -（如 v0.3.0-rc.1）时是预发布：不打 latest、Release 标为 prerelease，已装好的 Jobs 不会被提示。
 # 第一次推送后，需要在 GitHub 的 Packages 设置里把这三个包设为 Public，匿名用户才能拉取。
 name: release
 on:
@@ -11,7 +13,18 @@ permissions:
   packages: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 标签与 package.json 的版本一致
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          v="$(node -p "require('./package.json').version")"
+          if [ "v$v" != "$GITHUB_REF_NAME" ]; then echo "::error::标签 $GITHUB_REF_NAME 与 package.json 的版本 $v 不一致：先改 package.json 再打标签"; exit 1; fi
+
   images:
+    needs: check
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -34,7 +47,7 @@ jobs:
           images: ghcr.io/plutokeating/${{ matrix.name }}
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-') }}
             type=sha,enable=${{ github.event_name == 'workflow_dispatch' }}
       - uses: docker/build-push-action@v6
         with:
@@ -45,3 +58,18 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
+
+  release:
+    needs: images
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 建 GitHub Release（已存在时跳过）
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then echo "Release $GITHUB_REF_NAME 已存在"; exit 0; fi
+          pre=""; case "$GITHUB_REF_NAME" in *-*) pre="--prerelease";; esac
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes --verify-tag $pre

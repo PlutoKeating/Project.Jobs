@@ -3,6 +3,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { jobsVersion } from '@pux/core';
 import { api, funnelLine, reportText, type EngineeringView, type LaunchView, type ReportView } from './client.ts';
 
 const text = (s: string) => ({ content: [{ type: 'text' as const, text: s }] });
@@ -10,7 +11,7 @@ const fail = (e: unknown) => ({ content: [{ type: 'text' as const, text: `出错
 const safe = <A>(fn: (a: A) => Promise<ReturnType<typeof text>>) => async (a: A) => { try { return await fn(a); } catch (e) { return fail(e); } };
 
 export async function runMcp() {
-  const server = new McpServer({ name: 'jobs', version: '0.2.0' });
+  const server = new McpServer({ name: 'jobs', version: jobsVersion() });
 
   server.registerTool('publish_product', {
     description: '把一个产品发布到 JobsWorld（一座住着约两百位虚拟居民的城）。发布后，城里的人会在应用商店、广告、朋友口中遇到它，自己决定看不看、用不用。产品必须有一个能从本机访问的网址（本地开发服务器也可以）。返回发布的 id。',

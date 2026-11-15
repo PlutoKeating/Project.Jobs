@@ -4,7 +4,7 @@ import fstatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { dataPath, logger, REPO_ROOT } from '@pux/core';
+import { dataPath, jobsVersion, logger, REPO_ROOT } from '@pux/core';
 import { connectBus, SUBJ, type Bus } from '@pux/jobsworld';
 import { evidenceAllowed, roleOf } from './auth.ts';
 import { routes } from './routes.ts';
@@ -52,7 +52,7 @@ app.get('/api/v1/stream', { websocket: true }, (socket, req) => {
 });
 
 routes(app, bus);
-app.get('/healthz', async () => ({ ok: true, nats: !!bus }));
+app.get('/healthz', async () => ({ ok: true, version: jobsVersion(), nats: !!bus }));
 
 // SPA 回退：非 API 的 GET 都返回 index.html
 const indexHtml = () => (existsSync(join(WEB_DIST, 'index.html')) ? readFileSync(join(WEB_DIST, 'index.html'), 'utf8') : '<!doctype html><meta charset="utf-8"><title>JobsWorld</title><p>pnpm web:build</p>');

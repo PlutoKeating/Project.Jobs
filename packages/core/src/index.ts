@@ -1,4 +1,5 @@
 export * from './paths.ts';
+export * from './version.ts';
 export * from './env.ts';
 export * from './log.ts';
 export * from './ids.ts';
