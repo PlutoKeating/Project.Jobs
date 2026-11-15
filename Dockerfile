@@ -3,7 +3,9 @@
 #   docker build -t jobs:local .
 FROM node:24-bookworm-slim
 
+# corepack 把 pnpm 放在 COREPACK_HOME：不放在 /root/.cache 下面（下面会清掉它），否则每次启动容器都要重新从 npm 下载 pnpm
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH \
+    COREPACK_HOME=/corepack COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     PUX_DATA_DIR=/data \
     JOBS_IN_CONTAINER=1
@@ -18,7 +20,9 @@ RUN apt-get update \
 WORKDIR /app
 # 先只拿锁文件：依赖和浏览器各占一层，只改代码时这两层不用重来
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm fetch \
+# pnpm 12 第一次运行时还会下载自己的原生二进制（也放在 COREPACK_HOME 里），所以这里先跑一次
+RUN corepack install && pnpm --version \
+ && pnpm fetch \
  && PW="$(grep -oE "^ +'?playwright@[0-9]+\.[0-9]+\.[0-9]+" pnpm-lock.yaml | grep -oE 'playwright@.*' | head -1)" && test -n "$PW" \
  && npx -y "$PW" install --with-deps chromium \
  && rm -rf /root/.npm /var/lib/apt/lists/*
@@ -29,6 +33,10 @@ RUN pnpm install --offline --frozen-lockfile \
  && chmod +x deploy/entrypoint.sh deploy/jobs \
  && rm -rf /root/.cache \
  && mkdir -p /data
+
+# 运行时不许 corepack 联网：pnpm 已经在镜像里了，缺了就该在这里失败，而不是启动时悄悄去下载
+ENV COREPACK_ENABLE_NETWORK=0
+RUN pnpm --version
 
 VOLUME ["/data"]
 EXPOSE 7777

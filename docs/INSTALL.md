@@ -107,7 +107,7 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；Codex、opencode 等
 
 | 镜像 | 内容 |
 |---|---|
-| `ghcr.io/plutokeating/jobs` | 我们自己的全部代码：世界服务、接口、网页、单端口网关、命令行，以及它驱动的 Chromium、ffmpeg、字体。由仓库根的 `Dockerfile` 构建 |
+| `ghcr.io/plutokeating/jobs` | 我们自己的全部代码：世界服务、接口、网页、单端口网关、命令行，以及它驱动的 Chromium、ffmpeg、字体。由仓库根的 `Dockerfile` 构建。pnpm（含它的原生二进制）在构建时就装进镜像（`COREPACK_HOME=/corepack`），运行时禁止 corepack 联网：容器启动不需要访问 npm |
 | `pgvector/pgvector`、`elestio/minio`、`nats` | 数据库、对象存储、事件总线：各自的标准镜像，原样引用 |
 | `ghcr.io/plutokeating/jobs-tshock`、`jobs-tml` | 可选的两个 Terraria 游戏服（第三方服务端 + 我们的插件 / 模组），按需拉取。由 `infra/game/*/Dockerfile` 构建 |
 
