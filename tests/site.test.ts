@@ -116,4 +116,14 @@ describe('README 的示意图', () => {
       expect(svg.replace('http://www.w3.org/2000/svg', ''), file).not.toMatch(/https?:|<script|@import|\shref=/);
     }
   });
+
+  it('两份 README 引用的本地图片都在仓库里，并且互相指向对方', () => {
+    for (const [file, other] of [['README.md', 'README.zh-CN.md'], ['README.zh-CN.md', 'README.md']]) {
+      const md = readFileSync(repo(file), 'utf8');
+      const local = [...md.matchAll(/(?:src|srcset)="([^"]+)"/g)].map((m) => m[1]).filter((u) => !/^https?:/.test(u));
+      expect(local.length, file).toBeGreaterThan(10);
+      for (const path of local) expect(existsSync(repo(path)), `${file} 引用了不存在的 ${path}`).toBe(true);
+      expect(md, file).toContain(`](${other})`);
+    }
+  });
 });

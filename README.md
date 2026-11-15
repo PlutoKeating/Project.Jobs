@@ -1,129 +1,179 @@
-# Jobs
+<div align="center">
 
-把产品**发布**到 **JobsWorld**——一座住着两百位虚拟居民的城。他们过着自己的日子，在应用商店、广告、朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。你看到的是一页人话的结论，每一句都能点开看是谁说的、原话是什么、当时屏幕上是什么。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/banner.en.dark.svg">
+  <img src="docs/images/banner.en.light.svg" alt="Jobs: before you launch, let a whole town try it" width="100%">
+</picture>
 
-> 产品决策（2026-11-15，冲突时以它为准）：[`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md)
->
-> 安装与运维：[`docs/INSTALL.md`](docs/INSTALL.md) · 从源码运行：[`docs/QUICK_START.md`](docs/QUICK_START.md) · 模型接入：[`docs/MODELS.md`](docs/MODELS.md) · 架构：[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · 接口：[`docs/API.md`](docs/API.md) · 城与游戏：[`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) · 校准（内部）：[`docs/CALIBRATION.md`](docs/CALIBRATION.md)
+<br>
 
-## 安装
+**Launch your product into a town of 200 AI residents and see who notices it,<br>who tries it, and who stays, before real users do.**
+
+[![Release](https://img.shields.io/github/v/release/PlutoKeating/Project.Jobs?style=flat-square&label=release&color=7d8f8a)](https://github.com/PlutoKeating/Project.Jobs/releases)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-7d8f8a?style=flat-square)](LICENSE)
+[![Runs on Docker](https://img.shields.io/badge/runs%20on-Docker-7d8f8a?style=flat-square&logo=docker&logoColor=white)](docs/INSTALL.md)
+[![MCP](https://img.shields.io/badge/coding%20agents-MCP-f0a35e?style=flat-square)](#use-it-from-anywhere)
+
+[Website](https://jobs.plutokeating.beer/en) · [Install](#install) · [How it works](#how-it-works) · [Use it from anywhere](#use-it-from-anywhere) · [Docs](#documentation) · [简体中文](README.zh-CN.md)
+
+</div>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/shots/city-en-dark.webp">
+  <img src="site/shots/city-en-light.webp" alt="The first screen of Jobs: a side-view pixel town, with the launched products and what residents are doing right now on the right" width="100%">
+</picture>
+
+<p align="center"><sub>The town is called Jobs Town, in tribute to the great product maker Steve Jobs: start from the people who will use it.</sub></p>
+
+Hand Jobs a URL. Two hundred very different people live in **JobsWorld**. They get on with their own days, come across your product in the app store, in ads and from friends, and decide for themselves whether to look, to use it, to stay and whom to tell. You read one plain page, and every sentence on it opens to who said it, their words and the screen at that moment.
+
+## Install
 
 ```bash
 curl -fsSL https://jobs.plutokeating.beer/install | bash
 ```
 
-需要一台装了 Docker 的机器。装完会打印访问地址和口令；第一次打开网页，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存），然后点「发布」。以后有新版本时，管理员会在网页右上角看到提示，可以一键升级；也可以运行 `jobsworld update`，或重新运行上面这一行（都会先备份数据库，口令和数据不变）。详见 [`docs/INSTALL.md`](docs/INSTALL.md)。
+You need a machine with Docker. The script prints an address and two passcodes; then:
 
-**现状（2026-11-15）**：最新是 `v0.2.0`（加了网页上的新版本提示与一键升级、每次升级前自动备份数据库），三个镜像在 GHCR 上公开，可以匿名拉取。上面这一行在一个全新的、没有登录任何镜像仓库的 Docker 环境（Linux）里装成功过（`v0.1.0` 时）。已经装了 `v0.1.0` 的，运行一次 `jobsworld update` 或重新运行上面这一行即可升级，之后的新版本会在网页上提示。想自己构建或从源码运行，见 `docs/INSTALL.md` 末尾的「自己构建」与 [`docs/QUICK_START.md`](docs/QUICK_START.md)。
+1. Open the address and sign in with the admin passcode.
+2. On the **Models** page, pick a provider, paste a key, tick the models, save.
+3. Back in the town, press **Publish** and paste a URL, a name and one line. A dev server on `127.0.0.1` works.
 
-## 它怎么工作
+No product at hand? The same dialog offers sample products with real little flaws.
 
-```
-发布（网址、名字、一句话）
-  → 商店页：拍下产品的样子，上架到城里的应用商店
-  → 遇到：居民按各自的日程生活。手机在手边时会刷到广告、逛到商店、看到别人发的动态；路上瞥见广告牌；熟人当面提起
-  → 注意：多数曝光根本没被注意到（规则计算，不调用模型）
-  → 决定：只有注意到的人，才由他自己说要不要点开（一次模型调用）。忙、累、对不上自己的事，就划过去
-  → 使用：点开的人在自己此时此地的处境里用——地铁上单手拿手机、带着孩子、只剩五分钟。
-          他只看屏幕截图，不知道这是测试；需要注册时用城里发给他的邮箱和手机号，验证码能送到他手上（要产品的测试环境把邮件、短信投到 Jobs 的收件箱接口）；
-          点了付款并成功时，按屏幕上的金额从他的钱包里扣
-  → 之后：用完写不写商店评论、跟谁说、发不发动态、过几天回不回来，都由他这次的经历决定；口碑沿着关系网传开
-  → 结论：一页人话——好不好用、最让人难受的地方、让人高兴的地方、谁会留下谁会走、看到的人为什么没点开、最该改的一件事。
-          虚拟人亲身遇到的问题带复现步骤；用户看不到的技术信号（无障碍扫描、接口与脚本错误）单独放进工程附录
-```
+> [!NOTE]
+> Verified on a clean Linux Docker host. The macOS and Windows (WSL2) paths have unit tests only and have not been installed on real machines. Upgrading is one click in the web page, `jobsworld update`, or the same line again; the database is backed up first. Details: [`docs/INSTALL.md`](docs/INSTALL.md).
 
-所有人数都是这座城里实际发生的人数，是**模拟**，不是对真实市场的预测。
+## How it works
 
-## 入口
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/journey.en.dark.svg">
+  <img src="docs/images/journey.en.light.svg" alt="After you launch: residents come across the product, notice it, decide for themselves whether to open it, use it in their own situation and tell others afterwards; it all rolls up into one plain page. Rules decide who comes across it and who notices; the residents decide the rest. In one real run of 201 residents: 194 saw it, 148 noticed, 11 were interested, 9 opened it, 1 came back." width="100%">
+</picture>
 
-**网页**（第一眼是城）：右上角「发布」，粘贴网址、名字、一句话。城里随时能看到谁正在用；「产品」里是每个产品的结论、人数、宣发强度与投给谁、把手机递给几个人、口碑、工程附录。
+Nobody is assigned to test. Rules work out who comes across your product and who notices it, with no model call. Only someone who noticed gets to say, in one model call, whether they open it.
 
-**命令行**：
+### The screen is all they can see
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/screen.en.dark.svg">
+  <img src="docs/images/screen.en.light.svg" alt="How a resident uses a product: one look at a screenshot where anything past the reading budget is blurred, what she thinks in her own situation, then one action for her hand. It only counts if the screen visibly changes. Page structure, element lists and errors are never handed to them." width="100%">
+</picture>
+
+Each resident uses it in their own here and now: on the subway with one free hand, minding a child, with five minutes left. When a product asks them to sign up, they use the mailbox and phone number the town issued them, and the verification code really arrives.
+
+### One plain page
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/verdict.en.dark.svg">
+  <img src="docs/images/verdict.en.light.svg" alt="The one-page conclusion from a real run: a one-line verdict, a sentence opened to show who said it, their words and the screen at that moment, and head counts labelled as simulated." width="100%">
+</picture>
+
+Whether it works, what hurt most, who stays and who leaves, why people who saw it did not open it, and the one thing to fix first. Technical signals a user never sees (accessibility scans, API and script errors) stay out of the conclusion and go into a separate engineering appendix.
+
+## Use it from anywhere
+
+| Way in | What you do there |
+|---|---|
+| **Web** | The town comes first. Launch, watch who is using what, read the conclusion, tune promotion, hand the phone to a few people. |
+| **Command line** | `jobsworld publish`, `status`, `invite`, `report`, `promote`. |
+| **Coding agent** | An MCP server: launch as soon as the code is written, pull back issues with steps to reproduce, keep fixing. |
+| **Feishu** | Scan a QR code in the web page, then launch, check and ask residents from chat. The bot tells you when something happens. |
+| **Terraria** | Walk into the same town with a vanilla or tModLoader client. `/jw launches`, `/jw publish`, `/jw invite`. |
 
 ```bash
-jobsworld publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
-jobsworld status 闪念笔记            # 多少人看到、注意到、有兴趣、打开过、回来再用；谁在用；路过的人怎么想
-jobsworld invite 闪念笔记 -n 3       # 不等他们自己遇到：把手机递给三个人
-jobsworld report 闪念笔记 --eng      # 一页结论 + 亲历的问题（含复现步骤）+ 工程附录
-jobsworld promote 闪念笔记 --intensity 0.8
+jobsworld publish http://127.0.0.1:3000/ \
+  --name "Quick Notes" --tagline "Write it down the moment you think of it"
+jobsworld status "Quick Notes"          # who saw it, noticed, opened, came back
+jobsworld invite "Quick Notes" -n 3     # don't wait: hand the phone to three people
+jobsworld report "Quick Notes" --eng    # conclusion, issues to reproduce, appendix
 ```
 
-**Coding agent（MCP）**：写完代码就发布、看反应、取回可据此修改的问题清单，然后继续改。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/loop.en.dark.svg">
+  <img src="docs/images/loop.en.light.svg" alt="The loop for coding agents: write the code, launch with publish_product, let the town use it, pull back issues with steps to reproduce through product_report, fix and launch again." width="100%">
+</picture>
 
 ```bash
-claude mcp add jobs -- jobsworld mcp        # Claude Code；其他支持 MCP 的 agent 同理（stdio，命令为 `jobsworld mcp`）
+# Claude Code; any agent that speaks MCP over stdio works the same way
+claude mcp add jobs -- jobsworld mcp
 ```
 
-工具：`publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。
+MCP tools: `publish_product`, `list_products`, `product_status`, `product_report`, `set_promotion`, `invite_people`, `ask_person`.
 
-装好之后的命令叫 `jobsworld`（产品叫 Jobs，城叫 JobsWorld）。`jobs` 这个名字留作别名，但它是 bash / zsh / fish 的内建命令，在终端里直接敲会被 shell 截走。在仓库里开发时用 `pnpm jobs`。
+> [!TIP]
+> The installed command is `jobsworld`. A `jobs` alias exists for configs that execute it directly, but in a terminal `jobs` is a bash, zsh and fish builtin. Inside this repository, use `pnpm jobs`.
 
-**飞书**：管理员在网页右上角扫码接入后，可以直接在飞书里发布、看状况、要结论、调宣发、把手机递给人、向居民追问；有人用完了、结论更新了、需要介入时机器人会主动告诉你。
+## How it is built
 
-**Terraria**：同一座城可以用原版 Terraria 或 tModLoader 客户端走进去，居民是会走动、头上冒想法的角色；`/jw launches`、`/jw publish`、`/jw promote`、`/jw invite` 与网页是同一套能力。
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/stack.en.dark.svg">
+  <img src="docs/images/stack.en.light.svg" alt="Five ways in (web, command line, coding agent, Feishu, Terraria) lead to one image of our own code: single-port gateway, API and web, world service, usage sessions and model router. Next to it run standard images: Postgres with pgvector, MinIO, NATS and optional Terraria servers. Everything runs on your machine and reaches out only to your product and the model providers you connect." width="100%">
+</picture>
 
-## 仓库结构
+Everything runs on your machine. Residents, memories, screenshots and conclusions live in Docker volumes there. You bring the models, and what you have spent stays in the page header; there is no spending cap.
 
-| 路径 | 说明 |
+<details>
+<summary><b>Repository layout</b></summary>
+
+| Path | What it is |
 |---|---|
-| `apps/cli` | 命令行（装好后是 `jobsworld`，仓库里是 `pnpm jobs`）：发布、状况、结论、宣发、递手机、MCP 服务；`dev …` 子命令收纳内部校准用的指派式批次 |
-| `apps/api` | REST `/api/v1`（发布、模型接入、人物、世界、使用过程、证据、虚拟身份收件箱、游戏服开关）+ WebSocket 实时推送 + 托管网页 + 飞书机器人 |
-| `apps/web` | 网页（React）：侧视像素城、产品页（结论 / 人 / 口碑 / 工程附录）、人物、使用过程回看 |
-| `apps/world` | 世界服务：时钟、日程、需求、位置；驱动发布引擎（曝光 → 决定 → 使用 → 口碑）；NATS 广播 |
-| `apps/gateway` | 单端口网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
-| `packages/jobsworld` | 城的契约与规则：城镇布局、日程、需求、居民与关系网、此时此地的处境、NATS 主题与消息 |
-| `packages/engine` | 发布主线（`launch/`）、人（记忆、感知、人口）、一次使用的运行、事后评估与问题合成；内部校准批次 |
-| `packages/executor` | 浏览器沙箱（电脑 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像 |
-| `packages/memory` | 人物记忆：每人一棵 ewave 记忆树（`@plutokeating/ewave`）的适配层 |
-| `packages/llm` | 应用内模型路由：多供应商、多凭证、多模型的运行时配置（目录、加密凭证、版本、全局顺序）、失败接替、OpenAI 兼容入口、花费记录 |
-| `packages/core` · `packages/db` · `packages/storage` | 类型与 schema · Drizzle 表与迁移 · 证据存储（MinIO/S3，内容寻址） |
-| `game/` · `infra/game/` | Terraria 两个游戏端的插件与模组（C#）· 游戏服镜像 |
-| `demos/kit` | 11 个示例产品（每个有干净版与带着已知毛病的版本），用于演示与校准 |
-| `Dockerfile` · `deploy/` · `site/` · `.github/workflows/` | 主镜像；容器入口、装好后用的编排文件、安装脚本、`jobsworld` 命令；官网 `jobs.plutokeating.beer`（落地页、关于、条款、隐私，中英双语、明暗两种外观；页面由 `site/scripts/build.mjs` 从 `site/src/` 生成后提交，见 [`site/docs/README.md`](site/docs/README.md)）、安装脚本副本与 Cloudflare 部署配置；打标签时构建并推送镜像的工作流 |
-| `docker-compose.yml` · `infra/` | 从源码运行时的依赖服务与游戏服的本地构建；游戏服镜像的构建文件、数据库初始化脚本 |
-| `config/` | 人口抽样表与随包居民（`population/`）、城镇布局与日程骨架（`jobsworld/`）、手写人物（`personas/`）、模型目录快照（`models/`）、全局参数（`pux.config.yaml`）、校准批次用的手写场景（`worlds/`）与儿童安全规则（`rubrics/`） |
-| `scripts/` · `tests/` · `examples/calibration/` | 启动脚本、游戏协议探针、目录与安装脚本的同步工具 · 单元与集成测试 · 校准输入的示例文件 |
-| `docs/` | 文档；`docs/history/` 是重塑之前的设计稿与校准记录，不描述当前系统 |
+| `apps/cli` | The command line (`jobsworld` once installed, `pnpm jobs` in this repo) and the MCP server; `dev …` holds the internal calibration batches |
+| `apps/api` | REST `/api/v1`, live updates over WebSocket, the hosted web page, the Feishu bot |
+| `apps/web` | The web page (React): the side-view pixel town, product pages, people, session replay |
+| `apps/world` | The world service: clock, schedules, needs, places; drives the launch engine; broadcasts over NATS |
+| `apps/gateway` | Single-port gateway: HTTP to the API, vanilla Terraria to TShock, tModLoader to tML |
+| `packages/jobsworld` | The town's contract and rules: layout, schedules, needs, residents and ties, here-and-now context, NATS subjects |
+| `packages/engine` | The launch pipeline (`launch/`), people (memory, perception, population), one usage session, evaluation and issue synthesis |
+| `packages/executor` | Browser sandbox (desktop and mobile web), locating by screenshot with Midscene, the human hand, policy gate, recording |
+| `packages/memory` | One [ewave](https://www.npmjs.com/package/@plutokeating/ewave) memory tree per resident |
+| `packages/llm` | In-app model router: providers, credentials, failover, an OpenAI-compatible endpoint, spend records |
+| `packages/core` · `packages/db` · `packages/storage` | Types and schemas · Drizzle tables and migrations · evidence storage (MinIO/S3, content-addressed) |
+| `game/` · `infra/game/` | Terraria plugin and mod (C#) · game server images |
+| `demos/kit` | 11 sample products, each in a clean version and one with known flaws |
+| `Dockerfile` · `deploy/` · `.github/workflows/` | The main image · entrypoint, compose files, the install script, the `jobsworld` launcher · the release workflow |
+| `site/` | The website `jobs.plutokeating.beer`, a copy of the install script, and the source of the diagrams on this page ([`site/docs/README.md`](site/docs/README.md)) |
+| `docker-compose.yml` · `infra/` | Dependencies and local game server builds when running from source |
+| `config/` · `scripts/` · `tests/` | Population tables and bundled residents, town layout, model catalog · start-up and sync scripts · unit and integration tests |
+| `docs/` | Documentation and the images on this page (`docs/images/`); `docs/history/` holds design drafts from before the reshape |
 
-## 人口从哪来
+</details>
 
-- **中国人群**：按普查口径的条件抽样表（`config/population/zh-CN.json`：家庭类型 → 年龄 → 学历 → 职业 → 收入）。数值是依据公开汇总数据的量级手工设定的近似值，不是微观数据拟合。
-- **英语区人群**：从 [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA)（CC BY 4.0，基于美国人口普查分布的合成人口）随机抽样，再拼成家庭。
-- **数值由规则推导**：数字素养、视力、阅读速度、性格、耐心、价格敏感度等由年龄、学历、职业、收入加随机扰动推导；模型不决定任何数值，只写名字、生平和看法。
-- 随包自带 185 位居民（`config/population/residents.jsonl`），连同 14 位手写人物，新装好的城里一共 199 人。重新生成：`pnpm jobs world populate -n <人数>`。
+## Run from source
 
-## 定位声明
+Node 22 or newer, pnpm, Docker and ffmpeg.
 
-合成用户的反馈偏浅、偏正面、缺少长尾。Jobs **不取代真人用户研究**：它让你在没有任何真实用户之前，先看到一群各不相同的人第一次遇到你的产品时会发生什么。人数与评分都是模拟；尚未用真人数据校准。模型调用不设花费上限，网页页头、产品页和命令行会一直显示已花的钱（按模型目录里的价格估算；目录里没有价格的模型按 0 计）。
+```bash
+cp .env.example .env && pnpm install && npx playwright install chromium
+docker compose up -d      # Postgres + pgvector, MinIO, NATS
+pnpm jobs init            # migrate, move the bundled residents in, register the sample products
+pnpm jobsworld            # world service + API and web + gateway at http://127.0.0.1:7777/
+```
 
-## 验证记录
+The rest is in [`docs/QUICK_START.md`](docs/QUICK_START.md).
 
-| 验证项 | 结果 |
+## What it is, and what it is not
+
+> [!IMPORTANT]
+> Every head count is what actually happened in this simulated town. It is not a forecast of a real market, and nothing here has been calibrated against real users yet. Feedback from synthetic users runs shallow and positive, and misses the long tail. Jobs does not replace research with real people: it shows you, before you have a single user, what happens when a crowd of very different people meets your product for the first time.
+
+- **Where the residents come from.** Chinese residents are drawn from census-style sampling tables with hand-set values; English-speaking residents are sampled from [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA) (CC BY 4.0). Rules derive every number (literacy, eyesight, patience, price sensitivity); the model only writes names, life stories and opinions. A fresh install has 199 residents.
+- **What has been verified, and what has not.** Model calls have only run for real against Gemini on Vertex. The Feishu flow after the QR scan has not been tried with a real account. The full record is in [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
+
+## Documentation
+
+The documentation is written in Chinese.
+
+| | |
 |---|---|
-| 单元测试（`pnpm test`，2026-11-15） | 105 项通过：感知与手、识字量、记忆与态度边界、人口与需求规则、曝光与注意、渠道常态、虚拟身份、命令行输出、模型路由与故障模拟、飞书指令解析、安装脚本与编排文件等 |
-| 集成测试（`PUX_INTEGRATION=1 pnpm test`，2026-11-15，需要浏览器与已接入的模型） | 另有 6 项通过：语音 → 假麦克风、图片 → 假摄像头、定位、通知拦截、可见性打断、下载与长文本粘贴、弱网注入 |
-| 发布主线（2026-11-15） | 发布笔记示例（植入缺陷版）：一个模拟日内 190 人看到、91 人注意到；受邀的 3 人全部亲身撞上「显示已自动保存但内容丢失」并放弃；结论页、命令行、MCP、网页与两个游戏端镜像均实测 |
-| 像人（2026-11-15） | 虚拟人只看截图完成注册、登录失败后改去注册、新建并填写笔记；问题分为体验问题与工程附录 |
-| 世界和人（2026-11-15） | 开发库里 201 人、113 户、1287 条关系常驻运行（新装的实例是 199 人）；使用发生在人物此时此地的处境里 |
-| Terraria（2026-11-15） | TShock 与 tModLoader 镜像编译通过（含发布相关的四个命令）；在装好的实例上经同一端口用协议探针进 TShock 服并执行 `/jw launches`；产品负责人已用真实客户端进过这座城。tModLoader 服务端这一天没有重新进服验证 |
-| 一行安装（2026-11-15） | 在一个全新的 Docker 环境里（没有源码、没有 Node、空的镜像列表）执行安装脚本：约一分半装好并通过健康检查；口令登录 → 接入模型 → 发布示例产品 → 两位受邀居民用完（都撞上「自动保存没存上」）→ 一页结论；`jobsworld` 命令、MCP 握手与工具调用、Terraria 经同一端口进服并执行 `/jw launches`、游戏服开关的请求链路都在装好的实例上验证；重跑安装脚本后口令、数据、模型配置原样保留。发布之后又用线上的这一行命令和 GHCR 上公开的 `v0.1.0` 镜像，在一个没有登录任何镜像仓库的全新环境里装了一遍：一次装好（约 13 分钟，几乎都花在拉取镜像上），自检通过，199 位居民在运行，口令登录与访客 / 管理员权限、主要接口都正常；这一遍没有接入模型，发布到结论的完整流程是发布之前用本机构建的同一份源码验证的 |
-| 模型接入（2026-11-15） | 27 项规则与故障模拟测试；真实数据库上验证并发冲突、重复提交、凭证撤销与回滚；真实使用全程经新路由跑通。详见 `docs/MODELS.md` §6 |
+| [`docs/INSTALL.md`](docs/INSTALL.md) | Installing, upgrading, backups, Feishu, Terraria, building it yourself |
+| [`docs/QUICK_START.md`](docs/QUICK_START.md) | Running from source, common commands, troubleshooting |
+| [`docs/MODELS.md`](docs/MODELS.md) | Connecting model providers and how routing works |
+| [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/API.md`](docs/API.md) | How it is put together · REST, WebSocket, MCP |
+| [`docs/JOBSWORLD.md`](docs/JOBSWORLD.md) | The town and the game |
+| [`docs/DECISIONS_2026-11-15.md`](docs/DECISIONS_2026-11-15.md) | Product decisions; this wins where documents disagree |
+| [`docs/VERIFICATION.md`](docs/VERIFICATION.md) · [`docs/CALIBRATION.md`](docs/CALIBRATION.md) | What has been verified and known limits · internal calibration |
 
-已知局限与没有验证到头的地方（完整清单见 `docs/DECISIONS_2026-11-15.md` §6）：
+<br>
 
-- macOS / Windows 的安装路径没有在真机上装过。
-- 模型的真实调用只在 Vertex 上的 Gemini 验证过，其他供应商只有协议层的模拟测试。
-- 飞书：二维码能生成，扫码之后的收发消息与推送没有用真实账号验证过。
-- 自然流量下的点开率取决于模型对「这个人此刻会不会点」的判断，没有用真人数据校准；一个没有评分的新产品，一个模拟日里可能没有人自己点开。
-- 需要较深使用才暴露的问题依赖回访与更多人次。
-
-## 许可证
-
-Copyright (C) 2026 PlutoKeating
-
-Jobs 以 [GNU Affero General Public License v3.0](LICENSE)（`AGPL-3.0-only`）发布：你可以使用、修改和再分发；修改后对外提供服务（包括通过网络让别人使用）时，要以同一许可证向使用者提供对应的源码。本程序不附带任何担保。
-
-仓库里有两处第三方内容保留它们各自的许可证：
-
-- `apps/web/public/fonts/` 的 Inter 字体：SIL Open Font License 1.1（`LICENSE-Inter.txt`）。
-- `game/shared/Schematics/TEditSchematic.cs`：移植自 TEdit，Microsoft Public License（`TEdit-LICENSE.txt`）。
+<p align="center"><sub>© 2026 PlutoKeating · <a href="LICENSE">AGPL-3.0-only</a> · Bundled third-party work keeps its own licence: the Inter font (<a href="apps/web/public/fonts/LICENSE-Inter.txt">OFL 1.1</a>) and a schematic reader ported from TEdit (<a href="game/shared/Schematics/TEdit-LICENSE.txt">Ms-PL</a>).</sub></p>
