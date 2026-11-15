@@ -67,6 +67,9 @@ describe('升级', () => {
     expect(wf).toContain('{ arch: arm64, runner: ubuntu-24.04-arm }');
     expect(wf).toMatch(/images:\n\s+needs: build/);
     expect(wf).toContain('docker buildx imagetools create');
+    // 摘要按镜像取回时不能把名字是它前缀的别的镜像也取进来（jobs 与 jobs-tshock）
+    expect(wf).toContain('pattern: digests_${{ matrix.name }}_*');
+    expect(wf).not.toMatch(/pattern: digests-/);
     for (const d of ['Dockerfile', 'infra/game/tshock/Dockerfile', 'infra/game/tmodloader/Dockerfile']) expect(wf).toContain(`dockerfile: ${d} }`);
     const tshock = read('infra/game/tshock/Dockerfile');
     expect(tshock).toContain('ARG TARGETARCH');
