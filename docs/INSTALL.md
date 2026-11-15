@@ -11,12 +11,12 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 1. 确认有 Docker 和 Compose v2。Linux 上没有 Docker 时用官方脚本安装（需要管理员权限；不想让它装就设 `JOBS_NO_DOCKER_INSTALL=1`）。macOS / Windows 请先装好 Docker Desktop 或 OrbStack。
 2. 拉取镜像，在 `~/.jobs/` 写好编排文件和 `.env`。`.env` 里的口令和密钥都是随机生成的，文件只有你自己能读。
 3. 启动。服务随 Docker 开机自启、异常退出自动重启（`restart: unless-stopped`）。
-4. 把命令放进 `/usr/local/bin`（没有权限时放 `~/.local/bin`）。命令有两个名字：`jobs` 和 `jobsworld`，是同一个东西。`jobs` 在 bash / zsh / fish 里本来是内建命令（列出后台任务），直接敲会被 shell 截走，所以脚本还会往 `~/.bashrc`、`~/.zshrc`（以及 fish 的函数目录）里加一个几行的小函数：带着 Jobs 的子命令时交给 Jobs，不带参数或带 `-l`、`%1` 这类参数时照旧是内建命令。不想让它动启动文件就设 `JOBS_NO_SHELL_HOOK=1`，然后用 `jobsworld`。**写脚本时请一律用 `jobsworld`**（脚本里没有那个小函数）。
+4. 把 `jobsworld` 命令放进 `/usr/local/bin`（没有权限时放 `~/.local/bin`）。同一个位置还有一个叫 `jobs` 的别名，是同一个东西：它可以被直接执行（比如写进 MCP 配置），但在终端里直接敲 `jobs` 会被 shell 的内建命令（列出后台任务）截走，所以平时请用 `jobsworld`。安装脚本不会改动你的 shell 启动文件。
 5. Linux + systemd 上再装一个小的监视单元（`jobs-control.path`），这样网页里才能一键开关游戏服。
 
 装完会打印访问地址、管理员口令和访客口令。重复运行这一行是安全的：已有的 `.env` 和数据原样保留，只会更新镜像和编排文件。
 
-可用的环境变量（写在这一行前面）：`JOBS_HOME`（安装目录，默认 `~/.jobs`）、`JOBS_PORT`（默认 7777）、`JOBS_BIND`（默认 `0.0.0.0`；只想本机访问设为 `127.0.0.1`）、`JOBS_IMAGE`、`JOBS_SKIP_PULL=1`、`JOBS_NO_DOCKER_INSTALL=1`、`JOBS_NO_SHELL_HOOK=1`。
+可用的环境变量（写在这一行前面）：`JOBS_HOME`（安装目录，默认 `~/.jobs`）、`JOBS_PORT`（默认 7777）、`JOBS_BIND`（默认 `0.0.0.0`；只想本机访问设为 `127.0.0.1`）、`JOBS_IMAGE`、`JOBS_SKIP_PULL=1`、`JOBS_NO_DOCKER_INSTALL=1`。
 
 ## 装好之后
 
@@ -31,23 +31,23 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 ### 命令行
 
 ```bash
-jobs publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
-jobs status 闪念笔记
-jobs invite 闪念笔记 -n 3
-jobs report 闪念笔记 --eng
+jobsworld publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
+jobsworld status 闪念笔记
+jobsworld invite 闪念笔记 -n 3
+jobsworld report 闪念笔记 --eng
 
-jobs url | passcode | ps | logs | restart | up | down     # 服务本身
-jobs game on tshock | jobs game off tml                    # Terraria 游戏服
-jobs update                                                 # 升级到最新版本
-jobs uninstall [--purge]                                    # 停止；--purge 连数据一起删
+jobsworld url | passcode | ps | logs | restart | up | down     # 服务本身
+jobsworld game on tshock | jobsworld game off tml                    # Terraria 游戏服
+jobsworld update                                                 # 升级到最新版本
+jobsworld uninstall [--purge]                                    # 停止；--purge 连数据一起删
 ```
 
-上面的 `jobs` 都可以换成 `jobsworld`。它是一个很薄的壳：管理服务的几个子命令在宿主机上直接调 `docker compose`，其余的原样交给容器里的 Jobs 命令行。
+`jobsworld` 是一个很薄的壳：管理服务的几个子命令在宿主机上直接调 `docker compose`，其余的原样交给容器里的 Jobs 命令行。
 
 ### Coding agent（MCP）
 
 ```bash
-claude mcp add jobs -- jobs mcp        # Claude Code；Codex、opencode 等同理：命令是 `jobs mcp`，走 stdio
+claude mcp add jobs -- jobsworld mcp        # Claude Code；Codex、opencode 等同理：命令是 `jobsworld mcp`，走 stdio
 ```
 
 ### 飞书
@@ -58,14 +58,14 @@ claude mcp add jobs -- jobs mcp        # Claude Code；Codex、opencode 等同�
 
 ### Terraria
 
-游戏服默认不装。管理员在网页右上角点手柄图标，打开「Terraria（原版）」或「tModLoader」的开关（或 `jobs game on tshock` / `jobs game on tml`）；第一次会拉取游戏服镜像。之后在游戏里「加入 → 通过 IP 加入」，地址和网页是同一个（同一个端口），进服密码见 `jobs passcode`。
+游戏服默认不装。管理员在网页右上角点手柄图标，打开「Terraria（原版）」或「tModLoader」的开关（或 `jobsworld game on tshock` / `jobsworld game on tml`）；第一次会拉取游戏服镜像。之后在游戏里「加入 → 通过 IP 加入」，地址和网页是同一个（同一个端口），进服密码见 `jobsworld passcode`。
 
 ## 目录与数据
 
 | 位置 | 内容 |
 |---|---|
-| `~/.jobs/.env` | 配置：端口、监听地址、口令、密钥。改完运行 `jobs up` |
-| `~/.jobs/compose*.yml`、`~/.jobs/jobs` | 编排文件与命令入口。它们随镜像发布，`jobs update` 会重新取一遍，不要手改 |
+| `~/.jobs/.env` | 配置：端口、监听地址、口令、密钥。改完运行 `jobsworld up` |
+| `~/.jobs/compose*.yml`、`~/.jobs/jobs` | 编排文件与命令入口。它们随镜像发布，`jobsworld update` 会重新取一遍，不要手改 |
 | `~/.jobs/control/` | 网页向宿主机提出的请求（只有「开 / 关某个游戏服」这几种） |
 | Docker 卷 `jobs_pgdata` | 数据库：居民、记忆、发布、使用过程、模型配置（凭证是密文） |
 | Docker 卷 `jobs_s3data` | 截图、录像等证据 |
@@ -87,7 +87,7 @@ Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等
 
 ## 对外访问与口令
 
-默认监听 `0.0.0.0`，也就是局域网里（如果机器有公网地址，就是公网上）都能打开。保护它的是两个口令：访客口令只能看；管理员口令可以发布、调宣发、接入模型、控制世界。口令在 `~/.jobs/.env`，改完 `jobs up`。
+默认监听 `0.0.0.0`，也就是局域网里（如果机器有公网地址，就是公网上）都能打开。保护它的是两个口令：访客口令只能看；管理员口令可以发布、调宣发、接入模型、控制世界。口令在 `~/.jobs/.env`，改完 `jobsworld up`。
 
 两点要知道：
 

@@ -20,7 +20,7 @@
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
 - **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
-上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列（除示例产品的源码外，连同示例产品一起）打进一个镜像 `jobs`，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobs _control`（systemd 监视单元触发）执行。
+上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列（除示例产品的源码外，连同示例产品一起）打进一个镜像 `jobs`，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobsworld _control`（systemd 监视单元触发）执行。
 
 ## 1.1 发布主线（`packages/engine/src/launch/`）
 
@@ -53,7 +53,7 @@ flowchart LR
 
 规则决定「遇没遇到、注没注意」，模型只在决定点出场：要不要点开、使用时的每一步、用完之后怎么说。数据：`launches`、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports`（迁移 `0007`）。每次发布内部对应一个 `studies` 行，作为使用过程、证据与花费的容器（`trigger = 'launch'`）。
 
-指派式的批次（`control/study.ts` 的 `createStudy` / `runStudy`：按覆盖缺口采样「谁 × 目标 × 模式」）只留给内部校准：`jobs dev study …`。
+指派式的批次（`control/study.ts` 的 `createStudy` / `runStudy`：按覆盖缺口采样「谁 × 目标 × 模式」）只留给内部校准：`jobsworld dev study …`。
 
 ## 2. 代码结构（十层逻辑分层 → 模块）
 
@@ -120,7 +120,7 @@ sequenceDiagram
 ## 6. 关键机制补充
 
 - **问题去重**：每轮聚类前，同一 axe 规则 + 同一页面模板的候选先确定性合并；LLM 聚类使用短编号；创建问题前与同版本、同类别的已有问题比较 embedding（cosine ≥ 0.86）以复用；finalize 时再做一次全量语义去重（`dedupeIssues`）。
-- **人工分诊**：`jobs dev issue confirm|reject`；用于误报率下界与基线。
+- **人工分诊**：`jobsworld dev issue confirm|reject`；用于误报率下界与基线。
 - **基线问题**：axe 客观检出、干净版本同 fingerprint、或复现路径在干净版本重放成功的问题不计入误报（见 `docs/CALIBRATION.md`）。
 - **默认定位**：Persona 所在城市坐标 + 随机偏移；隐私敏感度 ≥ 0.75 的 Persona 拒绝定位授权。
 - **感知滤镜**：只作用在图上。每一眼有阅读预算（`readingBudget`）；超出预算、字太小、对比度太低、认不全的区域被模糊；「瞥一眼」时屏幕下方约 45% 是余光；「凑近看」让一块区域清晰并附放大图。

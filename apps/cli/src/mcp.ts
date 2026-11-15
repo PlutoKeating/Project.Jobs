@@ -1,4 +1,4 @@
-// jobs mcp —— 给 coding agent（Claude Code、Codex、opencode…）用的 MCP 服务（stdio）。
+// jobsworld mcp —— 给 coding agent（Claude Code、Codex、opencode…）用的 MCP 服务（stdio）。
 // 写完代码就能把产品发布到 JobsWorld、看城里的人怎么对待它、取回结论和可据此修改的问题清单，然后继续改。
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';

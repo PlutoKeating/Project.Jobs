@@ -83,12 +83,12 @@
         <p>写完代码就发布，取回结论和带复现步骤的问题清单，接着改。同一座城还能用 Terraria 走进去，或者接到飞书里。</p>
       </div>
       <pre><span class="c"># 发布、看状况、要结论</span>
-jobs publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
-jobs status 闪念笔记
-jobs report 闪念笔记 --eng
+jobsworld publish http://127.0.0.1:3000/ --name 闪念笔记 --tagline "想到什么，马上记下"
+jobsworld status 闪念笔记
+jobsworld report 闪念笔记 --eng
 
 <span class="c"># 接进 Claude Code（其他支持 MCP 的 agent 同理）</span>
-claude mcp add jobs -- jobs mcp</pre>
+claude mcp add jobs -- jobsworld mcp</pre>
     </div>
   </main>
 

@@ -60,7 +60,7 @@ services:
       - jobsdata:/data
       - ./control:/data/control
 
-  # 游戏服默认不装。网页右上角的手柄里一键开启，或 jobs game on tshock / jobs game on tml
+  # 游戏服默认不装。网页右上角的手柄里一键开启，或 jobsworld game on tshock / jobsworld game on tml
   tshock:
     profiles: [game]
     image: ${JOBS_TSHOCK_IMAGE:-ghcr.io/plutokeating/jobs-tshock:latest}

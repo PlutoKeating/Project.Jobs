@@ -14,7 +14,7 @@ import * as E from '@pux/engine';
 import { userCommands } from './user.ts';
 
 const program = new Command();
-program.name('jobs').description('Jobs：把产品发布到 JobsWorld——一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、跟谁说。').version('0.2.0', '-V, --jobs-version', '显示 Jobs 版本');
+program.name('jobsworld').description('Jobs：把产品发布到 JobsWorld——一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、跟谁说。').version('0.2.0', '-V, --jobs-version', '显示 Jobs 版本');
 
 const out = (x: unknown) => console.log(typeof x === 'string' ? x : JSON.stringify(x, null, 2));
 const progress = (m: string) => console.log(m);
@@ -43,7 +43,7 @@ const db = program.command('db').description('数据库');
 db.command('migrate').action(wrap(async () => { await runMigrations(); console.log('✅ 迁移完成'); }));
 
 // ---------------------------------------------------------------- 内部与校准用：旧式的指派评测（选人、派任务、跑批次）。日常使用请用 publish
-const dev = program.command('dev').description('内部与校准用：指派式评测批次（已知缺陷校准、回归）。日常使用请用 jobs publish');
+const dev = program.command('dev').description('内部与校准用：指派式评测批次（已知缺陷校准、回归）。日常使用请用 jobsworld publish');
 const app = dev.command('app').description('被测应用（灌入新项目）');
 app.command('add').description('注册一个被测应用及版本').requiredOption('--name <name>').requiredOption('--url <url>', '测试环境入口 URL').option('--version <v>', '版本号', 'v1').option('--form <form>', 'web | h5', 'web').option('--prd <file>', 'PRD/产品说明文件（Markdown/文本）').option('--desc <text>', '一句话描述').option('--seeded <file>', '已知缺陷清单 YAML/JSON（植入缺陷版本，用于校准）').option('--reset-url <url>', '每次 Study 开始前调用的测试环境重置地址（可选）')
   .action(wrap(async (o: { name: string; url: string; version: string; form: 'web' | 'h5'; prd?: string; desc?: string; seeded?: string; resetUrl?: string }) => {

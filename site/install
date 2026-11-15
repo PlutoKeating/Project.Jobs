@@ -3,10 +3,9 @@
 #   curl -fsSL https://jobs.plutokeating.beer/install | bash
 #
 # 它做的事：确认有 Docker（Linux 上没有就装）→ 拉取镜像 → 在 ~/.jobs 写好编排文件和带随机口令的 .env → 启动
-#           → 装好 jobs / jobsworld 命令。服务随 Docker 开机自启、异常自动重启。重复运行是安全的：已有的 .env 和数据原样保留。
+#           → 装好 jobsworld 命令。服务随 Docker 开机自启、异常自动重启。重复运行是安全的：已有的 .env 和数据原样保留。
 # 可用的环境变量：JOBS_HOME（安装目录，默认 ~/.jobs）、JOBS_PORT（默认 7777）、JOBS_BIND（默认 0.0.0.0，只想本机访问设为 127.0.0.1）、
-#                 JOBS_IMAGE（镜像）、JOBS_SKIP_PULL=1（镜像已在本机）、JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）、
-#                 JOBS_NO_SHELL_HOOK=1（不要动我的 shell 启动文件）
+#                 JOBS_IMAGE（镜像）、JOBS_SKIP_PULL=1（镜像已在本机）、JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）
 set -euo pipefail
 
 JOBS_HOME="${JOBS_HOME:-$HOME/.jobs}"
@@ -51,7 +50,7 @@ if [ ! -f "$JOBS_HOME/.env" ]; then
   if [ "$OS" = "Linux" ]; then MODE="compose.yml:compose.host.yml"; else MODE="compose.yml:compose.bridge.yml"; fi
   umask 077
   cat > "$JOBS_HOME/.env" <<ENV
-# Jobs 的配置。改完后运行：jobs up
+# Jobs 的配置。改完后运行：jobsworld up
 COMPOSE_FILE=$MODE
 JOBS_IMAGE=$IMAGE
 JOBS_PORT=$PORT
@@ -73,63 +72,38 @@ S3_ACCESS_KEY=jobs
 S3_SECRET_KEY=$(rand 32 'A-Za-z0-9')
 ENV
   umask 022
-  FIRST=1
 else
-  FIRST=""
   say "沿用已有的配置：$JOBS_HOME/.env"
 fi
+# 以前有没有完整装好过（上一次如果半路失败，这次仍然算第一次）
+FIRST=""; [ -f "$JOBS_HOME/.installed" ] || FIRST=1
 envv() { grep -E "^$1=" "$JOBS_HOME/.env" | head -1 | cut -d= -f2-; }
 PORT="$(envv JOBS_PORT)"; PORT="${PORT:-7777}"
 
 # ---- 4. 启动 ----
 say "启动 Jobs …"
-(cd "$JOBS_HOME" && "${DOCKER[@]}" compose up -d)
+# 第一次要拉取数据库、对象存储、事件总线的标准镜像；网络抖动时多试几次（已经拉到的不会重来）
+started=""
+for attempt in 1 2 3 4; do
+  if (cd "$JOBS_HOME" && "${DOCKER[@]}" compose up -d); then started=1; break; fi
+  [ "$attempt" -lt 4 ] && { echo "没有启动成功（多半是拉取镜像时网络中断），10 秒后重试（$attempt/3）…"; sleep 10; }
+done
+[ -n "$started" ] || die "启动失败。检查这台机器能不能访问 Docker Hub，然后重新运行这一行安装命令（已经完成的部分不会重来，口令也不会变）。"
 
-# ---- 5. jobs 命令 ----
-# 命令有两个名字：jobs 和 jobsworld（同一个东西）。
-# jobs 在 bash / zsh / fish 里本来是内建命令（列出后台任务），直接敲会被 shell 截走；所以再往 shell 的启动文件里加一个很小的函数：
-# 带着 Jobs 的子命令（publish、status…）时交给 Jobs，不带参数或带 -l、%1 这类参数时照旧是内建命令。脚本里请用 jobsworld。
+# ---- 5. jobsworld 命令 ----
+# 命令叫 jobsworld。同时留一个 jobs 的别名（同一个东西）：它能被直接执行（比如写在 MCP 配置里），
+# 但在终端里直接敲 jobs 会被 shell 的内建命令截走，所以文档和提示一律写 jobsworld。
 LAUNCH="$JOBS_HOME/jobs"
 if [ "$JOBS_HOME" != "$HOME/.jobs" ]; then
   printf '#!/usr/bin/env bash\nJOBS_HOME=%q exec %q "$@"\n' "$JOBS_HOME" "$JOBS_HOME/jobs" > "$JOBS_HOME/jobs-launch" && chmod +x "$JOBS_HOME/jobs-launch"
   LAUNCH="$JOBS_HOME/jobs-launch"
 fi
 BIN=""
-if [ -w /usr/local/bin ]; then ln -sf "$LAUNCH" /usr/local/bin/jobs && ln -sf "$LAUNCH" /usr/local/bin/jobsworld && BIN=/usr/local/bin
-elif [ -n "$SUDO" ] && $SUDO -n true 2>/dev/null; then $SUDO ln -sf "$LAUNCH" /usr/local/bin/jobs && $SUDO ln -sf "$LAUNCH" /usr/local/bin/jobsworld && BIN=/usr/local/bin
-else mkdir -p "$HOME/.local/bin" && ln -sf "$LAUNCH" "$HOME/.local/bin/jobs" && ln -sf "$LAUNCH" "$HOME/.local/bin/jobsworld" && BIN="$HOME/.local/bin"; fi
+if [ -w /usr/local/bin ]; then ln -sf "$LAUNCH" /usr/local/bin/jobsworld && ln -sf "$LAUNCH" /usr/local/bin/jobs && BIN=/usr/local/bin
+elif [ -n "$SUDO" ] && $SUDO -n true 2>/dev/null; then $SUDO ln -sf "$LAUNCH" /usr/local/bin/jobsworld && $SUDO ln -sf "$LAUNCH" /usr/local/bin/jobs && BIN=/usr/local/bin
+else mkdir -p "$HOME/.local/bin" && ln -sf "$LAUNCH" "$HOME/.local/bin/jobsworld" && ln -sf "$LAUNCH" "$HOME/.local/bin/jobs" && BIN="$HOME/.local/bin"; fi
 
-HOOKED=""
-if [ -z "${JOBS_NO_SHELL_HOOK:-}" ]; then
-  for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
-    case "$rc" in *.zshrc) [ -f "$rc" ] || [ "$(basename "${SHELL:-}")" = "zsh" ] || continue ;; *) [ -f "$rc" ] || [ "$(basename "${SHELL:-}")" = "bash" ] || continue ;; esac
-    grep -q '# >>> jobs >>>' "$rc" 2>/dev/null && { HOOKED=1; continue; }
-    cat >> "$rc" <<HOOK
-
-# >>> jobs >>>
-# jobs 本来是 shell 的内建命令（列出后台任务）：带着 Jobs 的子命令时交给 Jobs，其余照旧。由 Jobs 的安装脚本添加
-jobs() { case "\${1:-}" in ''|-*|%*) builtin jobs "\$@" ;; *) "$LAUNCH" "\$@" ;; esac; }
-# <<< jobs <<<
-HOOK
-    HOOKED=1
-  done
-  if [ -d "$HOME/.config/fish" ]; then
-    mkdir -p "$HOME/.config/fish/functions"
-    cat > "$HOME/.config/fish/functions/jobs.fish" <<HOOK
-# 由 Jobs 的安装脚本添加：带着 Jobs 的子命令时交给 Jobs，其余照旧是 fish 的内建命令
-function jobs --wraps jobs
-    if test (count \$argv) -gt 0; and not string match -q -- '-*' \$argv[1]; and not string match -q -- '%*' \$argv[1]
-        "$LAUNCH" \$argv
-    else
-        builtin jobs \$argv
-    end
-end
-HOOK
-    HOOKED=1
-  fi
-fi
-
-# ---- 6. 让网页能一键开启游戏服（Linux + systemd；容器只能提出请求，真正执行的是宿主机上的 jobs 命令）----
+# ---- 6. 让网页能一键开启游戏服（Linux + systemd；容器只能提出请求，真正执行的是宿主机上的 jobsworld 命令）----
 if [ "$OS" = "Linux" ] && command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && { [ "$(id -u)" -eq 0 ] || { [ -n "$SUDO" ] && $SUDO -n true 2>/dev/null; }; }; then
   U="$(id -un)"
   $SUDO tee /etc/systemd/system/jobs-control.service >/dev/null <<UNIT
@@ -162,6 +136,8 @@ done
 echo
 [ -n "$ok" ] || die "服务没有在预期时间内就绪。看日志：cd $JOBS_HOME && docker compose logs --tail 100 jobs"
 
+date -u +%FT%TZ > "$JOBS_HOME/.installed"
+
 IP="$( (hostname -I 2>/dev/null | awk '{print $1}') || (ipconfig getifaddr en0 2>/dev/null) || true)"
 echo
 say "Jobs 装好了。"
@@ -173,7 +149,5 @@ if [ -n "$FIRST" ]; then
   echo "  第一次打开，用管理员口令进去，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存）。"
   echo "  然后点右上角「发布」，或者：jobsworld publish <网址> --name <名字> --tagline <一句话>"
 fi
-case ":$PATH:" in *":$BIN:"*) ;; *) echo "  （命令装在 $BIN，它不在你的 PATH 里：把它加进去，或直接用 $LAUNCH）";; esac
-if [ -n "$HOOKED" ]; then echo "  jobs 是 shell 的内建命令，所以往你的 shell 启动文件里加了一个小函数来分流；开一个新终端后生效。脚本里请用 jobsworld。"
-else echo "  jobs 是 shell 的内建命令：在终端里请用 jobsworld（两个名字是同一个东西）。"; fi
+case ":$PATH:" in *":$BIN:"*) ;; *) echo "  （jobsworld 命令装在 $BIN，它不在你的 PATH 里：把它加进去，或直接用 $LAUNCH）";; esac
 [ -n "$FIRST" ] || echo "  这是一次重装 / 升级：口令和数据都没有变。"

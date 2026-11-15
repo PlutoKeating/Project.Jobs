@@ -53,7 +53,7 @@ export async function planNextRound(studyId: string, round: number, size: number
   const worlds = await allWorldTemplates();
   // 合并世界：默认用每个人此时此地在城里的处境；只有显式指定了场景模板（world_ids，用于可复现的校准）才用模板
   const live = !config.world_ids?.length;
-  if (!live && !worlds.length) throw new Error('没有世界模板（先 jobs world import）');
+  if (!live && !worlds.length) throw new Error('没有世界模板（先 jobsworld world import）');
   const contexts = new Map<string, LiveContext>();
   const contextOf = async (pid: string) => {
     if (contexts.has(pid)) return contexts.get(pid);

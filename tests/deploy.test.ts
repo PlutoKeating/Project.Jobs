@@ -20,12 +20,11 @@ describe('一行安装', () => {
     for (const k of ['JW_ADMIN_PASSCODE', 'JW_PASSCODE', 'JOBS_SECRET_KEY', 'PG_PASSWORD', 'S3_SECRET_KEY']) expect(s).toMatch(new RegExp(`^${k}=\\$\\(rand `, 'm'));
     expect(s).toContain('if [ ! -f "$JOBS_HOME/.env" ]'); expect(s).toContain('umask 077');
   });
-  it('jobs 是 shell 的内建命令：同时装 jobsworld，分流函数在不带参数或带 -x、%n 时仍然交回内建命令', () => {
+  it('主命令是 jobsworld（jobs 是 shell 的内建命令，只作为别名）；安装脚本不改动 shell 启动文件', () => {
     const s = read('deploy/install.sh');
-    expect(s).toContain('/usr/local/bin/jobsworld'); expect(s).toContain(`''|-*|%*) builtin jobs`);
-    const fn = 'jobs() { case "${1:-}" in \'\'|-*|%*) echo builtin ;; *) echo ours "$@" ;; esac; }';
-    const run = (args: string) => execFileSync('bash', ['-c', `${fn}; jobs ${args}`]).toString().trim();
-    expect(run('')).toBe('builtin'); expect(run('-l')).toBe('builtin'); expect(run('%1')).toBe('builtin'); expect(run('publish http://x')).toBe('ours publish http://x');
+    expect(s).toContain('/usr/local/bin/jobsworld'); expect(s).toContain('/usr/local/bin/jobs &&');
+    expect(s).not.toMatch(/bashrc|zshrc|config\/fish/);
+    expect(read('deploy/jobs')).toContain('jobsworld publish');
   });
 });
 

@@ -35,7 +35,7 @@ export function gameRoutes(app: FastifyInstance) {
     if (!requireAdmin(q, r)) return;
     const b = (q.body ?? {}) as { kind?: Kind; on?: boolean };
     if (!b.kind || !(b.kind in KINDS) || typeof b.on !== 'boolean') return r.code(400).send({ error: 'kind (tshock|tml) and on are required' });
-    const cmd = `jobs game ${b.on ? 'on' : 'off'} ${b.kind}`;
+    const cmd = `jobsworld game ${b.on ? 'on' : 'off'} ${b.kind}`;
     if (!canToggle()) return r.code(409).send({ error: 'manual', command: process.env.JOBS_IN_CONTAINER ? cmd : `docker compose --profile game ${b.on ? `up -d --build --no-deps ${b.kind}` : `stop ${b.kind}`}` });
     const dir = join(controlDir(), 'requests'); mkdirSync(dir, { recursive: true });
     writeFileSync(join(dir, `${Date.now()}.game-${b.kind}-${b.on ? 'on' : 'off'}`), '');

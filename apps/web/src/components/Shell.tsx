@@ -40,7 +40,7 @@ function JoinGame({ port, admin }: { port: number; admin: boolean }) {
   useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
   const addr = `${location.hostname}:${port}`;
   const copy = (text: string) => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1600); };
-  const toggle = async (kind: 'tshock' | 'tml', on: boolean) => { setCmd(null); try { await post('/game', { kind, on }); } catch (e) { if (e instanceof ApiError && e.status === 409) setCmd(String(e.body?.command ?? `jobs game ${on ? 'on' : 'off'} ${kind}`)); } void q.refetch(); };
+  const toggle = async (kind: 'tshock' | 'tml', on: boolean) => { setCmd(null); try { await post('/game', { kind, on }); } catch (e) { if (e instanceof ApiError && e.status === 409) setCmd(String(e.body?.command ?? `jobsworld game ${on ? 'on' : 'off'} ${kind}`)); } void q.refetch(); };
   return (
     <div ref={box} className="relative hidden sm:block">
       <Button variant="ghost" size="sm" aria-expanded={open} aria-label={t('game')} title={t('game')} onClick={() => setOpen(!open)}><Gamepad2 size={16} /><span className="hidden tabular lg:inline">{addr}</span></Button>

@@ -77,7 +77,7 @@
 | 方法 路径 | 说明 |
 |---|---|
 | `GET /game` | 两个 Terraria 游戏服的状态：`tshock` / `tml` 各有 `up`、`pending`；`can_toggle`（宿主机上有监视单元，网页可以一键开关）、`port`、`password`（是否设了进服密码） |
-| `POST /game`（管理员） `{ kind: "tshock" \| "tml", on }` | 开关游戏服。能一键开关时返回 `{ requested: true }`：服务只往 `control/requests/` 放一个只含动作名的文件，真正执行的是宿主机上的 `jobs _control`。不能时返回 409 `{ error: "manual", command }`，`command` 是要在宿主机上运行的命令 |
+| `POST /game`（管理员） `{ kind: "tshock" \| "tml", on }` | 开关游戏服。能一键开关时返回 `{ requested: true }`：服务只往 `control/requests/` 放一个只含动作名的文件，真正执行的是宿主机上的 `jobsworld _control`。不能时返回 409 `{ error: "manual", command }`，`command` 是要在宿主机上运行的命令 |
 | `GET /demos` | 随包的示例产品（在跑的时候）：`id`、`name`、`tagline`、`url`（干净版）、`flawed_url`（带着真实小毛病的版本） |
 | `GET /feishu`（管理员） | 飞书机器人的状态：`connected`、`app_id`、`brand`、`pending`（等待扫码时的 `url`、`qr_svg`、`expires_at`）、`error` |
 | `POST /feishu/connect`（管理员） | 开始扫码接入（飞书的一键创建应用）；返回带二维码的状态。扫码确认后在后台完成接入，并给扫码的人发一条消息 |
@@ -93,7 +93,7 @@
 
 ## 2. 命令行与 MCP
 
-`jobs`（仓库内为 `pnpm jobs`）通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`；`jobs mcp` 以 stdio 启动 MCP 服务，工具为 `publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+`jobs`（仓库内为 `pnpm jobs`）通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`；`jobsworld mcp` 以 stdio 启动 MCP 服务，工具为 `publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ## 3. UAP v0.2（执行层接口）
 
@@ -149,6 +149,6 @@ interface Executor {
 - 场景模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）。默认不用：每次使用发生在人物此时此地的处境里（`sessions.world_context`，`world_template_id = 'live'`）；只有内部校准批次显式指定 `world_ids` 时才用模板
 - 人口抽样表：`config/population/{zh-CN,en-US}.json`；随包居民：`config/population/residents.jsonl`（每行 `{ spec, household, skeleton }`）
 - ProductSpec：`data/apps/<app>/<version>/product.yaml`（`ProductSpecSchema`）
-- 测试环境重置（`jobs dev app add --reset-url`）：每个校准批次开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。
-- 已知缺陷清单（`jobs dev app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
+- 测试环境重置（`jobsworld dev app add --reset-url`）：每个校准批次开始时 GET 该地址，让被测环境回到初始状态（内置 Demo 为 `/__pux/reset`）。
+- 已知缺陷清单（`jobsworld dev app add --seeded`）：`[{ id, category, title, description, location, keywords[] }]`
 - 校准输入：见 [`CALIBRATION.md`](CALIBRATION.md)

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# jobs / jobsworld：装好之后的命令入口（两个名字是同一个东西；jobs 是 shell 的内建命令，脚本里请用 jobsworld）。管理服务本身的几个子命令在这里处理，其余原样交给容器里的 Jobs 命令行（publish / status / report / mcp …）。
+# jobsworld：装好之后的命令入口（也装了一个叫 jobs 的别名，但 jobs 是 shell 的内建命令，在终端里请用 jobsworld）。管理服务本身的几个子命令在这里处理，其余原样交给容器里的 Jobs 命令行（publish / status / report / mcp …）。
 set -euo pipefail
 JOBS_HOME="${JOBS_HOME:-$HOME/.jobs}"
 [ -f "$JOBS_HOME/compose.yml" ] || { echo "没有找到 Jobs 的安装目录（$JOBS_HOME）。先安装：curl -fsSL https://jobs.plutokeating.beer/install | bash" >&2; exit 1; }
@@ -14,7 +14,7 @@ game() {  # game on|off [tshock|tml]
   case "$act" in
     on) dc --profile game up -d "$kind" ;;
     off) dc --profile game stop "$kind" ;;
-    *) echo "用法：jobs game on|off [tshock|tml]" >&2; exit 2 ;;
+    *) echo "用法：jobsworld game on|off [tshock|tml]" >&2; exit 2 ;;
   esac
 }
 refresh_files() {  # 编排文件与本脚本都在镜像里：换了镜像就重新取一遍，保证两边版本一致
@@ -34,10 +34,7 @@ case "${1:-}" in
   update) dc pull; refresh_files; dc up -d; echo "已更新。" ;;
   game) shift; game "$@" ;;
   uninstall)
-    if [ "${2:-}" = "--purge" ]; then dc --profile game down -v; echo "已停止并删除全部数据。安装目录还在：$JOBS_HOME（可以直接删掉）"; else dc --profile game down; echo "已停止。数据还在（docker volume）；彻底删除：jobsworld uninstall --purge"; fi
-    # 把安装时加进 shell 启动文件的那一小段拿掉
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do [ -f "$rc" ] && grep -q '# >>> jobs >>>' "$rc" && sed -i.jobs-bak '/# >>> jobs >>>/,/# <<< jobs <<</d' "$rc" && rm -f "$rc.jobs-bak"; done
-    rm -f "$HOME/.config/fish/functions/jobs.fish" ;;
+    if [ "${2:-}" = "--purge" ]; then dc --profile game down -v; echo "已停止并删除全部数据。安装目录还在：$JOBS_HOME（可以直接删掉）"; else dc --profile game down; echo "已停止。数据还在（docker volume）；彻底删除：jobsworld uninstall --purge"; fi ;;
   _control)  # 网页上的「一键开启游戏服」：容器只能往 control/requests 里放一个文件名，这里只认下面这几个动作
     ctl="$JOBS_HOME/control"; mkdir -p "$ctl/requests"
     for f in "$ctl"/requests/*; do
@@ -51,20 +48,20 @@ case "${1:-}" in
     date -u +%FT%TZ > "$ctl/last" ;;
   ""|-h|--help|help)
     cat <<'TXT'
-jobs：把产品发布到 JobsWorld
+jobsworld：把产品发布到 JobsWorld
 
-  jobs publish <网址> --name <名字> --tagline <一句话>    发布一个产品
-  jobs ls | status <产品> | report <产品> [--eng]          看状况与结论
-  jobs promote <产品> --intensity 0.8 | --pause | --end    调宣发
-  jobs invite <产品> -n 3                                   把手机递给几个人
-  jobs mcp                                                  给 coding agent 用的 MCP 服务（stdio）
+  jobsworld publish <网址> --name <名字> --tagline <一句话>    发布一个产品
+  jobsworld ls | status <产品> | report <产品> [--eng]          看状况与结论
+  jobsworld promote <产品> --intensity 0.8 | --pause | --end    调宣发
+  jobsworld invite <产品> -n 3                                   把手机递给几个人
+  jobsworld mcp                                                  给 coding agent 用的 MCP 服务（stdio）
 
-  jobs url | passcode | ps | logs | restart | up | down    服务本身
-  jobs game on|off [tshock|tml]                            Terraria 游戏服
-  jobs update                                               升级到最新版本
-  jobs uninstall [--purge]                                  停止（--purge 连数据一起删）
+  jobsworld url | passcode | ps | logs | restart | up | down    服务本身
+  jobsworld game on|off [tshock|tml]                            Terraria 游戏服
+  jobsworld update                                               升级到最新版本
+  jobsworld uninstall [--purge]                                  停止（--purge 连数据一起删）
 
-jobs 和 jobsworld 是同一个命令。其余子命令：jobs --help-all
+其余子命令：jobsworld --help-all
 TXT
     ;;
   --help-all) dc exec -T jobs node_modules/.bin/tsx apps/cli/src/index.ts --help ;;
