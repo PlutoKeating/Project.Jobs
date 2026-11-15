@@ -14,7 +14,7 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 
 需要一台装了 Docker 的机器。装完会打印访问地址和口令；第一次打开网页，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存），然后点「发布」。以后有新版本时，管理员会在网页右上角看到提示，可以一键升级；也可以运行 `jobsworld update`，或重新运行上面这一行（都会先备份数据库，口令和数据不变）。详见 [`docs/INSTALL.md`](docs/INSTALL.md)。
 
-**现状（2026-11-15）**：`v0.1.0` 已发布，三个镜像在 GHCR 上公开，上面这一行在一个全新的、没有登录任何镜像仓库的 Docker 环境（Linux）里装成功过。想自己构建或从源码运行，见 `docs/INSTALL.md` 末尾的「自己构建」与 [`docs/QUICK_START.md`](docs/QUICK_START.md)。
+**现状（2026-11-15）**：最新是 `v0.2.0`（加了网页上的新版本提示与一键升级、每次升级前自动备份数据库），三个镜像在 GHCR 上公开，可以匿名拉取。上面这一行在一个全新的、没有登录任何镜像仓库的 Docker 环境（Linux）里装成功过（`v0.1.0` 时）。已经装了 `v0.1.0` 的，运行一次 `jobsworld update` 或重新运行上面这一行即可升级，之后的新版本会在网页上提示。想自己构建或从源码运行，见 `docs/INSTALL.md` 末尾的「自己构建」与 [`docs/QUICK_START.md`](docs/QUICK_START.md)。
 
 ## 它怎么工作
 
