@@ -1,5 +1,6 @@
 /** 关于页。事实依据 README.md（它怎么工作、人口从哪来、定位声明）、PRODUCT.md、LICENSE。 */
 import { CONTACT_EMAIL, GITHUB_ISSUES, GITHUB_LICENSE, GITHUB_REPO } from '../site.mjs';
+import { shell } from '../shell.mjs';
 
 export const about = {
   zh: {
@@ -7,6 +8,7 @@ export const about = {
     description: 'Jobs 是什么、怎么工作、不是什么、由谁开发与运营，以及它用到的开源项目与数据。',
     heading: '关于 Jobs',
     lead: '把产品发布到一座住着两百位虚拟居民的城里，看他们自己怎么对待它。',
+    meta: shell.zh.tribute,
     sections: [
       {
         heading: '这是什么',
@@ -67,6 +69,7 @@ export const about = {
     description: 'What Jobs is, how it works, what it is not, who builds and runs it, and the open-source projects and data it relies on.',
     heading: 'About Jobs',
     lead: 'Launch a product into a town of two hundred virtual residents and watch what they make of it.',
+    meta: shell.en.tribute,
     sections: [
       {
         heading: 'What it is',

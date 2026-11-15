@@ -22,7 +22,7 @@ export const terms = {
         heading: '2. 许可',
         paragraphs: [
           `Jobs 软件以 [GNU Affero General Public License v3.0](${GITHUB_LICENSE})（AGPL-3.0）发布，[源码在 GitHub](${GITHUB_REPO})。你对软件的复制、修改、分发与通过网络提供服务均受该许可证约束：修改后让别人通过网络使用时，要以同一许可证向他们提供对应的源码。`,
-          '本网站的文字与页面在未另行注明时随仓库以同一许可证发布。软件内含的第三方组件按各自的许可证使用。第三方商标与名称归各自所有者所有。Terraria 是 Re-Logic 的商标；Jobs 是独立项目，与 Re-Logic、任何模型供应商或本网站提到的其他公司没有隶属或背书关系。',
+          '本网站的文字与页面在未另行注明时随仓库以同一许可证发布。软件内含的第三方组件按各自的许可证使用。第三方商标与名称归各自所有者所有。Terraria 是 Re-Logic 的商标；Jobs 是独立项目，与 Re-Logic、任何模型供应商或本网站提到的其他公司没有隶属或背书关系。「Jobs」这个名字和城名「乔布斯镇」是对 Steve Jobs 的致敬；本项目与 Apple 公司、Steve Jobs 的家人或遗产管理方没有任何关联，也未获其授权或认可。',
         ],
       },
       {
@@ -97,7 +97,7 @@ export const terms = {
         heading: '2. Licence',
         paragraphs: [
           `The Jobs software is released under the [GNU Affero General Public License v3.0](${GITHUB_LICENSE}) (AGPL-3.0), with the [source on GitHub](${GITHUB_REPO}). Copying, modifying, distributing and offering the software over a network are governed by that licence: if you let others use a modified version over a network, you must offer them the corresponding source under the same licence.`,
-          'Unless stated otherwise, the text and pages of this website are published with the repository under the same licence. Third-party components inside the software are used under their own licences. Third-party trademarks and names belong to their respective owners. Terraria is a trademark of Re-Logic; Jobs is an independent project and is not affiliated with or endorsed by Re-Logic, any model provider or any other company mentioned on this website.',
+          'Unless stated otherwise, the text and pages of this website are published with the repository under the same licence. Third-party components inside the software are used under their own licences. Third-party trademarks and names belong to their respective owners. Terraria is a trademark of Re-Logic; Jobs is an independent project and is not affiliated with or endorsed by Re-Logic, any model provider or any other company mentioned on this website. The name Jobs and the town name Jobs Town are a tribute to Steve Jobs; this project has no connection with Apple Inc. or with Steve Jobs’s family or estate, and is not authorised or endorsed by them.',
         ],
       },
       {

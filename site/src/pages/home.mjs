@@ -1,6 +1,7 @@
 /** 首页。事实依据 README.md、PRODUCT.md、docs/INSTALL.md。 */
 import { GITHUB_REPO, INSTALL_COMMAND, langOf } from '../site.mjs';
 import { ICON, esc, inline } from '../render.mjs';
+import { shell } from '../shell.mjs';
 
 export const home = {
   zh: {
@@ -88,6 +89,7 @@ export function renderHome(lang, assets) {
   <figure class="col shot">
     ${shot('dark')}
     ${shot('light')}
+    <figcaption>${esc(shell[lang].tribute)}</figcaption>
   </figure>
   <section class="col how" aria-labelledby="how-heading">
     <h2 id="how-heading" class="visually-hidden">${esc(t.howHeading)}</h2>

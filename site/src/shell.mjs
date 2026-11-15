@@ -12,6 +12,8 @@ export const shell = {
     menuClose: '关闭菜单',
     langLabel: '语言',
     toc: '本页内容',
+    // 全站只出现两处：首页配图下面、关于页的页头
+    tribute: '这座城叫乔布斯镇，以此致敬伟大的产品人 Steve Jobs：做产品，先从用它的人出发。',
     theme: { label: '外观', system: '跟随系统', light: '明亮', dark: '暗黑' },
     footer: {
       tagline: '发布之前，先让一座城的人用用看。',
@@ -43,6 +45,7 @@ export const shell = {
     menuClose: 'Close menu',
     langLabel: 'Language',
     toc: 'On this page',
+    tribute: 'The town is called Jobs Town, in tribute to the great product maker Steve Jobs: start from the people who will use it.',
     theme: { label: 'Appearance', system: 'Match system', light: 'Light', dark: 'Dark' },
     footer: {
       tagline: 'Before you launch, let a whole town try it.',
