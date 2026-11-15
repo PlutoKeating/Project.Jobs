@@ -9,5 +9,6 @@ Jobs 的 HTTP 接口（Fastify）。启动：`pnpm api`（`API_PORT`，默认 53
 - 头像（`src/avatars.ts`）：启动后为没有头像的人物排队调用画图模型（没接入画图模型时不生成，网页用确定性的像素头像；`JW_AVATAR_GEN=0` 关闭），存 MinIO 与 `persona_avatars`。
 - 模型接入（`src/models.ts`）：目录、整份草稿一次保存（版本冲突保护）、单目标测试、路由预览、版本与回滚；`/api/v1/llm/*` 是 OpenAI 兼容入口（仅管理员，因为它花的是真钱）。见 `docs/MODELS.md`。
 - 游戏服与示例产品（`src/game.ts`）：两个 Terraria 游戏服的状态与一键开关（只向宿主机提出请求，不直接操作 Docker）、随包示例产品的清单。
+- 版本与升级（`src/update.ts`）：`/api/v1/version`（当前版本、GitHub 上最新的 Release、是否能一键升级、宿主机写回的升级进度）、`/version/check`、`/update`（只向宿主机提出 `update` 请求）。每 6 小时检查一次新版本（`JOBS_UPDATE_CHECK=0` 关闭，`JOBS_UPDATE_URL` 换地址）；宿主机上的命令是不是认得 `update`，靠放一个 `ping` 请求、看它写不写 `control/host-features` 来判断。`/healthz` 与 `/me` 也带版本号。
 - 飞书机器人（`src/feishu.ts`）：扫码接入（`@larksuiteoapi/node-sdk` 的 `registerApp`）、长连接收消息、把一句话变成一件事（`parseCommand`）、进展 / 结论 / 需介入的推送。应用凭证加密后存在 `world_kv['feishu']`。
 - 发布、调宣发直接写库；「把手机递给人」经 NATS（`jw.cmd.invite`）交给世界服务，因为使用过程在世界服务里运行。

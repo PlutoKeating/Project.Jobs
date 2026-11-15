@@ -45,7 +45,7 @@ export const INSTALL_COMMAND = `curl -fsSL ${ORIGIN}/install | bash`;
 
 /** 条款与隐私政策的日期与版本：改了这两页的任何一句，都要一起改这里。 */
 export const POLICY_UPDATED = '2026-11-15';
-export const POLICY_VERSION = '1.2';
+export const POLICY_VERSION = '1.3';
 
 /** 浏览器里只存这两项（localStorage）；隐私政策里写的就是它们。 */
 export const STORAGE_THEME = 'jobs.theme';

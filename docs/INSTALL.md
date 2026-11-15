@@ -16,9 +16,9 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 4. 把 `jobsworld` 命令放进 `/usr/local/bin`（没有权限时放 `~/.local/bin`）。同一个位置还有一个叫 `jobs` 的别名，是同一个东西：它可以被直接执行（比如写进 MCP 配置），但在终端里直接敲 `jobs` 会被 shell 的内建命令（列出后台任务）截走，所以平时请用 `jobsworld`。安装脚本不会改动你的 shell 启动文件。
 5. Linux + systemd、并且能免密使用管理员权限时，再装一个小的监视单元（`jobs-control.path`），这样网页里才能一键开关游戏服。没有它时，网页上的开关会给出要在这台机器上运行的命令。
 
-装完会打印访问地址、管理员口令和访客口令。重复运行这一行是安全的：已有的 `.env` 和数据原样保留，只会更新镜像和编排文件；上一次半路失败的话，再运行一次会接着做完。
+装完会打印访问地址、版本、管理员口令和访客口令。重复运行这一行是安全的，也就是升级（见下面的「升级」）：已有的 `.env` 和数据原样保留，先备份数据库，再换上新镜像和编排文件；上一次半路失败的话，再运行一次会接着做完。
 
-可用的环境变量（写在这一行前面）：`JOBS_HOME`（安装目录，默认 `~/.jobs`）、`JOBS_PORT`（默认 7777）、`JOBS_BIND`（默认 `0.0.0.0`；只想本机访问设为 `127.0.0.1`）、`JOBS_IMAGE`、`JOBS_SKIP_PULL=1`、`JOBS_NO_DOCKER_INSTALL=1`。
+可用的环境变量（写在这一行前面）：`JOBS_HOME`（安装目录，默认 `~/.jobs`）、`JOBS_PORT`（默认 7777）、`JOBS_BIND`（默认 `0.0.0.0`；只想本机访问设为 `127.0.0.1`）、`JOBS_IMAGE`（已经装过时默认沿用 `.env` 里的；显式给出时会写回 `.env`）、`JOBS_SKIP_PULL=1`、`JOBS_NO_DOCKER_INSTALL=1`、`JOBS_SKIP_BACKUP=1`（升级前不备份数据库）。
 
 ## 装好之后
 
@@ -40,11 +40,36 @@ jobsworld report 闪念笔记 --eng
 
 jobsworld url | passcode | ps | logs | restart | up | down     # 服务本身
 jobsworld game on tshock          # 开原版 Terraria 的游戏服；game off tshock 关掉；tml 是 tModLoader
-jobsworld update                                                 # 升级到最新版本
+jobsworld update                                                 # 升级到最新版本（先自动备份数据库）
+jobsworld version | backup                                       # 当前版本 | 手动备份数据库
 jobsworld uninstall [--purge]                                    # 停止；--purge 连数据一起删
 ```
 
 `jobsworld` 是一个很薄的壳：管理服务的几个子命令在宿主机上直接调 `docker compose`，其余的原样交给容器里的 Jobs 命令行（`jobsworld --help-all` 列出全部，包括 `doctor`、`people`、`ask`、`clock`、`world`）。
+
+### 升级
+
+有新版本时，管理员在网页右上角会看到「新版本 x.y.z」。点开能看到改了什么；能一键升级时点「立即升级」，页面会在新版本起来之后自动刷新。不能一键升级时（不是 Linux + systemd，或安装时没有免密的管理员权限），它给出要在这台机器上运行的那一行命令。三种升级方式效果相同：
+
+```bash
+jobsworld update                                         # 或者网页上的「立即升级」
+curl -fsSL https://jobs.plutokeating.beer/install | bash  # 重新运行安装的那一行
+```
+
+都会依次：拉取新镜像 → 从新镜像里取出编排文件和 `jobsworld` 命令本身 → 把数据库导出到 `~/.jobs/backups/`（`pg_dump` 自定义格式，文件名带时间和升级前的版本，只留最近 5 份；备份失败就不升级）→ 重建容器（新版本启动时自动迁移数据库）→ 装过的游戏服也拉新镜像，正在运行的换上新镜像 → 等服务就绪并报告版本。口令、密钥和数据都不变。
+
+- **检查新版本**：服务每 6 小时匿名读一次 GitHub 上本项目最新的正式 Release（不带任何本机信息；预发布不算）。关闭：在 `~/.jobs/.env` 里加 `JOBS_UPDATE_CHECK=0`，运行 `jobsworld up`。`JOBS_UPDATE_URL` 可以换成返回同样格式（`tag_name`、`html_url`、`published_at`）的其他地址，比如访问不了 GitHub 时的镜像。
+- **一键升级怎么做到的**：和开关游戏服一样，容器不接触 Docker，只往 `~/.jobs/control/requests/` 放一个名为 `update` 的请求，由宿主机上的监视单元调用 `jobsworld _control` 执行 `jobsworld update`；进度与结果写回 `control/update-status`，输出写在 `control/update.log`（失败时网页上显示最后 20 行）。从 0.1.0 升上来的安装，第一次要用命令或重新运行安装的那一行；之后网页就能一键升级。
+- **锁定版本**：`.env` 里把 `JOBS_IMAGE` 写成 `ghcr.io/plutokeating/jobs:0.1.0` 这样的版本号标签，升级时就一直用它。网页上仍会提示有新版本，但「立即升级」只会重新拉取你锁定的那个版本；要换版本，改这一行再运行 `jobsworld update`。
+- **回退**：数据库迁移只往前走，所以回退要连数据一起：
+
+  ```bash
+  cd ~/.jobs
+  sed -i 's#^JOBS_IMAGE=.*#JOBS_IMAGE=ghcr.io/plutokeating/jobs:0.1.0#' .env   # 换回旧版本号
+  docker compose stop jobs
+  docker compose exec -T postgres pg_restore -U jobs -d jobs --clean --if-exists < backups/jobs-<时间>-v0.1.0.dump
+  jobsworld up
+  ```
 
 ### Coding agent（MCP）
 
@@ -68,14 +93,15 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；Codex、opencode 等
 |---|---|
 | `~/.jobs/.env` | 配置：端口、监听地址、口令、密钥。改完运行 `jobsworld up` |
 | `~/.jobs/compose*.yml`、`~/.jobs/jobs` | 编排文件与命令入口。它们随镜像发布，`jobsworld update` 会重新取一遍，不要手改 |
-| `~/.jobs/control/` | 网页向宿主机提出的请求（只有「开 / 关某个游戏服」这几种） |
+| `~/.jobs/control/` | 网页向宿主机提出的请求（只有「开 / 关某个游戏服」「升级」这几种）、升级的进度与输出（`update-status`、`update.log`）、宿主机命令认得哪些动作（`host-features`） |
+| `~/.jobs/backups/` | 每次升级前自动导出的数据库（`jobs-<时间>-v<版本>.dump`，最近 5 份）；`jobsworld backup` 手动导出一份 |
 | Docker 卷 `jobs_pgdata` | 数据库：居民、记忆、发布、使用过程、模型配置（凭证是密文） |
 | Docker 卷 `jobs_s3data` | 截图、录像等证据 |
 | Docker 卷 `jobs_jobsdata` | 运行时文件 |
 
 **`JOBS_SECRET_KEY` 要留好**：它用来加密你在「模型」里填的凭证和飞书的应用凭证。丢了它，这些凭证就解不开，需要重新填。
 
-备份：`docker run --rm -v jobs_pgdata:/d -v "$PWD":/o alpine tar czf /o/jobs-pg.tgz -C /d .`（`jobs_s3data` 同理），连同 `~/.jobs/.env` 一起存好。
+备份：数据库用 `jobsworld backup`（导出到 `~/.jobs/backups/`）；截图录像等证据：`docker run --rm -v jobs_s3data:/d -v "$PWD":/o alpine tar czf /o/jobs-s3.tgz -C /d .`。连同 `~/.jobs/.env` 一起存好。
 
 ## 镜像
 
@@ -103,11 +129,13 @@ docker build -t jobs:local .
 JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 ```
 
+之后重新构建了同名镜像，用 `JOBS_SKIP_PULL=1 jobsworld update` 换上它（不去镜像仓库拉取，其余步骤照常，包括备份数据库）。
+
 装游戏服也一样先在本机构建并打上编排文件里的名字：`docker build -f infra/game/tshock/Dockerfile -t ghcr.io/plutokeating/jobs-tshock:latest .`（tModLoader 换成 `infra/game/tmodloader/Dockerfile` 与 `jobs-tml`）。
 
 ## 对外发布（维护者）
 
-1. 打 `v*` 标签：`.github/workflows/release.yml` 构建并推送三个镜像到 GHCR（`jobs`、`jobs-tshock`、`jobs-tml`，现在都是 Public）。新建的包默认是私有的，可见性只能在 GitHub 网页的 Packages 设置里改，没有接口；以后如果新增镜像，要记得把它也设为 Public，匿名用户才能拉取。
+1. 版本号只有一个来源：仓库根 `package.json` 的 `version`（命令行 `jobsworld -V`、MCP、`/healthz`、`/api/v1/version` 和网页都读它）。发版时先把它改成新版本并提交到 `main`，再打同名的 `v*` 标签（例如 `0.2.0` 对应 `v0.2.0`）：`.github/workflows/release.yml` 先检查标签与 `package.json` 一致，然后构建并推送三个镜像到 GHCR（`jobs`、`jobs-tshock`、`jobs-tml`，现在都是 Public；标签为版本号与 `latest`），**三个镜像都推上去之后**才建 GitHub Release（说明自动从提交生成）。装好的 Jobs 看到的是这个 Release，所以提示出现时新镜像一定已经能拉取。标签带 `-`（如 `v0.3.0-rc.1`）是预发布：不打 `latest`，Release 标为预发布，已装好的 Jobs 不会被提示。新建的包默认是私有的，可见性只能在 GitHub 网页的 Packages 设置里改，没有接口；以后如果新增镜像，要记得把它也设为 Public，匿名用户才能拉取。
 2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回。官网的页面（落地页、关于、条款与条件、隐私政策，中英两种语言）由 `pnpm site:build` 从 `site/src/` 生成后提交进仓库，线上没有构建步骤，见 [`site/docs/README.md`](../site/docs/README.md)。
 
 ### 在 Cloudflare 上部署 `site/`（连接 GitHub 仓库创建 Worker）

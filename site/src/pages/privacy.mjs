@@ -40,7 +40,7 @@ export const privacy = {
         heading: '3. 装好的 Jobs：数据在哪',
         paragraphs: ['Jobs 是装在你自己机器上的软件，不是托管服务。作者没有任何途径接触你的实例：软件里没有统计、没有遥测，也不向作者的服务器发任何请求。'],
         bullets: [
-          '居民、记忆、你发布的产品、每一次使用的过程（逐步的截图、录像、页面记录、居民的想法）、评论与结论，都存在你机器上的 Docker 卷里（数据库与对象存储）。',
+          '居民、记忆、你发布的产品、每一次使用的过程（逐步的截图、录像、页面记录、居民的想法）、评论与结论，都存在你机器上的 Docker 卷里（数据库与对象存储）。每次升级之前，数据库会先导出一份到 `~/.jobs/backups`（只留最近 5 份）。',
           '你填入的模型凭证与飞书应用凭证加密后（AES-256-GCM）存在数据库里，密钥在 `~/.jobs/.env`，与数据库分开存放。',
           '谁拿到口令，谁就能看到这些内容：访客口令只能看，管理员口令可以发布、调整与接入模型。默认监听这台机器的所有网卡，流量是明文 HTTP；要放到公网上，请在前面加一层带 TLS 的反向代理。',
         ],
@@ -55,6 +55,7 @@ export const privacy = {
           'Google Fonts：装好的网页会向 Google 请求中文字体，打开网页的人的浏览器因此会连到 Google。',
           '飞书（可选）：只有在你扫码接入之后。你发给机器人的话、它回你的内容和主动推送经过飞书。',
           'GitHub 的容器仓库与 Docker Hub：只在你升级，或第一次打开某个游戏服时拉取镜像。',
+          'GitHub 的公开接口（检查新版本）：每 6 小时读一次本项目在 GitHub 上最新发布的版本号，好在网页上提示升级。请求不带身份，也不带这台机器或你的任何数据，只是一次普通的读取；GitHub 会看到来自这台机器的请求。在 `~/.jobs/.env` 里加 `JOBS_UPDATE_CHECK=0` 并运行 `jobsworld up` 即可关闭。',
         ],
       },
       {
@@ -114,7 +115,7 @@ export const privacy = {
         heading: '3. An installed Jobs: where the data is',
         paragraphs: ['Jobs is software that runs on your own machine, not a hosted service. The author has no way to reach your instance: the software has no analytics, no telemetry and makes no request to any server of the author’s.'],
         bullets: [
-          'Residents, memories, the products you launch, every use of them (step-by-step screenshots, video, page recordings and the resident’s thoughts), reviews and conclusions are all stored in Docker volumes on your machine (a database and an object store).',
+          'Residents, memories, the products you launch, every use of them (step-by-step screenshots, video, page recordings and the resident’s thoughts), reviews and conclusions are all stored in Docker volumes on your machine (a database and an object store). Before every upgrade the database is also exported to `~/.jobs/backups` (the latest 5 are kept).',
           'The model credentials and Feishu app credentials you enter are stored encrypted (AES-256-GCM) in the database; the key is in `~/.jobs/.env`, kept apart from the database.',
           'Whoever holds a passcode can see this content: the visitor passcode can only look, and the administrator passcode can launch, adjust and connect models. By default it listens on every network interface of the machine over plain HTTP; before exposing it to the internet, put a reverse proxy with TLS in front of it.',
         ],
@@ -129,6 +130,7 @@ export const privacy = {
           'Google Fonts: the installed web page requests a Chinese typeface from Google, so the browser of whoever opens the page connects to Google.',
           'Feishu (optional): only after you connect it by scanning the code. What you say to the bot, what it replies and what it pushes to you pass through Feishu.',
           'GitHub’s container registry and Docker Hub: only when you upgrade, or the first time you switch a game server on, to pull images.',
+          'GitHub’s public API (update check): every 6 hours the instance reads the version number of this project’s latest release on GitHub so the web page can tell you an update is out. The request carries no identity and none of this machine’s or your data; it is a plain read, and GitHub sees a request from this machine. To turn it off, add `JOBS_UPDATE_CHECK=0` to `~/.jobs/.env` and run `jobsworld up`.',
         ],
       },
       {

@@ -4,13 +4,13 @@
 
 下面的路径都省略了前缀 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）；没设置管理员口令时，能进来的人都是管理员。设置 `JW_PASSCODE`（访客口令）后，除 `/me`、`/auth/*`、`/inbox/*` 外都需要登录（否则 401）。身份有两种带法：网页登录后的 HttpOnly Cookie；命令行、MCP、示例产品与脚本用 `Authorization: Bearer <口令>`。装好的 Jobs 两个口令都在安装时随机生成。
 
-不在 `/api/v1` 下的：`GET /healthz`（`{ ok, nats }`，免登录）；`/reports/…`（内部校准批次的离线报告，需登录）；其余 GET 返回网页。
+不在 `/api/v1` 下的：`GET /healthz`（`{ ok, version, nats }`，免登录）；`/reports/…`（内部校准批次的离线报告，需登录）；其余 GET 返回网页。
 
 ### 身份
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /me` | `{ viewer, admin, auth_required, game_port, models_ready }`。`models_ready`：每一步、归纳、定位三个模型组此刻是否各有可用的模型 |
+| `GET /me` | `{ viewer, admin, auth_required, version, game_port, models_ready }`（`version` 只给登录了的人）。`models_ready`：每一步、归纳、定位三个模型组此刻是否各有可用的模型 |
 | `POST /auth/login` `{ passcode }` | 访客口令或管理员口令；写入 HttpOnly Cookie（30 天） |
 | `POST /auth/logout` | 清除登录 |
 
@@ -84,6 +84,14 @@
 | `GET /feishu`（管理员） | 飞书机器人的状态：`connected`、`app_id`、`brand`、`pending`（等待扫码时的 `url`、`qr_svg`、`expires_at`）、`error` |
 | `POST /feishu/connect`（管理员） | 开始扫码接入（飞书的一键创建应用）；返回带二维码的状态。扫码确认后在后台完成接入，并给扫码的人发一条消息 |
 | `POST /feishu/test`、`POST /feishu/disconnect`（管理员） | 发一条测试消息；断开并删除保存的应用凭证 |
+
+### 版本与升级
+
+| 方法 路径 | 说明 |
+|---|---|
+| `GET /version` | `version`（当前版本，来自根 `package.json`）、`check`（是否在检查新版本，`JOBS_UPDATE_CHECK=0` 关闭）、`latest`（GitHub 上最新的正式 Release：`version`、`url`、`published_at`；还没有时为空）、`checked_at`、`error`、`update_available`。管理员另有：`can_update`（能一键升级：在容器里运行，且宿主机上的监视单元与 `jobsworld` 命令认得 `update`）、`command`（不能一键升级时要运行的命令）、`update`（`requested`；`host`：宿主机写回的 `{ state: running \| ok \| failed, at }`；`log`：失败时输出的最后 20 行） |
+| `POST /version/check`（管理员） | 立刻检查一次新版本（平时每 6 小时一次） |
+| `POST /update`（管理员） | 一键升级。能一键升级时返回 `{ requested: true }`：服务只往 `control/requests/` 放一个名为 `update` 的请求，由宿主机上的 `jobsworld _control` 执行 `jobsworld update`（拉取 → 备份数据库 → 重建）；正在升级时返回 `{ requested: true, already: true }`。不能时返回 409 `{ error: "manual", command }` |
 
 ### 单端口网关（`apps/gateway`，`JW_PORT`，默认 `0.0.0.0:7777`）
 

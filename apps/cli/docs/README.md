@@ -10,3 +10,5 @@
 | `src/index.ts` | 运维命令，直接访问数据库：`doctor`、`init`、`db`、`persona`、`world`；`dev` 分组收纳内部校准用的指派式批次（`app`、`demo`、`product`、`study`、`issue`、`calibrate`、`human`） |
 
 详见 `jobsworld --help` 与 `docs/QUICK_START.md`。
+
+版本号（`jobsworld -V`、MCP 服务的版本）读仓库根 `package.json`（`@pux/core` 的 `jobsVersion()`），不在这里另写。装好之后的 `jobsworld update`、`version`、`backup` 是宿主机上的壳 `deploy/jobs` 处理的，见 `docs/INSTALL.md`「升级」。
