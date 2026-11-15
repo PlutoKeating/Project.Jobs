@@ -1,6 +1,6 @@
 # 安装与运维
 
-> **现状（2026-11-15）**：`v0.1.0` 的三个镜像已经构建并推送到 GHCR，`jobs.plutokeating.beer/install` 放的就是仓库里的安装脚本，下面这一行在一个全新的 Docker 环境（Linux）里装成功过。但镜像包的可见性在 GitHub 上要单独设置，目前三个包还是私有的，匿名拉取会被拒绝——**在三个包设为 Public 之前，要先 `docker login ghcr.io`**，或者用文末「自己构建」的方式。macOS / Windows 的安装路径只有单元测试，没有在真机上装过。
+> **现状（2026-11-15）**：`v0.1.0` 已发布，三个镜像在 GHCR 上公开，`jobs.plutokeating.beer/install` 放的就是仓库里的安装脚本。下面这一行在一个全新的、没有登录任何镜像仓库的 Docker 环境（Linux）里装成功过。macOS / Windows 的安装路径只有单元测试，没有在真机上装过。
 
 ## 一行安装
 
@@ -107,7 +107,7 @@ JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 
 ## 对外发布（维护者）
 
-1. 打 `v*` 标签：`.github/workflows/release.yml` 构建并推送三个镜像到 GHCR。第一次推送后，在 GitHub 的 Packages 设置里把这三个包设为 Public，匿名用户才能拉取。主镜像里是全部源码，公开镜像等于公开源码。
+1. 打 `v*` 标签：`.github/workflows/release.yml` 构建并推送三个镜像到 GHCR（`jobs`、`jobs-tshock`、`jobs-tml`，现在都是 Public）。新建的包默认是私有的，可见性只能在 GitHub 网页的 Packages 设置里改，没有接口；以后如果新增镜像，要记得把它也设为 Public，匿名用户才能拉取。
 2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回。官网的页面（落地页、关于、条款与条件、隐私政策，中英两种语言）由 `pnpm site:build` 从 `site/src/` 生成后提交进仓库，线上没有构建步骤，见 [`site/docs/README.md`](../site/docs/README.md)。
 
 ### 在 Cloudflare 上部署 `site/`（连接 GitHub 仓库创建 Worker）
