@@ -21,6 +21,7 @@ import { about } from '../src/pages/about.mjs';
 import { terms } from '../src/pages/terms.mjs';
 import { privacy } from '../src/pages/privacy.mjs';
 import { renderNotFound } from '../src/pages/not-found.mjs';
+import { figureText } from '../src/figures.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(root, '..');
@@ -30,11 +31,12 @@ const hash = (buf) => createHash('sha256').update(buf).digest('hex').slice(0, 10
 const versioned = (rel) => `/${rel}?v=${hash(read(rel))}`;
 
 /* ------------------------------------------------------------ 文案：每种语言都要齐，键与默认语言一致 */
-const messages = { shell, home, about, terms, privacy };
+const messages = { shell, home, about, terms, privacy, figures: figureText };
 for (const [name, m] of Object.entries(messages)) {
   for (const l of LANGS) {
     if (!m[l.code]) throw new Error(`缺少文案 ${name}（语言 ${l.code}）`);
-    if (l.code !== DEFAULT_LANG) assertSameShape(m[DEFAULT_LANG], m[l.code], name, l.code);
+    // 示意图里的文字自己断行，各语言行数可以不同
+    if (l.code !== DEFAULT_LANG) assertSameShape(m[DEFAULT_LANG], m[l.code], name, l.code, { freeLines: name === 'figures' });
   }
   for (const code of Object.keys(m)) if (!LANGS.some((l) => l.code === code)) throw new Error(`文案 ${name} 里有没注册的语言 ${code}（在 src/site.mjs 的 LANGS 里加上）`);
 }

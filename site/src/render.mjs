@@ -86,17 +86,21 @@ function prng(seed) {
   };
 }
 
-const HORIZON_W = 360; // 一块街道的宽（像素格）；按 4 倍画出来是 1440px，横向平铺
-const HORIZON_H = 24;
+const HORIZON_W = 360; // 页脚那一块街道的宽（像素格）；按 4 倍画出来是 1440px，横向平铺
+export const HORIZON_H = 24;
 
-/** 页脚的像素街道：一排侧视的楼，几扇亮着的窗，一条琥珀色的地平线。 */
-function horizon() {
-  const rand = prng(20261115);
+/**
+ * 一段侧视的像素街道：一排楼，几扇亮着的窗，一条琥珀色的地平线。返回 <rect> 列表（一格一个单位，高 HORIZON_H 格）。
+ * litClass：给第 n 扇亮着的窗（从 1 起）追加类名用的，页脚不用，README 的条幅用它让几扇窗明灭。
+ */
+export function horizonRects(width, seed, litClass = () => '') {
+  const rand = prng(seed);
   const rects = [];
+  let lit = 0;
   let x = 2;
-  while (x < HORIZON_W - 12) {
+  while (x < width - 12) {
     const w = 8 + Math.floor(rand() * 5) * 2; // 8–16
-    if (x + w > HORIZON_W - 2) break;
+    if (x + w > width - 2) break;
     const h = 7 + Math.floor(rand() * 13); // 7–19
     const top = HORIZON_H - 2 - h;
     const tone = rand() < 0.45 ? 'px-b' : 'px-a';
@@ -105,13 +109,19 @@ function horizon() {
     for (let fy = top + 2; fy < HORIZON_H - 4; fy += 3) {
       for (let fx = x + 1; fx < x + w - 1; fx += 2) {
         const r = rand();
-        if (r < 0.1) rects.push(`<rect class="px-lit" x="${fx}" y="${fy}" width="1" height="1"/>`);
+        if (r < 0.1) rects.push(`<rect class="px-lit${litClass(++lit)}" x="${fx}" y="${fy}" width="1" height="1"/>`);
         else if (r < 0.62) rects.push(`<rect class="px-dim" x="${fx}" y="${fy}" width="1" height="1"/>`);
       }
     }
     x += w + (rand() < 0.3 ? 5 + Math.floor(rand() * 8) : 1 + Math.floor(rand() * 2));
   }
-  rects.push(`<rect class="px-lit" x="0" y="${HORIZON_H - 2}" width="${HORIZON_W}" height="2"/>`);
+  rects.push(`<rect class="px-lit" x="0" y="${HORIZON_H - 2}" width="${width}" height="2"/>`);
+  return rects;
+}
+
+/** 页脚的像素街道：一块 HORIZON_W 格宽的街道横向平铺。 */
+function horizon() {
+  const rects = horizonRects(HORIZON_W, 20261115);
   return `<svg class="horizon" width="100%" height="${HORIZON_H * 4}" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
     <defs><pattern id="street" width="${HORIZON_W * 4}" height="${HORIZON_H * 4}" patternUnits="userSpaceOnUse"><g transform="scale(4)">${rects.join('')}</g></pattern></defs>
     <rect width="100%" height="${HORIZON_H * 4}" fill="url(#street)"/>
@@ -282,19 +292,24 @@ export function article({ lang, heading, lead, meta, sections }) {
 
 /* ---------------------------------------------------------------- 文案键核对 */
 
-/** 校验一种语言的文案与默认语言的键、数组长度一致；不一致时抛出带路径的错误。 */
-export function assertSameShape(base, other, path, lang) {
+/**
+ * 校验一种语言的文案与默认语言的键、数组长度一致；不一致时抛出带路径的错误。
+ * freeLines：全是字符串的数组算「一段多行文字」，各语言行数可以不同（示意图里的文字靠文案自己断行）。
+ */
+export function assertSameShape(base, other, path, lang, { freeLines = false } = {}) {
   if (other === undefined) throw new Error(`缺少文案 ${path}（语言 ${lang}）`);
   if (Array.isArray(base)) {
+    const isLines = (a) => Array.isArray(a) && a.every((v) => typeof v === 'string');
+    if (freeLines && isLines(base) && isLines(other)) return;
     if (!Array.isArray(other) || base.length !== other.length) throw new Error(`文案数组长度不一致 ${path}（语言 ${lang}）：${base.length} ≠ ${other?.length}`);
-    base.forEach((v, i) => assertSameShape(v, other[i], `${path}[${i}]`, lang));
+    base.forEach((v, i) => assertSameShape(v, other[i], `${path}[${i}]`, lang, { freeLines }));
     return;
   }
   if (base && typeof base === 'object') {
     const ka = Object.keys(base).sort();
     const kb = Object.keys(other ?? {}).sort();
     if (ka.join() !== kb.join()) throw new Error(`文案键不一致 ${path}（语言 ${lang}）：[${ka}] ≠ [${kb}]`);
-    for (const k of ka) assertSameShape(base[k], other[k], `${path}.${k}`, lang);
+    for (const k of ka) assertSameShape(base[k], other[k], `${path}.${k}`, lang, { freeLines });
     return;
   }
   if (typeof base !== typeof other) throw new Error(`文案类型不一致 ${path}（语言 ${lang}）`);

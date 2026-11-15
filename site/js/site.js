@@ -5,6 +5,7 @@
  * 3. 语言菜单：点外面或按 Esc 关闭。
  * 4. 窄屏的菜单按钮。
  * 5. 复制安装命令。
+ * 6. 示意图：滑进视口才开始动，滑出去就停（没有脚本时一直在动）。
  */
 (function () {
   'use strict';
@@ -98,9 +99,20 @@
     }
   }
 
+  /* ---- 6. 示意图 */
+  function initFigures() {
+    var figs = doc.querySelectorAll('.fig');
+    if (!('IntersectionObserver' in window)) { for (var i = 0; i < figs.length; i++) figs[i].classList.add('is-live'); return; }
+    var seen = new IntersectionObserver(function (entries) {
+      for (var j = 0; j < entries.length; j++) entries[j].target.classList.toggle('is-live', entries[j].isIntersecting);
+    }, { threshold: 0.25 });
+    for (var k = 0; k < figs.length; k++) seen.observe(figs[k]);
+  }
+
   initTheme();
   initLang();
   initLangMenu();
   initMenu();
   initCopy();
+  initFigures();
 })();

@@ -14,6 +14,9 @@ const LANGS = [{ prefix: '', htmlLang: 'zh-CN' }, { prefix: 'en/', htmlLang: 'en
 const PAGES = ['', 'about/', 'terms/', 'privacy/'];
 const pages = LANGS.flatMap((l) => PAGES.map((p) => ({ file: `${l.prefix}${p}index.html`, lang: l.htmlLang })));
 const notFound = LANGS.map((l) => ({ file: `${l.prefix}404.html`, lang: l.htmlLang }));
+// 首页内联的示意图（site/src/figures.mjs）；README 另有一幅只给它用的字标条幅 banner
+const FIGURES = ['journey', 'screen', 'verdict', 'loop', 'stack'];
+const README_FIGURES = ['banner', ...FIGURES];
 
 describe('官网产物', () => {
   it('与源一致：文案每种语言齐全、键对得上，中文字体子集盖住页面上的每个汉字（不一致时运行 pnpm site:build 并提交）', () => {
@@ -80,8 +83,37 @@ describe('官网产物', () => {
     expect(read('js/site.js')).not.toMatch(/document\.cookie|sessionStorage/);
   });
 
+  it('首页内联了五幅示意图，图里不带颜色与内联样式（颜色跟着页面的明暗走）', () => {
+    for (const f of ['index.html', 'en/index.html']) {
+      const html = read(f);
+      for (const name of FIGURES) expect(html, `${f} 缺示意图 ${name}`).toContain(`class="fig fig-${name}`);
+      const figures = [...html.matchAll(/<svg class="fig [\s\S]*?<\/svg>/g)].map((m) => m[0]);
+      expect(figures.length, f).toBe(FIGURES.length);
+      for (const svg of figures) expect(svg, f).not.toMatch(/\s(?:fill|stroke|style)="/);
+    }
+  });
+
   it('源码、生成脚本与说明文档不会被发布', () => {
     const ignored = read('.assetsignore').split('\n');
     for (const f of ['wrangler.jsonc', '.assetsignore', '.wrangler', 'src/', 'scripts/', 'docs/']) expect(ignored).toContain(f);
+  });
+});
+
+describe('README 的示意图', () => {
+  const repo = (p: string) => join(REPO_ROOT, p);
+
+  it('与源一致（不一致时运行 pnpm site:build 并提交）', () => {
+    expect(() => execFileSync('node', [site('scripts/build-figures.mjs'), '--check'], { stdio: 'pipe' })).not.toThrow();
+  });
+
+  it('每幅图 × 每种语言 × 明暗各一份，文件自带样式，不引用任何外部资源，也没有脚本', () => {
+    for (const name of README_FIGURES) for (const lang of ['zh', 'en']) for (const theme of ['dark', 'light']) {
+      const file = `docs/images/${name}.${lang}.${theme}.svg`;
+      expect(existsSync(repo(file)), file).toBe(true);
+      const svg = readFileSync(repo(file), 'utf8');
+      expect(svg, file).toContain('<style>');
+      expect(svg, file).not.toMatch(/var\(--/); // 变量都换成了具体的值
+      expect(svg.replace('http://www.w3.org/2000/svg', ''), file).not.toMatch(/https?:|<script|@import|\shref=/);
+    }
   });
 });

@@ -136,7 +136,7 @@ JOBS_IMAGE=jobs:local JOBS_SKIP_PULL=1 bash deploy/install.sh
 ## 对外发布（维护者）
 
 1. 版本号只有一个来源：仓库根 `package.json` 的 `version`（命令行 `jobsworld -V`、MCP、`/healthz`、`/api/v1/version` 和网页都读它）。发版时先把它改成新版本并提交到 `main`，再打同名的 `v*` 标签（例如 `0.2.0` 对应 `v0.2.0`）：`.github/workflows/release.yml` 先检查标签与 `package.json` 一致，然后构建并推送三个镜像到 GHCR（`jobs`、`jobs-tshock`、`jobs-tml`，现在都是 Public；标签为版本号与 `latest`），**三个镜像都推上去之后**才建 GitHub Release（说明自动从提交生成）。装好的 Jobs 看到的是这个 Release，所以提示出现时新镜像一定已经能拉取。标签带 `-`（如 `v0.3.0-rc.1`）是预发布：不打 `latest`，Release 标为预发布，已装好的 Jobs 不会被提示。新建的包默认是私有的，可见性只能在 GitHub 网页的 Packages 设置里改，没有接口；以后如果新增镜像，要记得把它也设为 Public，匿名用户才能拉取。
-2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回。官网的页面（落地页、关于、条款与条件、隐私政策，中英两种语言）由 `pnpm site:build` 从 `site/src/` 生成后提交进仓库，线上没有构建步骤，见 [`site/docs/README.md`](../site/docs/README.md)。
+2. 把仓库里的 `site/` 部署到 Cloudflare 并绑定 `jobs.plutokeating.beer`（见下）。`site/install` 是 `deploy/install.sh` 的原样副本（改了安装脚本后运行 `node scripts/sync-install.mjs`，测试会检查两者一致），`site/_headers` 让它以纯文本返回。官网的页面（落地页、关于、条款与条件、隐私政策，中英两种语言）由 `pnpm site:build` 从 `site/src/` 生成后提交进仓库，线上没有构建步骤，见 [`site/docs/README.md`](../site/docs/README.md)。同一条命令也生成两份 README 里的示意图（`docs/images/`）。
 
 ### 在 Cloudflare 上部署 `site/`（连接 GitHub 仓库创建 Worker）
 

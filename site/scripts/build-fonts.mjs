@@ -20,6 +20,7 @@ import { home } from '../src/pages/home.mjs';
 import { about } from '../src/pages/about.mjs';
 import { terms } from '../src/pages/terms.mjs';
 import { privacy } from '../src/pages/privacy.mjs';
+import { figureText } from '../src/figures.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const sourceDir = process.env.CJK_FONT_SOURCE_DIR || '/usr/share/fonts/opentype/noto';
@@ -34,7 +35,7 @@ const walk = (v) => {
   if (typeof v === 'string') { for (const ch of v) if (ch.codePointAt(0) >= 0x2e80) chars.add(ch); }
   else if (v && typeof v === 'object') Object.values(v).forEach(walk);
 };
-[shell, home, about, terms, privacy, LANGS].forEach(walk);
+[shell, home, about, terms, privacy, figureText, LANGS].forEach(walk);
 const text = [...chars].sort().join('');
 
 for (const f of FACES) {

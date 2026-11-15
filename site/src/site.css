@@ -182,21 +182,24 @@ code, pre { font-family: var(--ds-font-mono); }
 :root[data-theme="light"] .shot-light { display: block; }
 :root[data-theme="light"] .shot-dark { display: none; }
 
-.how { margin-top: var(--site-section); }
-.how ol { display: grid; gap: 2.5rem 3rem; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); counter-reset: step; }
-.how li { counter-increment: step; padding-top: 1.125rem; border-top: var(--ds-border-hairline) solid var(--ds-color-border-strong); }
-.how li::before { content: counter(step); display: block; margin-bottom: 0.625rem; color: var(--ds-color-secondary); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); font-variant-numeric: tabular-nums; }
-.how h3, .also h2 { font-size: var(--ds-text-xl); line-height: var(--ds-text-xl--line-height); }
-.how p, .also p { max-width: var(--site-measure-sm); margin-top: 0.5rem; color: var(--ds-color-fg-muted); font-size: var(--ds-text-sm); line-height: 1.7; text-wrap: pretty; }
+/* 一章：一句标题、一段话、一幅图。图在文字下面，占满内容栏 */
+.chapter { margin-top: var(--site-section); }
+.chapter h2, .closing h2 { font-size: clamp(1.625rem, 1.25rem + 1.6vw, var(--ds-text-4xl)); line-height: 1.18; }
+.chapter-head p, .also p { max-width: var(--site-measure); margin-top: 0.875rem; color: var(--ds-color-fg-muted); font-size: var(--ds-text-base); line-height: var(--ds-text-base--line-height); text-wrap: pretty; }
+/* 示意图的框：窄屏上不把图缩到看不清，改成在框里横向滑动 */
+.fig-wrap { margin-top: clamp(1.75rem, 4vw, 2.75rem); overflow-x: auto; border: var(--ds-border-hairline) solid var(--ds-color-border); border-radius: var(--ds-radius-lg); scrollbar-width: thin; }
+.fig { display: block; width: 100%; min-width: 50rem; height: auto; }
+/* 有脚本时，图不在视口里就先不动（js/site.js），滑到了再从第一步开始 */
+.js .fig:not(.is-live) * { animation-play-state: paused; }
 
-.also { display: grid; gap: 1.5rem 3rem; margin-top: var(--site-section); align-items: start; }
+.also { display: grid; gap: 1.5rem 3rem; align-items: start; }
 @media (min-width: 60rem) {
   .also { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
 }
 .also pre { padding: 1.125rem 1.25rem; overflow-x: auto; border: var(--ds-border-hairline) solid var(--ds-color-border); border-radius: var(--ds-radius-md); background: var(--ds-color-code-bg); color: var(--ds-color-code-fg); font-size: var(--ds-text-xs); line-height: 1.8; tab-size: 2; scrollbar-width: thin; }
 .also pre .c { color: var(--ds-color-fg-muted); }
 
-.facts { margin-top: var(--site-section); padding-bottom: var(--site-section); }
+.facts { margin-top: clamp(1.75rem, 4vw, 2.75rem); }
 .facts li { display: grid; gap: 0.375rem 3rem; padding-block: 1.25rem; border-top: var(--ds-border-hairline) solid var(--ds-color-border); }
 .facts li:last-child { border-bottom: var(--ds-border-hairline) solid var(--ds-color-border); }
 @media (min-width: 48rem) {
@@ -204,6 +207,101 @@ code, pre { font-family: var(--ds-font-mono); }
 }
 .facts h3 { font-size: var(--ds-text-lg); line-height: var(--ds-text-lg--line-height); }
 .facts p { max-width: var(--site-measure-sm); color: var(--ds-color-fg-muted); font-size: var(--ds-text-sm); line-height: 1.7; text-wrap: pretty; }
+
+/* 结尾：再给一次安装命令 */
+.closing { margin-top: var(--site-section); padding-block: var(--site-section); border-top: var(--ds-border-hairline) solid var(--ds-color-border); }
+.closing .install { margin-top: 2rem; }
+
+/* ------------------------------------------------------------ 示意图（src/figures.mjs）
+ * 下面两行标记之间是图本身的样式：只引用 tokens 的变量。scripts/build-figures.mjs 把这一段取出来、
+ * 把变量换成具体的值，嵌进给 README 用的独立 SVG 里。所以这一段里不要写依赖页面其他部分的选择器。
+ */
+/* @figures:start */
+.fig text { font-family: var(--site-font-sans); }
+.fig .t { fill: var(--ds-color-fg); font-size: 13px; font-weight: 450; }
+.fig .t-d { fill: var(--ds-color-fg-display); }
+.fig .t-m { fill: var(--ds-color-fg-muted); }
+.fig .t-s { fill: var(--ds-color-fg-subtle); }
+.fig .t-inv { fill: var(--ds-color-bg); }
+.fig .t-link { fill: var(--ds-color-link); }
+.fig .t-danger { fill: var(--ds-color-danger); }
+.fig .t-mono { font-family: var(--ds-font-mono); }
+.fig .t-sb { font-weight: 600; }
+.fig .t-b { font-weight: 700; }
+.fig .t-mid { text-anchor: middle; }
+.fig .t-end { text-anchor: end; }
+.fig .t-num { font-variant-numeric: tabular-nums; }
+.fig .t-8 { font-size: 8px; }
+.fig .t-10 { font-size: 10px; }
+.fig .t-11 { font-size: 11px; }
+.fig .t-12 { font-size: 12px; }
+.fig .t-13 { font-size: 13px; }
+.fig .t-14 { font-size: 14px; }
+.fig .t-15 { font-size: 15px; }
+.fig .t-17 { font-size: 17px; }
+.fig .t-19 { font-size: 19px; }
+.fig .t-22 { font-size: 22px; }
+.fig .t-24 { font-size: 24px; letter-spacing: -0.01em; }
+.fig .t-60 { font-size: 60px; letter-spacing: -0.03em; }
+
+.fig .f-bg, .fig .f-card { fill: var(--ds-color-bg); }
+.fig .f-raised { fill: var(--ds-color-bg-elevated); }
+.fig .f-surface { fill: var(--ds-color-surface); }
+.fig .f-hover { fill: var(--ds-color-surface-hover); }
+.fig .f-fg { fill: var(--ds-color-fg-display); }
+.fig .f-muted { fill: var(--ds-color-fg-muted); }
+.fig .f-subtle { fill: var(--ds-color-fg-subtle); }
+.fig .f-sage { fill: var(--ds-color-secondary); }
+.fig .f-avatar { fill: var(--ds-color-fg-subtle); }
+.fig .f-accent { fill: var(--ds-color-accent); }
+.fig .f-accent-soft { fill: var(--ds-color-accent-soft); }
+.fig .f-danger { fill: var(--ds-color-danger); }
+.fig .no-fill { fill: none; }
+
+.fig .s-line { stroke: var(--ds-color-border); }
+.fig .s-strong { stroke: var(--ds-color-border-strong); }
+.fig .s-muted { stroke: var(--ds-color-fg-subtle); }
+.fig .s-fg { stroke: var(--ds-color-fg-display); }
+.fig .s-sage { stroke: var(--ds-color-secondary); }
+.fig .s-accent { stroke: var(--ds-color-accent); stroke-width: 1.5; }
+.fig .s-danger { stroke: var(--ds-color-danger); }
+.fig .s-card { stroke: var(--ds-color-bg); stroke-width: 2; }
+.fig .sw-2 { stroke-width: 2; }
+.fig .dashed { stroke-dasharray: 5 5; }
+.fig .faint { opacity: 0.45; }
+.fig path, .fig line { stroke-linecap: round; stroke-linejoin: round; }
+
+/* 每个点是一位居民：亮着的是这一层的人 */
+.fig .dot { fill: none; stroke-width: 4.6; stroke-linecap: round; }
+.fig .dot-off { stroke: var(--ds-color-border-strong); }
+.fig .dot-on { stroke: var(--ds-color-secondary); }
+
+/* 「此刻」：一个琥珀色的标记依次停在每一步上，每步 2.6 秒；静止时不显示，图照样完整 */
+.fig .now { opacity: 0; }
+.fig-n3 .now { animation: fig-now-3 7.8s var(--ds-ease-standard) infinite; }
+.fig-n4 .now { animation: fig-now-4 10.4s var(--ds-ease-standard) infinite; }
+.fig-n7 .now { animation: fig-now-7 18.2s var(--ds-ease-standard) infinite; }
+.fig .now-2 { animation-delay: 2.6s; }
+.fig .now-3 { animation-delay: 5.2s; }
+.fig .now-4 { animation-delay: 7.8s; }
+.fig .now-5 { animation-delay: 10.4s; }
+.fig .now-6 { animation-delay: 13s; }
+.fig .now-7 { animation-delay: 15.6s; }
+@keyframes fig-now-3 { 0% { opacity: 0; } 4%, 29% { opacity: 1; } 33.3%, 100% { opacity: 0; } }
+@keyframes fig-now-4 { 0% { opacity: 0; } 3%, 22% { opacity: 1; } 25%, 100% { opacity: 0; } }
+@keyframes fig-now-7 { 0% { opacity: 0; } 1.8%, 12.5% { opacity: 1; } 14.28%, 100% { opacity: 0; } }
+
+/* 手指落点的涟漪、一直亮着的灯、条幅里明灭的窗 */
+.fig .ripple { opacity: 0.5; transform-box: fill-box; transform-origin: center; animation: fig-ripple 2.6s var(--ds-ease-standard) infinite; }
+@keyframes fig-ripple { 0% { opacity: 0.9; transform: scale(0.4); } 70%, 100% { opacity: 0; transform: scale(1.5); } }
+.fig .breath { animation: fig-breath var(--ds-duration-breath) var(--ds-ease-breath) infinite; }
+@keyframes fig-breath { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+.fig .tw { animation: fig-twinkle 9s var(--ds-ease-breath) infinite; }
+.fig .tw-2 { animation-delay: -2.2s; }
+.fig .tw-3 { animation-delay: -4.6s; }
+.fig .tw-4 { animation-delay: -6.9s; }
+@keyframes fig-twinkle { 0%, 38%, 100% { opacity: 1; } 46%, 72% { opacity: 0.12; } 80% { opacity: 1; } }
+/* @figures:end */
 
 /* ------------------------------------------------------------ 长文页（关于 / 条款 / 隐私） */
 .article { display: grid; gap: 0 4rem; padding-top: clamp(3rem, 7vw, 5.5rem); padding-bottom: var(--site-section); }
@@ -258,4 +356,5 @@ code, pre { font-family: var(--ds-font-mono); }
 }
 @media print {
   .site-header, .horizon, .toc, .install button { display: none; }
+  .fig { min-width: 0; }
 }
