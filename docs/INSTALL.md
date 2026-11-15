@@ -111,7 +111,7 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；Codex、opencode 等
 | `pgvector/pgvector`、`elestio/minio`、`nats` | 数据库、对象存储、事件总线：各自的标准镜像，原样引用 |
 | `ghcr.io/plutokeating/jobs-tshock`、`jobs-tml` | 可选的两个 Terraria 游戏服（第三方服务端 + 我们的插件 / 模组），按需拉取。由 `infra/game/*/Dockerfile` 构建；TShock 按构建架构下载对应的发布包（`linux-x64` / `linux-arm64`） |
 
-我们的三个镜像都同时发布 `linux/amd64` 与 `linux/arm64`（同一个标签下的多架构清单，拉取时 Docker 自动选本机的架构）；引用的三个标准镜像本身也都有这两种架构。`v0.2.0` 及更早的版本只有 `linux/amd64`，arm64 机器从下一个版本开始能装。
+我们的三个镜像都同时发布 `linux/amd64` 与 `linux/arm64`（同一个标签下的多架构清单，拉取时 Docker 自动选本机的架构）；引用的三个标准镜像本身也都有这两种架构。`v0.2.0` 及更早的版本只有 `linux/amd64`，arm64 机器从 `v0.2.1` 开始能装。
 
 Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等只监听本机回环地址上的高位端口（55432、59000、54222，可在 `.env` 里改）；其他系统用端口映射（`compose.bridge.yml`）。对外只有一个端口（默认 7777）：网页、接口、WebSocket 和 Terraria 都走它。
 

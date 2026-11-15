@@ -1,7 +1,7 @@
 {
   "name": "jobs",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "AGPL-3.0-only",
   "description": "Jobs — 把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、跟谁说。",
   "type": "module",
