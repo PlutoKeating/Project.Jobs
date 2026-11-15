@@ -112,7 +112,7 @@ describe('凭证', () => {
     expect(googleCred(ref).refresh_token).toBe('r2'); expect(googleProject(JSON.stringify({ file: f }))).toBe('proj-file');
     expect(() => googleCred(JSON.stringify({ file: join(dir, 'missing.json') }))).toThrow(/读不到凭证文件/);
     expect(() => googleCred(JSON.stringify({ file: 'adc.json' }))).toThrow(/绝对路径/);
-    expect(hintOf(ref)).toBe('proj-a · adc.json');
+    expect(hintOf(ref)).toBe('proj-a · file');
     rmSync(dir, { recursive: true, force: true });
   });
 });
