@@ -47,6 +47,8 @@
   pre { margin: 0; padding: 1rem 1.1rem; overflow-x: auto; border: 1px solid var(--line); border-radius: .625rem; background: var(--code); font: 450 .8125rem/1.75 ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Noto Sans Mono CJK SC", monospace; }
   pre .c { color: var(--slate); }
   footer { border-top: 1px solid var(--line); padding: 1.5rem 0 3rem; color: var(--muted); font-size: .875rem; }
+  footer a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+  footer a:hover { color: var(--accent); }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
 </style>
 </head>
@@ -92,7 +94,7 @@ claude mcp add jobs -- jobsworld mcp</pre>
     </div>
   </main>
 
-  <footer>人数是这座城里实际发生的人数，是模拟，不是对真实市场的预测。它不取代真人用户研究。</footer>
+  <footer>人数是这座城里实际发生的人数，是模拟，不是对真实市场的预测。它不取代真人用户研究。<br><a href="https://github.com/PlutoKeating/Project.Jobs">源码</a> · AGPL-3.0</footer>
 </div>
 <script>
   document.getElementById('copy').addEventListener('click', function () {

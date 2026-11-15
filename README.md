@@ -116,3 +116,14 @@ claude mcp add jobs -- jobsworld mcp        # Claude Code；其他支持 MCP 的
 - 飞书：二维码能生成，扫码之后的收发消息与推送没有用真实账号验证过。
 - 自然流量下的点开率取决于模型对「这个人此刻会不会点」的判断，没有用真人数据校准；一个没有评分的新产品，一个模拟日里可能没有人自己点开。
 - 需要较深使用才暴露的问题依赖回访与更多人次。
+
+## 许可证
+
+Copyright (C) 2026 PlutoKeating
+
+Jobs 以 [GNU Affero General Public License v3.0](LICENSE)（`AGPL-3.0-only`）发布：你可以使用、修改和再分发；修改后对外提供服务（包括通过网络让别人使用）时，要以同一许可证向使用者提供对应的源码。本程序不附带任何担保。
+
+仓库里有两处第三方内容保留它们各自的许可证：
+
+- `apps/web/public/fonts/` 的 Inter 字体：SIL Open Font License 1.1（`LICENSE-Inter.txt`）。
+- `game/shared/Schematics/TEditSchematic.cs`：移植自 TEdit，Microsoft Public License（`TEdit-LICENSE.txt`）。
