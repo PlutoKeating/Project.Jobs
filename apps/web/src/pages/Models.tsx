@@ -8,7 +8,10 @@ import { useLabel, useT } from '../lib/i18n.ts';
 import type { MCatalogLite, MCatalogModel, MCatalogProvider, MConfig, MModel, MPreview, MProvider, MState, MTest, MUse, MVersion } from '../lib/types.ts';
 import { Button, ErrorState, Seg, Skeleton } from '../components/ui.tsx';
 
-const rid = (p: string) => `${p}_${crypto.randomUUID().replace(/-/g, '').slice(0, 12)}`;
+// crypto.randomUUID 只在安全上下文（HTTPS 或 localhost）里有；用局域网 IP 走 http 打开时没有，getRandomValues 则处处可用。
+const hex = (bytes: number) => Array.from(crypto.getRandomValues(new Uint8Array(bytes)), (b) => b.toString(16).padStart(2, '0')).join('');
+const rid = (p: string) => `${p}_${hex(6)}`;
+const newSubmitId = () => hex(16);
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
 const CHAT_USES: MUse[] = ['step', 'think', 'locate'];
 const ALL_USES: MUse[] = ['step', 'think', 'locate', 'embed', 'image'];
@@ -262,9 +265,9 @@ export function ModelsPage() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [phase, setPhase] = useState<'edit' | 'confirm' | 'saving'>('edit');
   const [err, setErr] = useState<string | null>(null);
-  const submitId = useRef(crypto.randomUUID());
+  const submitId = useRef(newSubmitId());
   const dirty = !!base && !!draft && (JSON.stringify(base.config) !== JSON.stringify(draft) || Object.keys(secrets).length > 0);
-  const adopt = (s: { version: number; config: MConfig }) => { setBase({ version: s.version, config: clone(s.config) }); setDraft(clone(s.config)); setSecrets({}); setPhase('edit'); setErr(null); submitId.current = crypto.randomUUID(); };
+  const adopt = (s: { version: number; config: MConfig }) => { setBase({ version: s.version, config: clone(s.config) }); setDraft(clone(s.config)); setSecrets({}); setPhase('edit'); setErr(null); submitId.current = newSubmitId(); };
   useEffect(() => { if (q.data && (!base || (!dirty && q.data.version !== base.version))) adopt(q.data); }, [q.data]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { if (!dirty) return; const f = (e: BeforeUnloadEvent) => { e.preventDefault(); }; window.addEventListener('beforeunload', f); return () => window.removeEventListener('beforeunload', f); }, [dirty]);
 
