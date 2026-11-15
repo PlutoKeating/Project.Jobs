@@ -25,13 +25,41 @@ describe('一行安装', () => {
   it('口令与密钥是安装时随机生成的，不写死在仓库里；已有配置时不覆盖', () => {
     const s = read('deploy/install.sh');
     for (const k of ['JW_ADMIN_PASSCODE', 'JW_PASSCODE', 'JOBS_SECRET_KEY', 'PG_PASSWORD', 'S3_SECRET_KEY']) expect(s).toMatch(new RegExp(`^${k}=\\$\\(rand `, 'm'));
-    expect(s).toContain('if [ ! -f "$JOBS_HOME/.env" ]'); expect(s).toContain('umask 077');
+    expect(s).toContain('if [ ! -f "$ENV_FILE" ]'); expect(s).toContain('ENV_FILE="$JOBS_HOME/.env"'); expect(s).toContain('umask 077');
   });
   it('主命令是 jobsworld（jobs 是 shell 的内建命令，只作为别名）；安装脚本不改动 shell 启动文件', () => {
     const s = read('deploy/install.sh');
     expect(s).toContain('/usr/local/bin/jobsworld'); expect(s).toContain('/usr/local/bin/jobs &&');
     expect(s).not.toMatch(/bashrc|zshrc|config\/fish/);
     expect(read('deploy/jobs')).toContain('jobsworld publish');
+  });
+});
+
+describe('升级', () => {
+  const jobs = read('deploy/jobs'); const install = read('deploy/install.sh');
+  it('jobsworld update：先拉镜像、再备份数据库、再重建；游戏服（在 profile 里）也一起更新', () => {
+    const body = jobs.slice(jobs.indexOf('update() {'));
+    const order = ['dc pull', 'refresh_files', 'backup', 'dc up -d', 'refresh_games', 'wait_ready'].map((k) => body.indexOf(k));
+    expect(order.every((i) => i >= 0)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
+    expect(jobs).toContain('pg_dump -U jobs -Fc jobs');
+    expect(jobs).toMatch(/dc --profile game pull/);
+  });
+  it('网页的一键升级只经过 control/requests：宿主机只认固定的几个动作名，并写回进度', () => {
+    expect(jobs).toMatch(/^\s+update\)$/m);
+    expect(jobs).toContain('"$ctl/update-status"'); expect(jobs).toContain('"$ctl/host-features"');
+    expect(read('apps/api/src/update.ts')).toContain("request('update')");
+  });
+  it('重复运行安装脚本就是升级：沿用 .env 里的镜像、先备份、更新装过的游戏服', () => {
+    expect(install).toContain('IMAGE="${JOBS_IMAGE:-$(envv JOBS_IMAGE)}"');
+    expect(install.indexOf('" backup ||')).toBeLessThan(install.indexOf('compose up -d'));
+    expect(install).toContain('_refresh-games');
+  });
+  it('发版：标签必须与 package.json 的版本一致；镜像推完之后才建 Release；预发布不打 latest', () => {
+    const wf = read('.github/workflows/release.yml');
+    expect(wf).toContain("require('./package.json').version");
+    expect(wf).toMatch(/release:\n\s+needs: images/);
+    expect(wf).toContain("!contains(github.ref_name, '-')");
   });
 });
 

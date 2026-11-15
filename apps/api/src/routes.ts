@@ -1,7 +1,7 @@
 // REST /api/v1
 import type { FastifyInstance } from 'fastify';
 import { existsSync } from 'node:fs';
-import { dataPath } from '@pux/core';
+import { dataPath, jobsVersion } from '@pux/core';
 import { memoryCounts } from '@pux/memory';
 import { and, apps, appVersions, count, desc, eq, events, evidence, getDb, humanTasks, inArray, interviews, issues, judgments, launches, llmTraces, observations, sessions, steps, studies, worldStates, sql } from '@pux/db';
 import { blobs } from '@pux/storage';
@@ -13,6 +13,7 @@ import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
 import { modelRoutes, modelsReady } from './models.ts';
 import { gameRoutes } from './game.ts';
+import { updateRoutes } from './update.ts';
 import { feishuRoutes } from './feishu.ts';
 
 type P = { id: string };
@@ -22,6 +23,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   launchRoutes(app, bus);
   modelRoutes(app);
   gameRoutes(app);
+  updateRoutes(app);
   feishuRoutes(app, bus);
   const snapshot = async () => (bus ? await kvGetJson<Snapshot>(bus.kv, 'snapshot').catch(() => undefined) : undefined);
   const request = async (subject: string, data: unknown, timeout = 120_000) => {
@@ -31,7 +33,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   };
 
   // ---- 身份 ----
-  app.get('/api/v1/me', async (q) => ({ ...roleOf(q), auth_required: authEnabled(), game_port: Number(process.env.JW_PORT ?? 7777), models_ready: await modelsReady().then((m) => m.ready).catch(() => false) }));
+  app.get('/api/v1/me', async (q) => ({ ...roleOf(q), auth_required: authEnabled(), version: roleOf(q).viewer ? jobsVersion() : undefined, game_port: Number(process.env.JW_PORT ?? 7777), models_ready: await modelsReady().then((m) => m.ready).catch(() => false) }));
   app.post('/api/v1/auth/login', async (q, r) => { const res = login(String((q.body as { passcode?: string })?.passcode ?? ''), r); return res.viewer ? res : r.code(401).send({ error: 'bad_passcode' }); });
   app.post('/api/v1/auth/logout', async (_q, r) => { logout(r); return { ok: true }; });
 

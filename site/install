@@ -3,13 +3,18 @@
 #   curl -fsSL https://jobs.plutokeating.beer/install | bash
 #
 # 它做的事：确认有 Docker（Linux 上没有就装）→ 拉取镜像 → 在 ~/.jobs 写好编排文件和带随机口令的 .env → 启动
-#           → 装好 jobsworld 命令。服务随 Docker 开机自启、异常自动重启。重复运行是安全的：已有的 .env 和数据原样保留。
+#           → 装好 jobsworld 命令。服务随 Docker 开机自启、异常自动重启。
+#           重复运行就是升级：已有的 .env 和数据原样保留，换上新镜像之前先把数据库备份到 ~/.jobs/backups。
 # 可用的环境变量：JOBS_HOME（安装目录，默认 ~/.jobs）、JOBS_PORT（默认 7777）、JOBS_BIND（默认 0.0.0.0，只想本机访问设为 127.0.0.1）、
-#                 JOBS_IMAGE（镜像）、JOBS_SKIP_PULL=1（镜像已在本机）、JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）
+#                 JOBS_IMAGE（镜像；已经装过时默认沿用 .env 里的，显式给出时会写回 .env）、JOBS_SKIP_PULL=1（镜像已在本机）、
+#                 JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）、JOBS_SKIP_BACKUP=1（升级前不备份数据库）
 set -euo pipefail
 
 JOBS_HOME="${JOBS_HOME:-$HOME/.jobs}"
-IMAGE="${JOBS_IMAGE:-ghcr.io/plutokeating/jobs:latest}"
+ENV_FILE="$JOBS_HOME/.env"
+envv() { grep -E "^$1=" "$ENV_FILE" 2>/dev/null | head -1 | cut -d= -f2- || true; }
+# 镜像：显式给出的 > 已有 .env 里的（锁定了某个版本就一直用它）> 最新版
+IMAGE="${JOBS_IMAGE:-$(envv JOBS_IMAGE)}"; IMAGE="${IMAGE:-ghcr.io/plutokeating/jobs:latest}"
 PORT="${JOBS_PORT:-7777}"
 BIND="${JOBS_BIND:-0.0.0.0}"
 OS="$(uname -s)"
@@ -45,11 +50,11 @@ done
 chmod +x "$JOBS_HOME/jobs"
 
 # ---- 3. 配置（只在第一次生成；口令都是随机的）----
-if [ ! -f "$JOBS_HOME/.env" ]; then
+if [ ! -f "$ENV_FILE" ]; then
   # Linux 用宿主机网络（本机 127.0.0.1 上的开发服务器直接可达）；其他系统用端口映射
   if [ "$OS" = "Linux" ]; then MODE="compose.yml:compose.host.yml"; else MODE="compose.yml:compose.bridge.yml"; fi
   umask 077
-  cat > "$JOBS_HOME/.env" <<ENV
+  cat > "$ENV_FILE" <<ENV
 # Jobs 的配置。改完后运行：jobsworld up
 COMPOSE_FILE=$MODE
 JOBS_IMAGE=$IMAGE
@@ -73,14 +78,22 @@ S3_SECRET_KEY=$(rand 32 'A-Za-z0-9')
 ENV
   umask 022
 else
-  say "沿用已有的配置：$JOBS_HOME/.env"
+  say "沿用已有的配置：$ENV_FILE"
+  if [ -n "${JOBS_IMAGE:-}" ] && [ "$(envv JOBS_IMAGE)" != "$IMAGE" ]; then
+    if grep -qE '^JOBS_IMAGE=' "$ENV_FILE"; then
+      awk -v img="$IMAGE" '/^JOBS_IMAGE=/{print "JOBS_IMAGE=" img; next} {print}' "$ENV_FILE" > "$ENV_FILE.new" && cat "$ENV_FILE.new" > "$ENV_FILE" && rm -f "$ENV_FILE.new"
+    else echo "JOBS_IMAGE=$IMAGE" >> "$ENV_FILE"; fi
+    echo "镜像改为 $IMAGE（已写进 .env）"
+  fi
 fi
 # 以前有没有完整装好过（上一次如果半路失败，这次仍然算第一次）
 FIRST=""; [ -f "$JOBS_HOME/.installed" ] || FIRST=1
-envv() { grep -E "^$1=" "$JOBS_HOME/.env" | head -1 | cut -d= -f2-; }
 PORT="$(envv JOBS_PORT)"; PORT="${PORT:-7777}"
 
-# ---- 4. 启动 ----
+# ---- 4. 启动（已经在运行时，换上新镜像之前先备份数据库）----
+if [ -z "$FIRST" ] && [ -z "${JOBS_SKIP_BACKUP:-}" ]; then
+  JOBS_HOME="$JOBS_HOME" "$JOBS_HOME/jobs" backup || die "升级前备份数据库失败，没有继续（数据没有动）。确定不要备份：在这一行前面加 JOBS_SKIP_BACKUP=1"
+fi
 say "启动 Jobs …"
 # 第一次要拉取数据库、对象存储、事件总线的标准镜像；网络抖动时多试几次（已经拉到的不会重来）
 started=""
@@ -89,6 +102,8 @@ for attempt in 1 2 3 4; do
   [ "$attempt" -lt 4 ] && { echo "没有启动成功（多半是拉取镜像时网络中断），10 秒后重试（$attempt/3）…"; sleep 10; }
 done
 [ -n "$started" ] || die "启动失败。检查这台机器能不能访问 Docker Hub，然后重新运行这一行安装命令（已经完成的部分不会重来，口令也不会变）。"
+# 游戏服在 profile 里，上面的 up 不会碰它们：装过的拉新镜像，正在运行的换上新镜像
+if [ -z "$FIRST" ] && [ -z "${JOBS_SKIP_PULL:-}" ]; then JOBS_HOME="$JOBS_HOME" "$JOBS_HOME/jobs" _refresh-games || echo "游戏服没有更新成功（不影响 Jobs 本身）：jobsworld game on tshock|tml 重试"; fi
 
 # ---- 5. jobsworld 命令 ----
 # 命令叫 jobsworld。同时留一个 jobs 的别名（同一个东西）：它能被直接执行（比如写在 MCP 配置里），
@@ -123,7 +138,7 @@ PathExistsGlob=$JOBS_HOME/control/requests/*
 [Install]
 WantedBy=multi-user.target
 UNIT
-  $SUDO systemctl daemon-reload && $SUDO systemctl enable --now jobs-control.path >/dev/null 2>&1 && touch "$JOBS_HOME/control/watcher"
+  $SUDO systemctl daemon-reload && $SUDO systemctl enable --now jobs-control.path >/dev/null 2>&1 && touch "$JOBS_HOME/control/watcher" && echo "update" > "$JOBS_HOME/control/host-features"
 fi
 
 # ---- 7. 等它起来 ----
@@ -150,4 +165,6 @@ if [ -n "$FIRST" ]; then
   echo "  然后点右上角「发布」，或者：jobsworld publish <网址> --name <名字> --tagline <一句话>"
 fi
 case ":$PATH:" in *":$BIN:"*) ;; *) echo "  （jobsworld 命令装在 $BIN，它不在你的 PATH 里：把它加进去，或直接用 $LAUNCH）";; esac
-[ -n "$FIRST" ] || echo "  这是一次重装 / 升级：口令和数据都没有变。"
+V="$(curl -fsS -m 3 "http://127.0.0.1:$PORT/healthz" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' || true)"
+[ -n "$V" ] && echo "  版本：        $V"
+[ -n "$FIRST" ] || echo "  这是一次重装 / 升级：口令和数据都没有变（升级前的数据库备份在 $JOBS_HOME/backups）。"

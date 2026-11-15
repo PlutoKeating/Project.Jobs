@@ -37,7 +37,7 @@ export type Prim =
 export interface PlaceLayout { id: string; kind: string; name: { zh: string; en: string }; x: number; w: number; top: number; bottom: number; floors: number; floor_h: number }
 export interface TownLayout { id: string; name: { zh: string; en: string }; width: number; ground_depth: number; subway_line: { y: number; h: number }; places: PlaceLayout[]; prims: Prim[]; version: string }
 
-export interface Me { viewer: boolean; admin: boolean; auth_required: boolean; game_port: number; models_ready?: boolean }
+export interface Me { viewer: boolean; admin: boolean; auth_required: boolean; version?: string; game_port: number; models_ready?: boolean }
 
 export interface PersonaListItem {
   id: string; kind: string; locale: string; segment: string; target_user: boolean; source: string; frozen: boolean; name: string; age: number; gender: string; occupation: string; region: string;

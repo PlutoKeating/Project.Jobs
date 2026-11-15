@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
+import { ArrowUpCircle, Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
 import { ApiError, get, post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
 import { setLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
@@ -56,6 +56,70 @@ function JoinGame({ port, admin }: { port: number; admin: boolean }) {
             ); })}
           </ul>
           {cmd && <button type="button" onClick={() => copy(cmd)} title={t('g_run')} className="mt-3 block w-full rounded-md bg-code-bg px-3 py-2 text-left font-mono text-xs text-code-fg">{cmd}</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface VersionInfo {
+  version: string; update_available: boolean; latest: { version: string; url: string; published_at: string | null } | null;
+  can_update?: boolean; command?: string; update?: { requested: boolean; host: { state: 'running' | 'ok' | 'failed'; at: string | null } | null; log: string | null };
+}
+
+/** 有新版本时，管理员在右上角看到它：能一键升级就一键升级（宿主机执行 jobsworld update），不能就给出那一行命令 */
+function UpdateNotice() {
+  const { t } = useT();
+  const [open, setOpen] = useState(false); const [done, setDone] = useState(false);
+  // 点了升级之后：记下当时的版本与时间；服务换上新版本后（版本号变了）刷新页面
+  const [started, setStarted] = useState<{ from: string; at: number } | null>(() => { try { const x = sessionStorage.getItem('jw.updating'); return x ? JSON.parse(x) as { from: string; at: number } : null; } catch { return null; } });
+  const box = useRef<HTMLDivElement>(null);
+  const q = useQuery({ queryKey: ['version'], queryFn: () => get<VersionInfo>('/version'), staleTime: 300_000, refetchInterval: started ? 3000 : 1_800_000, retry: started ? false : 2 });
+  useEffect(() => { try { if (started) sessionStorage.setItem('jw.updating', JSON.stringify(started)); else sessionStorage.removeItem('jw.updating'); } catch { /* */ } }, [started]);
+  useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
+  const d = q.data;
+  const host = d?.update?.host;
+  const failed = !!started && host?.state === 'failed' && !!host.at && Date.parse(host.at) >= started.at - 5000;
+  const slow = !!started && !failed && Date.now() - started.at > 15 * 60_000;
+  useEffect(() => { if (started && d && d.version !== started.from) { setStarted(null); location.reload(); } }, [started, d]);
+  const running = !failed && (!!started || host?.state === 'running' || !!d?.update?.requested);
+  if (!d || (!d.update_available && !running && !failed)) return null;
+  const go = async () => {
+    try { await post('/update'); setStarted({ from: d.version, at: Date.now() }); }
+    catch (e) { if (e instanceof ApiError && e.status === 409) void q.refetch(); }
+  };
+  const copy = (text: string) => { void navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1600); };
+  return (
+    <div ref={box} className="relative">
+      <Button variant="ghost" size="sm" aria-expanded={open} title={t('up_title')} onClick={() => setOpen(!open)} className="text-fg">
+        <span className="relative inline-flex"><ArrowUpCircle size={15} /><span className={`absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full ${failed ? 'bg-danger' : 'bg-accent'} ${running ? 'live-dot' : ''}`} /></span>
+        {d.latest && <span className="tabular hidden md:inline">{t('up_new', { v: d.latest.version })}</span>}
+      </Button>
+      {open && (
+        <div role="dialog" aria-label={t('up_title')} className="animate-reveal fixed inset-x-4 top-14 z-40 rounded-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-9 sm:w-80 border border-border-strong bg-bg-elevated p-4 shadow-md">
+          <h2 className="text-sm font-semibold">{t('up_title')}</h2>
+          {d.latest && <p className="tabular mt-1 text-xs text-fg-muted">{t('up_from_to', { a: d.version, b: d.latest.version })} · <a href={d.latest.url} target="_blank" rel="noreferrer" className="underline decoration-border-strong underline-offset-2 hover:text-fg">{t('up_notes')}</a></p>}
+          {running ? (
+            <p className="mt-3 flex items-start gap-2 text-sm text-fg"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-accent live-dot" />{slow ? t('up_slow') : t('up_running')}</p>
+          ) : (
+            <>
+              {failed && (<>
+                <p role="alert" className="mt-3 text-sm text-danger">{t('up_failed')}</p>
+                {d.update?.log && <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-code-bg px-3 py-2 font-mono text-[11px] leading-relaxed text-code-fg">{d.update.log}</pre>}
+              </>)}
+              {d.can_update ? (
+                <>
+                  <p className="mt-3 text-xs leading-relaxed text-fg-muted">{t('up_hint')}</p>
+                  <Button variant="primary" className="mt-3 w-full" onClick={() => { setStarted(null); void go(); }}>{failed ? t('up_retry') : t('up_now')}</Button>
+                </>
+              ) : d.command && (
+                <>
+                  <p className="mt-3 text-xs leading-relaxed text-fg-muted">{t('up_manual')}</p>
+                  <button type="button" onClick={() => copy(d.command!)} className="mt-2 block w-full rounded-md bg-code-bg px-3 py-2 text-left font-mono text-xs text-code-fg">{done ? t('copied') : d.command}</button>
+                </>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -120,9 +184,9 @@ export function Login() {
   );
 }
 
-function Wordmark({ className = '' }: { className?: string }) {
+function Wordmark({ className = '', version }: { className?: string; version?: string }) {
   return (
-    <Link to="/" className={`inline-flex items-center gap-2 ${className}`}>
+    <Link to="/" title={version ? `Jobs ${version}` : undefined} className={`inline-flex items-center gap-2 ${className}`}>
       <svg width="22" height="22" viewBox="0 0 16 16" shapeRendering="crispEdges" aria-hidden><rect x="2" y="6" width="4" height="8" fill="var(--color-secondary)" /><rect x="7" y="3" width="4" height="11" fill="var(--color-secondary-fg)" /><rect x="12" y="8" width="2" height="6" fill="var(--color-secondary)" /><rect x="8" y="5" width="1" height="1" fill="var(--color-accent)" /><rect x="9" y="8" width="1" height="1" fill="var(--color-accent)" /><rect x="0" y="14" width="16" height="2" fill="var(--color-accent)" /></svg>
       <span className="text-[15px] font-semibold tracking-tight text-fg-display">Jobs</span>
     </Link>
@@ -163,7 +227,7 @@ export function Shell() {
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b border-border bg-surface-glass backdrop-blur-[var(--blur-glass)]">
         <div className="mx-auto flex max-w-[var(--container-wide)] flex-wrap items-center gap-x-2 px-4 sm:h-[var(--ds-header-height)] sm:flex-nowrap sm:px-6">
-          <Wordmark className="mr-1 h-[var(--ds-header-height)] sm:mr-4" />
+          <Wordmark className="mr-1 h-[var(--ds-header-height)] sm:mr-4" version={me.data?.version} />
           <nav className="order-last -mx-1 flex w-full items-center gap-0.5 overflow-x-auto pb-2 sm:order-none sm:mx-0 sm:w-auto sm:pb-0">
             <NavLink to="/">{t('nav.world')}</NavLink>
             <NavLink to="/products">{t('nav.products')}</NavLink>
@@ -172,6 +236,7 @@ export function Shell() {
           </nav>
           <div className="ml-auto flex items-center gap-0.5 sm:gap-1">
             {ov && ov.spend_usd > 0 && <span className="tabular hidden px-1.5 text-xs text-fg-muted md:inline" title={t('spent')}>${ov.spend_usd.toFixed(2)}</span>}
+            {me.data?.admin && <UpdateNotice />}
             <Clock />
             {me.data && <JoinGame port={me.data.game_port} admin={me.data.admin} />}
             {me.data?.admin && <FeishuLink />}

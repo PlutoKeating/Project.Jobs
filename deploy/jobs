@@ -19,8 +19,58 @@ game() {  # game on|off [tshock|tml]
 }
 refresh_files() {  # 编排文件与本脚本都在镜像里：换了镜像就重新取一遍，保证两边版本一致
   local img; img="$(envv JOBS_IMAGE)"; img="${img:-ghcr.io/plutokeating/jobs:latest}"
-  for f in compose.yml compose.host.yml compose.bridge.yml; do "${DOCKER[@]}" run --rm --entrypoint cat "$img" "/app/deploy/$f" > "$JOBS_HOME/$f.new" && mv "$JOBS_HOME/$f.new" "$JOBS_HOME/$f"; done
+  for f in compose.yml compose.host.yml compose.bridge.yml; do "${DOCKER[@]}" run --rm --entrypoint cat "$img" "/app/deploy/$f" > "$JOBS_HOME/$f.new" && mv "$JOBS_HOME/$f.new" "$JOBS_HOME/$f" || return 1; done
+  # 用 mv 换掉本脚本：正在运行的这一份（已打开的旧文件）不受影响
   "${DOCKER[@]}" run --rm --entrypoint cat "$img" /app/deploy/jobs > "$JOBS_HOME/jobs.new" && chmod +x "$JOBS_HOME/jobs.new" && mv "$JOBS_HOME/jobs.new" "$JOBS_HOME/jobs"
+}
+
+running_version() { curl -fsS -m 3 "http://127.0.0.1:$(port)/healthz" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' || true; }
+backup() {  # 把数据库导出到 ~/.jobs/backups（只留最近 5 份）；数据库没在运行时跳过
+  local dir="$JOBS_HOME/backups" v f
+  if [ -z "$(dc ps --status running -q postgres 2>/dev/null)" ]; then echo "数据库没在运行，跳过备份。"; return 0; fi
+  mkdir -p "$dir"; v="$(running_version)"
+  f="$dir/jobs-$(date -u +%Y%m%dT%H%M%SZ)${v:+-v$v}.dump"
+  if ! (umask 077; dc exec -T postgres pg_dump -U jobs -Fc jobs > "$f.part"); then rm -f "$f.part"; echo "数据库备份失败。" >&2; return 1; fi
+  mv "$f.part" "$f"
+  ls -1t "$dir"/jobs-*.dump 2>/dev/null | tail -n +6 | while IFS= read -r old; do rm -f "$old"; done
+  echo "数据库已备份：$f"
+}
+game_services() {  # 装过（建过容器）的游戏服；带 running 时只列出正在运行的
+  local s
+  for s in tshock tml; do
+    if [ "${1:-}" = running ]; then [ -n "$(dc --profile game ps --status running -q "$s" 2>/dev/null)" ] && echo "$s"
+    else [ -n "$(dc --profile game ps -a -q "$s" 2>/dev/null)" ] && echo "$s"; fi
+  done; return 0
+}
+refresh_games() {  # 游戏服在 profile 里，普通的 pull / up 不会碰它们：装过的拉新镜像，正在运行的换上新镜像
+  local all run
+  all="$(game_services | xargs)"; [ -n "$all" ] || return 0
+  # shellcheck disable=SC2086
+  if [ -z "${JOBS_SKIP_PULL:-}" ]; then dc --profile game pull $all || return 1; fi
+  run="$(game_services running | xargs)"
+  # shellcheck disable=SC2086
+  if [ -n "$run" ]; then dc --profile game up -d $run || return 1; fi
+}
+wait_ready() {
+  local i
+  for i in $(seq 1 120); do
+    if [ -n "$(running_version)" ]; then return 0; fi
+    sleep 3
+  done
+  return 1
+}
+update() {  # 函数里逐步检查返回值：在 if 里调用时 set -e 不起作用
+  local before after
+  before="$(running_version)"
+  if [ -z "${JOBS_SKIP_PULL:-}" ]; then echo "== 拉取新镜像 =="; dc pull || return 1; fi   # 自己构建的镜像：JOBS_SKIP_PULL=1
+  refresh_files || { echo "从新镜像取编排文件失败。" >&2; return 1; }
+  if [ -z "${JOBS_SKIP_BACKUP:-}" ]; then echo "== 备份数据库 =="; backup || { echo "备份失败，没有升级（数据没有动）。确定不要备份：JOBS_SKIP_BACKUP=1 jobsworld update" >&2; return 1; }; fi
+  echo "== 重建服务 =="; dc up -d || return 1
+  refresh_games || echo "游戏服没有更新成功（不影响 Jobs 本身）：jobsworld game on tshock|tml 重试" >&2
+  echo "== 等待服务就绪 =="
+  wait_ready || { echo "服务没有在预期时间内就绪。看日志：jobsworld logs" >&2; return 1; }
+  after="$(running_version)"
+  if [ -n "$before" ] && [ "$before" != "$after" ]; then echo "已从 $before 升级到 $after。"; else echo "当前版本：$after。"; fi
 }
 
 case "${1:-}" in
@@ -31,17 +81,25 @@ case "${1:-}" in
   logs) shift; dc logs -f --tail 200 "${@:-jobs}" ;;
   url) echo "http://127.0.0.1:$(port)/"; ip="$(lan_ip)"; [ -n "$ip" ] && echo "http://$ip:$(port)/" ;;
   passcode) echo "管理员口令：$(envv JW_ADMIN_PASSCODE)"; echo "访客口令：  $(envv JW_PASSCODE)"; g="$(envv JW_GAME_PASSWORD)"; [ -n "$g" ] && echo "游戏服密码：$g" ;;
-  update) dc pull; refresh_files; dc up -d; echo "已更新。" ;;
+  update) update ;;
+  backup) backup ;;
+  version) v="$(running_version)"; echo "Jobs ${v:-（服务没在运行）}"; echo "镜像：$(envv JOBS_IMAGE)" ;;
+  _refresh-games) refresh_games ;;
   game) shift; game "$@" ;;
   uninstall)
     if [ "${2:-}" = "--purge" ]; then dc --profile game down -v; echo "已停止并删除全部数据。安装目录还在：$JOBS_HOME（可以直接删掉）"; else dc --profile game down; echo "已停止。数据还在（docker volume）；彻底删除：jobsworld uninstall --purge"; fi ;;
-  _control)  # 网页上的「一键开启游戏服」：容器只能往 control/requests 里放一个文件名，这里只认下面这几个动作
+  _control)  # 网页上的「一键开关游戏服」「一键升级」：容器只能往 control/requests 里放一个文件名，这里只认下面这几个动作
     ctl="$JOBS_HOME/control"; mkdir -p "$ctl/requests"
+    echo "update" > "$ctl/host-features"   # 告诉网页：这一版的命令认得 update
     for f in "$ctl"/requests/*; do
       [ -e "$f" ] || continue; act="$(basename "$f")"; act="${act#*.}"; rm -f "$f"
       case "$act" in
         game-tshock-on) game on tshock ;; game-tshock-off) game off tshock ;;
         game-tml-on) game on tml ;; game-tml-off) game off tml ;;
+        update)
+          echo "running|$(date -u +%FT%TZ)" > "$ctl/update-status"
+          if update > "$ctl/update.log" 2>&1; then echo "ok|$(date -u +%FT%TZ)" > "$ctl/update-status"; else echo "failed|$(date -u +%FT%TZ)" > "$ctl/update-status"; fi ;;
+        ping) ;;
         *) echo "忽略未知请求：$act" >&2 ;;
       esac || echo "执行 $act 失败" >&2
     done
@@ -58,7 +116,8 @@ jobsworld：把产品发布到 JobsWorld
 
   jobsworld url | passcode | ps | logs | restart | up | down    服务本身
   jobsworld game on|off [tshock|tml]                            Terraria 游戏服
-  jobsworld update                                               升级到最新版本
+  jobsworld update                                               升级到最新版本（先自动备份数据库）
+  jobsworld version | backup                                     当前版本 | 手动备份数据库
   jobsworld uninstall [--purge]                                  停止（--purge 连数据一起删）
 
 其余子命令：jobsworld --help-all
