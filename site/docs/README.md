@@ -29,7 +29,7 @@ site/
 ├── shots/ og.png              # 首页配图与分享图（build-shots.mjs 生成）
 ├── index.html about/ terms/ privacy/ 404.html en/…   # 生成物：每种语言 4 个页面 + 404
 ├── favicon.svg robots.txt sitemap.xml _headers       # 生成物
-├── install                    # deploy/install.sh 的原样副本（node scripts/sync-install.mjs 同步）
+├── install                    # deploy/install.sh 的原样副本（pnpm site:build 复制；site:check 发现不一致会报错）
 ├── wrangler.jsonc .assetsignore
 └── docs/README.md             # 本文
 ```

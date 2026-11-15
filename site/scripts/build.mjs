@@ -6,7 +6,7 @@
  *   node site/scripts/build.mjs --check   只比对：产物与源不一致时列出文件并以非零退出（测试用）
  *
  * 线上没有构建步骤（Cloudflare 直接发布 site/ 目录），所以全部产物都提交进仓库：
- *   每种语言 × 每个页面的 index.html、每种语言的 404.html、css/tokens.css、css/site.css、favicon.svg、robots.txt、sitemap.xml、_headers。
+ *   每种语言 × 每个页面的 index.html、每种语言的 404.html、css/tokens.css、css/site.css、favicon.svg、robots.txt、sitemap.xml、_headers、install（deploy/install.sh 的副本）。
  */
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -143,6 +143,9 @@ ${LANGS.map((x) => `    <xhtml:link rel="alternate" hreflang="${x.htmlLang}" hre
   ),
 );
 emit('sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`);
+
+/* ------------------------------------------------------------ install：deploy/install.sh 的原样副本（curl -fsSL …/install | bash） */
+emit('install', readFileSync(resolve(repo, 'deploy/install.sh')));
 
 /* ------------------------------------------------------------ _headers：安全响应头与缓存 */
 emit(
