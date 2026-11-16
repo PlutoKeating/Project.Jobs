@@ -122,7 +122,7 @@ for (const l of LANGS) {
     const inlineScript = inlineFor(lang, page);
     cspHashes.add(cspHash(inlineScript));
     const t = page === 'home' ? home[lang] : longform[page][lang];
-    const main = page === 'home' ? renderHome(lang, assets) : article({ lang, ...t });
+    const main = page === 'home' ? renderHome(lang, assets) : article({ lang, ...t, town: assets.town });
     emit(fileFor(pathFor(lang, page)), document(head({ lang, page, title: titleFor(lang, page), description: t.description, inlineScript, assets }), lang, page, main));
   }
   // 404：不进站点地图、不让搜索引擎收录

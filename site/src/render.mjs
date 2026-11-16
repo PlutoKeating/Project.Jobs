@@ -259,11 +259,11 @@ export function footer({ lang, year }) {
 
 /* ---------------------------------------------------------------- 长文版式（关于 / 条款 / 隐私） */
 
-export function article({ lang, heading, lead, meta, sections }) {
+export function article({ lang, heading, lead, meta, sections, town }) {
   // 章节多的页面（条款、隐私）在宽屏右侧放一份本页目录
   const toc =
     sections.length >= 6
-      ? `<nav class="toc" aria-labelledby="toc-heading">
+      ? `<nav class="toc panel-night" aria-labelledby="toc-heading">
       <h2 id="toc-heading">${esc(shell[lang].toc)}</h2>
       <ol>
         ${sections.map((s, i) => `<li><a href="#s${i + 1}">${esc(s.heading)}</a></li>`).join('\n        ')}
@@ -280,8 +280,18 @@ export function article({ lang, heading, lead, meta, sections }) {
       </section>`;
     })
     .join('\n      ');
+  // 页面开头一条夜色：首页那座城的一截（同一幅画），标题压在它的下沿上
+  const band = town
+    ? `<div class="page-band night" aria-hidden="true">
+    <picture>
+      <source srcset="${town.webp}" type="image/webp">
+      <img src="${town.png}" width="3168" height="1344" alt="" decoding="async">
+    </picture>
+  </div>
+  `
+    : '';
   return `<main id="main">
-  <article class="col article">
+  ${band}<article class="col article${town ? ' has-band' : ''}">
     <header class="article-head">
       <h1>${esc(heading)}</h1>
       ${lead ? `<p class="article-lead">${inline(lead)}</p>` : ''}

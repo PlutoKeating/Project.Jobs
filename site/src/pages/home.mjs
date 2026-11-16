@@ -180,7 +180,7 @@ claude mcp add --transport http jobs https://&lt;jobs&gt;/mcp</pre>
       <p>${esc(t.factsBody)}</p>
     </div>
     ${renderFigure('stack', lang)}
-    <ul class="facts">
+    <ul class="facts panel-night">
       ${t.facts.map((s) => `<li><h3>${esc(s.heading)}</h3><p>${inline(s.body)}</p></li>`).join('\n      ')}
     </ul>
   </section>

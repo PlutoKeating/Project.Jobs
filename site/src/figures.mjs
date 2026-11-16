@@ -215,6 +215,14 @@ const lines = (x, y, arr, c, lh) => arr.map((s, i) => text(x, y + i * lh, s, c))
 /** 两段不同样式接在一行里。 */
 const pair = (x, y, a, ca, b, cb, c) => `<text x="${n(x)}" y="${n(y)}"${cls(`t ${c}`)}><tspan${cls(ca)}>${esc(a)}</tspan><tspan${cls(cb)}>${esc(b)}</tspan></text>`;
 const group = (c, body, extra = '') => `<g${cls(c)}${extra}>${body}</g>`;
+/**
+ * 一张浮起来的卡片：底色 + 细线框 + 往下沉的软影（url(#fx)，figure() 换成每幅图自己的 id）+ 顶边一道受光的细线。
+ * 用来把图里的区块分层，而不是全画在同一层底色上。
+ */
+const card = (x, y, w, h, r, c = 'f-surface s-line') =>
+  rect(x, y, w, h, r, c, ' filter="url(#fx)"') + path(`M${n(x + r)} ${n(y + 0.75)}H${n(x + w - r)}`, 's-hl no-fill');
+/** 卡片里再凹进去一层（证据、控件）：更深的底、没有影。 */
+const inset = (x, y, w, h, r) => rect(x, y, w, h, r, 'f-inset s-line');
 /** 箭头：从 (x1,y1) 到 (x2,y2) 的一条线，末端一个小尖。只画水平或垂直方向。 */
 function arrow(x1, y1, x2, y2, c = 's-strong') {
   const a = 4;
@@ -346,9 +354,10 @@ function journey(t) {
     s += lines(cx, trackY + 60, st.sub, 't-m t-14 t-mid', 19);
   });
 
-  // 五层人数：每格 201 个点，亮着的是这一层的人
+  // 五层人数：每格 201 个点，亮着的是这一层的人。每一层是一张浮起来的小卡
   FUNNEL.forEach((count, k) => {
     const cx = xs[k + 1];
+    s += card(cx - 56, countY - 34, 112, gridBottom - countY + 50, 12);
     s += text(cx, countY, String(count), 't-d t-b t-24 t-mid t-num');
     s += text(cx, countY + 22, t.steps[k + 1].count, 't-m t-14 t-mid');
     const x0 = cx - ((cols - 1) * pitch) / 2;
@@ -366,7 +375,7 @@ function journey(t) {
   const fx = xs[0] - 54;
   const fy = countY - 18;
   t.form.slice(0, 3).forEach((label, i) => {
-    s += rect(fx, fy + i * 38, 108, 30, 8, 'f-raised s-line');
+    s += rect(fx, fy + i * 38, 108, 30, 8, 'f-inset s-line');
     s += text(fx + 11, fy + 20 + i * 38, label, 't-s t-13');
   });
   s += rect(fx, fy + 122, 108, 32, 8, 'f-fg');
@@ -375,7 +384,7 @@ function journey(t) {
   // 最后一列：一页结论的缩影
   const px = xs[6] - 54;
   const py = fy;
-  s += rect(px, py, 108, 186, 10, 'f-raised s-line');
+  s += card(px, py, 108, 186, 10, 'f-surface s-line');
   s += rect(px + 11, py + 15, 78, 7, 3.5, 'f-fg') + rect(px + 11, py + 28, 54, 7, 3.5, 'f-fg');
   [86, 80, 62].forEach((w, i) => (s += rect(px + 11, py + 50 + i * 10, w, 3.5, 1.75, 'f-subtle')));
   s += line(px + 11, py + 86, px + 97, py + 86, 's-line');
@@ -400,7 +409,7 @@ function screen(t) {
 
   px.forEach((x, i) => {
     s += text(x + 2, 35, t.titles[i], 't-d t-b t-16');
-    s += rect(x, top, pw, ph, 14, 'f-raised s-line');
+    s += card(x, top, pw, ph, 14);
     s += now(i + 1, rect(x, top, pw, ph, 14, 'no-fill s-accent'));
     if (i < 2) s += arrow(x + pw + 6, top + ph / 2, x + pw + 18, top + ph / 2);
   });
@@ -410,7 +419,7 @@ function screen(t) {
   const sw = 126;
   const sh = 256;
   const sy = top + (ph - sh) / 2;
-  s += rect(sx, sy, sw, sh, 16, 'f-bg s-strong');
+  s += rect(sx, sy, sw, sh, 16, 'f-bg s-strong', ' filter="url(#fx)"');
   s += rect(sx + 7, sy + 7, sw - 14, 32, 9, 'f-hover') + text(sx + 17, sy + 28, t.app, 't-d t-sb t-12');
   s += text(sx + 15, sy + 62, t.fields[0], 't-m t-11') + rect(sx + 15, sy + 68, sw - 30, 21, 5, 'no-fill s-strong');
   s += text(sx + 15, sy + 108, t.fields[1], 't-m t-11') + rect(sx + 15, sy + 114, sw - 30, 21, 5, 'no-fill s-strong');
@@ -432,7 +441,7 @@ function screen(t) {
   s += where.svg;
   const by = where.bottom + 14;
   const bh = top + ph - 20 - by;
-  s += rect(qx, by, pw - 40, bh, 12, 'f-surface s-line');
+  s += rect(qx, by, pw - 40, bh, 12, 'f-inset s-line');
   s += lines(qx + 14, by + 28, t.quote, 't-d t-15', 22);
 
   // ---- 3. 手上的一个动作：点哪里；屏幕变了才算
@@ -440,7 +449,7 @@ function screen(t) {
   const hw = pw - 40;
   const aw = Math.ceil(widthOf(t.action, 14) + 28);
   s += rect(hx, top + 22, aw, 28, 14, 'f-hover') + text(hx + aw / 2, top + 41, t.action, 't-d t-sb t-14 t-mid');
-  s += rect(hx, top + 64, hw, 62, 10, 'f-bg s-strong');
+  s += rect(hx, top + 64, hw, 62, 10, 'f-bg s-strong', ' filter="url(#fx)"');
   s += text(hx + 100, top + 100.5, t.target, 't-d t-16 t-mid') + line(hx + 28, top + 107, hx + 172, top + 107, 's-muted');
   // 手指落点：琥珀表示「指向的就是它」
   s += circle(hx + hw - 34, top + 98, 15, 'no-fill s-accent ripple') + circle(hx + hw - 34, top + 98, 5.5, 'f-accent');
@@ -486,98 +495,122 @@ const VERDICT_FUNNEL = [194, 155, 4, 4, 0];
 
 function verdict(t) {
   const W = 960;
-  const L = 76; // 主栏左边
-  const R = 618; // 主栏右边
-  const C = 676; // 右栏左边
-  const E = 908; // 右栏右边
+  const L = 76; // 主栏文字左边
+  const R = 614; // 主栏文字右边
+  const C = 680; // 右栏文字左边
+  const E = 904; // 右栏文字右边
+  const CL = L - 18; // 主栏卡片
+  const CW = R - L + 36;
+  const RL = C - 18; // 右栏卡片
+  const RW = E - C + 36;
   let s = '';
   let marks = '';
   const marker = (i, x, y) => {
     marks += circle(x, y, 10, 'f-card s-sage') + now(i, circle(x, y, 10, 'f-accent-soft s-accent')) + text(x, y + 4.5, String(i), 't-m t-sb t-13 t-mid t-num');
   };
 
-  // 产品页头与标签
-  s += text(L, 62, t.product[0], 't-d t-b t-19') + text(L, 84, t.product[1], 't-m t-14');
+  // 产品页头：单独一条，和下面的内容分开
+  s += rect(25, 25, W - 50, 124, 17, 'f-raised') + rect(25, 100, W - 50, 49, 0, 'f-raised') + line(25, 149, W - 25, 149, 's-line');
+  s += text(L, 64, t.product[0], 't-d t-b t-19') + text(L, 86, t.product[1], 't-m t-14');
   let tx = L;
   const tabW = t.tabs.map((x) => Math.ceil(widthOf(x, 14) + 26));
-  s += rect(L, 102, tabW.reduce((a, b) => a + b, 0) + 6, 34, 10, 'f-raised s-line');
+  s += rect(L, 102, tabW.reduce((a, b) => a + b, 0) + 6, 34, 10, 'f-inset s-line');
   t.tabs.forEach((label, i) => {
-    if (i === 0) s += rect(tx + 3, 105, tabW[i], 28, 7, 'f-hover');
+    if (i === 0) s += rect(tx + 3, 105, tabW[i], 28, 7, 'f-hover s-line');
     s += text(tx + 3 + tabW[i] / 2, 124, label, `t-14 t-mid ${i === 0 ? 't-d t-sb' : 't-m'}`);
     tx += tabW[i];
   });
   s += text(R, 124, t.engineering, 't-m t-14 t-end');
 
-  // 结论
-  let y = 182;
-  s += lines(L, y, t.headline, 't-d t-b t-24', 32);
-  marker(1, 48, y - 8);
-  y += (t.headline.length - 1) * 32 + 32;
-  s += circle(L + 5, y - 5, 4.5, 'f-danger') + pair(L + 19, y, t.status[0], 't-d t-sb', t.status[1], 't-m', 't-15');
-  y += 42;
+  // 结论：一张自己的卡，带一点点「出事了」的底色
+  let y = 172;
+  const hy = y + 42;
+  const headH = 42 + (t.headline.length - 1) * 32 + 34 + 22;
+  s += card(CL, y, CW, headH, 14) + rect(CL, y, CW, headH, 14, 'f-danger-wash');
+  s += lines(L, hy, t.headline, 't-d t-b t-24', 32);
+  marker(1, 40, hy - 8);
+  const sy = hy + (t.headline.length - 1) * 32 + 34;
+  s += circle(L + 5, sy - 5, 4.5, 'f-danger') + pair(L + 19, sy, t.status[0], 't-d t-sb', t.status[1], 't-m', 't-15');
+  y += headH + 34;
+
+  // 小节标题
   s += text(L, y, t.section, 't-d t-b t-16');
-  y += 15;
-  s += line(L, y, R, y, 's-line');
+  y += 14;
 
-  // 一句话，展开着
-  y += 29;
-  s += lines(L, y, t.sentence, 't-d t-15', 23);
-  marker(2, 48, y - 5);
-  const ay = y + 6;
-  [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, ay, 9, 'f-avatar s-card')));
-  s += path(`M${R - 10} ${ay + 2}l5 -5l5 5`, 's-muted no-fill');
-  y += (t.sentence.length - 1) * 23 + 38;
-
-  // 证据：谁、原话、当时的屏幕
-  marker(3, 48, y - 5);
-  s += circle(L + 12, y + 1, 12, 'f-sage') + circle(L + 12, y - 3, 4.2, 'f-bg') + path(`M${L + 4.5} ${y + 10}a7.5 7 0 0 1 15 0z`, 'f-bg');
-  s += pair(L + 36, y, t.who[0], 't-d t-b', t.who[1], 't-m', 't-15');
-  s += lines(L + 36, y + 26, t.quote, 't-d t-15', 23);
-  const qy = y + 26 + t.quote.length * 23;
-  s += text(L + 36, qy + 6, t.open, 't-link t-14');
+  // 展开着的一句：句子在卡上，证据凹进去一层
+  const top = y;
+  let iy = top + 34;
+  s += lines(L, iy, t.sentence, 't-d t-15', 23);
+  marker(2, 40, iy - 5);
+  [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, iy - 5, 9, 'f-avatar s-card')));
+  s += path(`M${R - 10} ${iy - 3}l5 -5l5 5`, 's-muted no-fill');
+  iy += (t.sentence.length - 1) * 23 + 22;
+  const ey = iy; // 证据框的上沿
+  let qy0 = ey + 34;
+  marker(3, 40, qy0 - 5);
+  const ex = L + 14;
+  s += circle(ex + 12, qy0 + 1, 12, 'f-sage') + circle(ex + 12, qy0 - 3, 4.2, 'f-bg') + path(`M${ex + 4.5} ${qy0 + 10}a7.5 7 0 0 1 15 0z`, 'f-bg');
+  s += pair(ex + 36, qy0, t.who[0], 't-d t-b', t.who[1], 't-m', 't-15');
+  s += lines(ex + 36, qy0 + 26, t.quote, 't-d t-15', 23);
+  const qy = qy0 + 26 + t.quote.length * 23;
+  s += text(ex + 36, qy + 6, t.open, 't-link t-14');
   // 当时的屏幕：空的笔记，底下却写着「已自动保存」
-  const hx = R - 116;
-  const hy = y - 14;
-  s += rect(hx, hy, 116, 88, 8, 'f-surface s-strong');
-  s += rect(hx + 5, hy + 5, 106, 17, 4, 'f-hover') + text(hx + 12, hy + 17, t.thumb[0], 't-d t-sb t-9');
-  s += rect(hx + 10, hy + 30, 96, 15, 3, 'no-fill s-strong') + text(hx + 16, hy + 41, t.thumb[1], 't-s t-9');
-  s += rect(hx + 10, hy + 50, 96, 19, 3, 'no-fill s-strong');
-  s += text(hx + 58, hy + 82, t.thumb[2], 't-m t-9 t-mid');
-  y = Math.max(qy + 6, hy + 88) + 24;
-  s += line(L, y, R, y, 's-line');
+  const hx = R - 14 - 116;
+  const hy2 = qy0 - 14;
+  s += rect(hx, hy2, 116, 88, 8, 'f-surface s-strong', ' filter="url(#fx)"');
+  s += rect(hx + 5, hy2 + 5, 106, 17, 4, 'f-hover') + text(hx + 12, hy2 + 17, t.thumb[0], 't-d t-sb t-9');
+  s += rect(hx + 10, hy2 + 30, 96, 15, 3, 'no-fill s-strong') + text(hx + 16, hy2 + 41, t.thumb[1], 't-s t-9');
+  s += rect(hx + 10, hy2 + 50, 96, 19, 3, 'no-fill s-strong');
+  s += text(hx + 58, hy2 + 82, t.thumb[2], 't-m t-9 t-mid');
+  const eb = Math.max(qy + 6, hy2 + 88) + 18;
+  const evidence = inset(L, ey, R - L, eb - ey, 10);
+  const bottom = eb + 18;
+  const expanded = card(CL, top, CW, bottom - top, 14);
 
-  // 下一句，收着
-  y += 28;
-  s += lines(L, y, t.more, 't-d t-15', 23);
-  [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, y - 5, 9, 'f-avatar s-card')));
-  s += path(`M${R - 10} ${y - 8}l5 5l5 -5`, 's-muted no-fill');
-  y += 23;
-  s += line(L, y, R, y, 's-line');
-  const frameBottom = y + 26;
+  // 下一句，收着：一条更安静的行
+  const ry = bottom + 12;
+  const rowH = 50;
+  const collapsed = card(CL, ry, CW, rowH, 12, 'f-raised s-line');
+  s += lines(L, ry + 31, t.more, 't-d t-15', 23);
+  [0, 1, 2].forEach((i) => (s += circle(R - 54 + i * 13, ry + 26, 9, 'f-avatar s-card')));
+  s += path(`M${R - 10} ${ry + 23}l5 5l5 -5`, 's-muted no-fill');
+  const mainBottom = ry + rowH;
 
-  // 右栏：人数（模拟）、宣发强度、把手机递给几个人
-  marker(4, C - 22, 57);
+  // 右栏：三张卡——人数（模拟）、宣发强度、把手机递给几个人
+  let ry1 = 172;
+  const labelW = Math.max(...t.funnel.map((x) => widthOf(x, 14))) + 16;
+  const barW = E - C - labelW - 40;
+  const peopleH = 52 + VERDICT_FUNNEL.length * 30 + 10;
+  let right = card(RL, ry1, RW, peopleH, 14);
+  marker(4, RL - 14, ry1 + 30);
   const sw = Math.ceil(widthOf(t.simulated, 13) + 20);
   const pwid = widthOf(t.people, 16);
-  s += text(C, 63, t.people, 't-d t-b t-16') + rect(C + pwid + 12, 46, sw, 24, 12, 'no-fill s-strong') + text(C + pwid + 12 + sw / 2, 62.5, t.simulated, 't-m t-13 t-mid');
-  const labelW = Math.max(...t.funnel.map((x) => widthOf(x, 14))) + 16;
-  const barW = E - C - labelW - 46;
+  right += text(C, ry1 + 36, t.people, 't-d t-b t-16') + rect(C + pwid + 12, ry1 + 19, sw, 24, 12, 'no-fill s-strong') + text(C + pwid + 12 + sw / 2, ry1 + 35.5, t.simulated, 't-m t-13 t-mid');
   VERDICT_FUNNEL.forEach((v, i) => {
-    const ry = 104 + i * 32;
-    s += text(C, ry, t.funnel[i], 't-m t-14');
-    if (v > 0) s += rect(C + labelW, ry - 10, Math.max(2, (barW * v) / VERDICT_FUNNEL[0]), 11, 5.5, 'f-sage');
-    s += text(E, ry, String(v), `t-b t-16 t-end t-num ${v ? 't-d' : 't-s'}`);
+    const fy = ry1 + 76 + i * 30;
+    right += text(C, fy, t.funnel[i], 't-m t-14');
+    right += rect(C + labelW, fy - 10, barW, 11, 5.5, 'f-track');
+    if (v > 0) right += rect(C + labelW, fy - 10, Math.max(4, (barW * v) / VERDICT_FUNNEL[0]), 11, 5.5, 'f-sage');
+    right += text(E, fy, String(v), `t-b t-16 t-end t-num ${v ? 't-d' : 't-s'}`);
   });
-  s += line(C, 254, E, 254, 's-line');
-  s += text(C, 284, t.intensity, 't-d t-b t-15') + text(E, 284, '90%', 't-d t-15 t-end t-num');
-  s += line(C, 308, E, 308, 's-strong') + path(`M${C} 308H${n(C + (E - C) * 0.9)}`, 's-fg sw-2') + circle(C + (E - C) * 0.9, 308, 7, 'f-fg s-card sw-2');
-  s += line(C, 336, E, 336, 's-line');
-  s += text(C, 366, t.hand, 't-d t-b t-15');
-  s += rect(C, 382, 88, 36, 10, 'f-raised s-line') + text(C + 17, 405.5, '−', 't-m t-16 t-mid') + text(C + 44, 405, '3', 't-d t-15 t-mid t-num') + text(C + 71, 405.5, '+', 't-m t-16 t-mid');
-  s += rect(C + 98, 382, E - C - 98, 36, 10, 'no-fill s-strong') + text(C + 98 + (E - C - 98) / 2, 405, t.handButton, 't-d t-sb t-15 t-mid');
+  ry1 += peopleH + 12;
+  const intH = 84;
+  right += card(RL, ry1, RW, intH, 14);
+  right += text(C, ry1 + 34, t.intensity, 't-d t-b t-15') + text(E, ry1 + 34, '90%', 't-d t-15 t-end t-num');
+  const ty = ry1 + 60;
+  right += line(C, ty, E, ty, 's-strong') + path(`M${C} ${ty}H${n(C + (E - C) * 0.9)}`, 's-fg sw-2') + circle(C + (E - C) * 0.9, ty, 7, 'f-fg s-card sw-2');
+  ry1 += intH + 12;
+  const handH = 104;
+  right += card(RL, ry1, RW, handH, 14);
+  right += text(C, ry1 + 34, t.hand, 't-d t-b t-15');
+  const by = ry1 + 52;
+  right += rect(C, by, 88, 36, 10, 'f-inset s-line') + text(C + 17, by + 23.5, '−', 't-m t-16 t-mid') + text(C + 44, by + 23, '3', 't-d t-15 t-mid t-num') + text(C + 71, by + 23.5, '+', 't-m t-16 t-mid');
+  right += rect(C + 98, by, E - C - 98, 36, 10, 'f-hover s-strong') + text(C + 98 + (E - C - 98) / 2, by + 23, t.handButton, 't-d t-sb t-15 t-mid');
+  const rightBottom = ry1 + handH;
 
+  const frameBottom = Math.max(mainBottom, rightBottom) + 28;
   // 页面的框，画在最底下
-  const frame = rect(24, 24, W - 48, frameBottom - 24, 18, 'f-bg s-line') + line(C - 28, 44, C - 28, frameBottom - 20, 's-line');
+  const frame = rect(24, 24, W - 48, frameBottom - 24, 18, 'f-bg s-line');
 
   // 图例
   const ly = frameBottom + 36;
@@ -587,7 +620,7 @@ function verdict(t) {
     legend += circle(x, ly - 5, 10, 'no-fill s-sage') + now(i + 1, circle(x, ly - 5, 10, 'f-accent-soft s-accent')) + text(x, ly - 0.5, String(i + 1), 't-m t-sb t-13 t-mid t-num');
     legend += lines(x + 20, ly, item, 't-m t-14', 19);
   });
-  return { w: W, h: ly + 19 + 22, steps: 4, body: frame + s + marks + legend };
+  return { w: W, h: ly + 19 + 22, steps: 4, body: frame + expanded + evidence + collapsed + right + s + marks + legend };
 }
 
 /* ---------------------------------------------------------------- coding agent 的循环 */
@@ -602,7 +635,7 @@ function loop(t) {
   const xs = [0, 1, 2, 3].map((i) => 24 + i * (bw + gap));
   xs.forEach((x, i) => {
     const st = t.steps[i];
-    s += rect(x, top, bw, bh, 12, 'f-raised s-line') + now(i + 1, rect(x, top, bw, bh, 12, 'no-fill s-accent'));
+    s += card(x, top, bw, bh, 12) + now(i + 1, rect(x, top, bw, bh, 12, 'no-fill s-accent'));
     s += text(x + 18, top + 36, st.title, 't-d t-b t-16') + text(x + 18, top + 61, st.sub, `t-m t-14${st.mono ? ' t-mono' : ''}`);
     if (i < 3) s += arrow(x + bw + 8, top + bh / 2, x + bw + gap - 8, top + bh / 2);
   });
@@ -618,7 +651,7 @@ function loop(t) {
   s += path(`M${n(xr)} ${top + bh}V${ry}H${n(xl)}V${top + bh + 2}M${n(xl - 4)} ${top + bh + 6}l4 -4l4 4`, 's-strong no-fill');
   s += lines((xl + cx1) / 2, ry - 31, t.back, 't-m t-14 t-mid', 19) + lines((xr + cx2) / 2, ry - 31, t.carries, 't-m t-14 t-mid', 19);
   // 取回的东西：一个问题，带复现步骤
-  s += rect(cx1, cy, cx2 - cx1, ch, 12, 'f-surface s-line');
+  s += card(cx1, cy, cx2 - cx1, ch, 12) + rect(cx1, cy, cx2 - cx1, ch, 12, 'f-danger-wash');
   s += rect(cx1 + 16, cy + 15, 34, 22, 6, 'no-fill s-danger') + text(cx1 + 33, cy + 30.5, 'P0', 't-danger t-sb t-13 t-mid');
   s += text(cx1 + 60, cy + 31, t.issue, 't-d t-sb t-14') + text(cx1 + 60, cy + 52, t.met, 't-m t-13');
   t.repro.forEach(([num, step], i) => {
@@ -641,7 +674,7 @@ function stack(t) {
   t.entries.forEach(([title, sub], i) => {
     const x = 24 + i * (ew + eg);
     const mono = /^[a-z]+$/.test(sub) || sub === 'MCP';
-    s += rect(x, 20, ew, 56, 10, 'f-raised s-line') + text(x + ew / 2, 43, title, 't-d t-b t-15 t-mid') + text(x + ew / 2, 63, sub, `t-m t-13 t-mid${mono ? ' t-mono' : ''}`);
+    s += card(x, 20, ew, 56, 10) + text(x + ew / 2, 43, title, 't-d t-b t-15 t-mid') + text(x + ew / 2, 63, sub, `t-m t-13 t-mid${mono ? ' t-mono' : ''}`);
     s += arrow(x + ew / 2, 80, x + ew / 2, 102);
   });
 
@@ -662,10 +695,10 @@ function stack(t) {
   const r2 = r1 + chh + 12;
   const oh = r2 + chh + 16 - oy;
   const mBottom = oy + oh + 20;
-  s += rect(24, mTop, W - 48, mBottom - mTop, 20, 'no-fill s-strong dashed');
-  s += rect(ox, oy, ow, oh, 14, 'f-raised s-line') + text(ox + 18, oy + 28, t.ours, 't-d t-sb t-14') + text(ox + ow - 18, oy + 28, 'ghcr.io/plutokeating/jobs', 't-s t-13 t-mono t-end');
-  s += rect(ix, gy, iw, 42, 10, 'f-surface s-line') + text(ix + 16, gy + 26.5, t.gateway[0], 't-d t-b t-15') + text(ix + iw - 16, gy + 26.5, t.gateway[1], 't-m t-14 t-end');
-  const cell = (x, y, h, c) => rect(x, y, cw, h, 10, 'f-surface s-line') + text(x + 16, y + 30, c[0], 't-d t-b t-15') + lines(x + 16, y + 54, c.slice(1), 't-m t-14', 21);
+  s += rect(24, mTop, W - 48, mBottom - mTop, 20, 'f-inset s-strong dashed');
+  s += card(ox, oy, ow, oh, 14, 'f-raised s-line') + text(ox + 18, oy + 28, t.ours, 't-d t-sb t-14') + text(ox + ow - 18, oy + 28, 'ghcr.io/plutokeating/jobs', 't-s t-13 t-mono t-end');
+  s += card(ix, gy, iw, 42, 10) + text(ix + 16, gy + 26.5, t.gateway[0], 't-d t-b t-15') + text(ix + iw - 16, gy + 26.5, t.gateway[1], 't-m t-14 t-end');
+  const cell = (x, y, h, c) => card(x, y, cw, h, 10) + text(x + 16, y + 30, c[0], 't-d t-b t-15') + lines(x + 16, y + 54, c.slice(1), 't-m t-14', 21);
   s += cell(ix, r1, chh, t.api) + cell(ix + cw + 12, r1, chh, t.world);
   // 世界服务常驻运行：一盏一直亮着的灯
   s += circle(ix + cw + 12 + cw - 20, r1 + 24, 4.5, 'f-accent breath');
@@ -674,11 +707,11 @@ function stack(t) {
   // 标准镜像
   const bx = ox + ow + 20;
   const bw = W - 44 - bx;
-  s += rect(bx, oy, bw, oh, 14, 'f-raised s-line') + text(bx + 18, oy + 28, t.standard, 't-d t-sb t-14');
+  s += card(bx, oy, bw, oh, 14, 'f-raised s-line') + text(bx + 18, oy + 28, t.standard, 't-d t-sb t-14');
   const ih = (oh - 44 - 16 - 3 * 10) / 4;
   t.images.forEach(([title, sub], i) => {
     const y = oy + 44 + i * (ih + 10);
-    s += rect(bx + 16, y, bw - 32, ih, 10, `f-surface s-line${i === 3 ? ' dashed' : ''}`) + text(bx + 32, y + ih / 2 - 3, title, 't-d t-b t-15') + text(bx + 32, y + ih / 2 + 17, sub, 't-m t-13');
+    s += (i === 3 ? rect(bx + 16, y, bw - 32, ih, 10, 'f-surface s-line dashed') : card(bx + 16, y, bw - 32, ih, 10)) + text(bx + 32, y + ih / 2 - 3, title, 't-d t-b t-15') + text(bx + 32, y + ih / 2 + 17, sub, 't-m t-13');
   });
   s += path(`M${ox + ow + 2} ${oy + oh / 2}h16`, 's-strong no-fill');
 
@@ -701,7 +734,11 @@ export const FIGURES = Object.keys(DRAW);
 export function figure(name, lang) {
   const t = figureText[lang]?.[name];
   if (!DRAW[name] || !t) throw new Error(`没有这幅示意图：${name}（语言 ${lang}）`);
-  return { name, label: t.label, ...DRAW[name](t) };
+  const f = DRAW[name](t);
+  // 软影的滤镜：每幅图一个 id（页面上同时内联好几幅图）
+  const fx = `fx-${name}`;
+  const defs = `<defs><filter id="${fx}" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow class="fx-shadow" dx="0" dy="6" stdDeviation="9"/></filter></defs>`;
+  return { name, label: t.label, ...f, body: defs + f.body.replaceAll('url(#fx)', `url(#${fx})`) };
 }
 
 /** 内联进页面的写法：一个可以横向滚动的框（窄屏上图不缩到看不清），里面是 <svg>。 */
