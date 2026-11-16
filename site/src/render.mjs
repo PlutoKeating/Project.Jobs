@@ -4,7 +4,7 @@
  * 约定：
  * - 所有可见文本经 esc() 转义；段落里允许两种极简内联标记：[文字](地址) 生成链接（外链自动加 rel 与 ↗），`代码` 生成 <code>。
  * - 页面不含 style 属性与 <style> 块；内联脚本只有 <head> 里的一段，它的 sha256 由 scripts/build.mjs 写进 _headers 的 CSP。
- * - 颜色只来自 css/tokens.css（PlutoKeating design system）；像素图形只有字标与页脚的街道。
+ * - 颜色只来自 css/tokens.css（PlutoKeating design system）；像素图形只有字标、首页开头的城（一幅画）与页脚的街道。
  */
 import {
   CONTACT_EMAIL,
@@ -122,9 +122,14 @@ export function horizonRects(width, seed, litClass = () => '') {
 /** 页脚的像素街道：一块 HORIZON_W 格宽的街道横向平铺。 */
 function horizon() {
   const rects = horizonRects(HORIZON_W, 20261115);
+  // 亮着的窗与地平线单独一层，好让它们像首页那幅画里的窗一样微微发光（.horizon-lit 的 drop-shadow）
+  const lit = rects.filter((r) => r.includes('px-lit'));
+  const rest = rects.filter((r) => !r.includes('px-lit'));
+  const pattern = (id, body) => `<pattern id="${id}" width="${HORIZON_W * 4}" height="${HORIZON_H * 4}" patternUnits="userSpaceOnUse"><g transform="scale(4)">${body.join('')}</g></pattern>`;
   return `<svg class="horizon" width="100%" height="${HORIZON_H * 4}" aria-hidden="true" focusable="false" shape-rendering="crispEdges">
-    <defs><pattern id="street" width="${HORIZON_W * 4}" height="${HORIZON_H * 4}" patternUnits="userSpaceOnUse"><g transform="scale(4)">${rects.join('')}</g></pattern></defs>
+    <defs>${pattern('street', rest)}${pattern('street-lit', lit)}</defs>
     <rect width="100%" height="${HORIZON_H * 4}" fill="url(#street)"/>
+    <rect class="horizon-lit" width="100%" height="${HORIZON_H * 4}" fill="url(#street-lit)"/>
   </svg>`;
 }
 

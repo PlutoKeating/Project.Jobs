@@ -5,3 +5,5 @@ wrangler.jsonc
 src/
 scripts/
 docs/
+# 生成图的提示词记录（shots/*.json，与图同名）：留在仓库里备查，不发出去
+shots/*.json

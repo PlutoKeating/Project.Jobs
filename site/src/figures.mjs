@@ -707,5 +707,5 @@ export function figure(name, lang) {
 /** 内联进页面的写法：一个可以横向滚动的框（窄屏上图不缩到看不清），里面是 <svg>。 */
 export function renderFigure(name, lang) {
   const f = figure(name, lang);
-  return `<div class="fig-wrap"><svg class="fig fig-${f.name}${f.steps ? ` fig-n${f.steps}` : ''}" viewBox="0 0 ${f.w} ${f.h}" width="${f.w}" height="${f.h}" role="img" aria-label="${esc(f.label)}">${f.body}</svg></div>`;
+  return `<div class="fig-wrap panel-night"><svg class="fig fig-${f.name}${f.steps ? ` fig-n${f.steps}` : ''}" viewBox="0 0 ${f.w} ${f.h}" width="${f.w}" height="${f.h}" role="img" aria-label="${esc(f.label)}">${f.body}</svg></div>`;
 }

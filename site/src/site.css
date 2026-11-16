@@ -28,6 +28,8 @@
 }
 
 :root {
+  /* 页面本身的底色：在 :root 解析，进了 .night 也还是页面的底色，给夜色区域的上下羽化用 */
+  --site-page-bg: var(--ds-color-bg);
   --site-font-sans: "Inter", "Noto Sans SC", "Noto Sans SC Variable", "Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --site-gutter: 1.5rem;
   --site-section: clamp(3.5rem, 8vw, 6rem);
@@ -77,7 +79,7 @@ img { display: block; max-width: 100%; height: auto; }
 ::selection { background: var(--ds-color-selection); }
 :focus-visible { outline: var(--ds-border-thick) solid var(--ds-color-accent); outline-offset: 2px; border-radius: var(--ds-radius-xs); }
 
-.col { width: 100%; max-width: calc(var(--ds-container-content) + 2 * var(--site-gutter)); margin-inline: auto; padding-inline: var(--site-gutter); }
+.col { width: 100%; max-width: calc(var(--ds-container-wide) + 2 * var(--site-gutter)); margin-inline: auto; padding-inline: var(--site-gutter); }
 .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 .skip-link { position: absolute; left: var(--site-gutter); top: -4rem; z-index: 30; padding: 0.5rem 0.875rem; border-radius: var(--ds-radius-md); background: var(--ds-color-fg-display); color: var(--ds-color-bg); font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); text-decoration: none; }
 .skip-link:focus { top: 0.75rem; }
@@ -156,11 +158,85 @@ code, pre { font-family: var(--ds-font-mono); }
 }
 
 /* ------------------------------------------------------------ 首页 */
-.hero { padding-top: clamp(3rem, 9vw, 7rem); }
-.hero h1 { max-width: 16em; font-size: clamp(2.25rem, 1.35rem + 4.3vw, var(--ds-text-6xl)); line-height: 1.12; text-wrap: balance; }
-.hero h1 span { white-space: nowrap; }
-.lede { margin-top: 1.5rem; max-width: min(40rem, var(--site-measure)); color: var(--ds-color-fg-muted); font-size: var(--ds-text-lg); line-height: var(--ds-text-lg--line-height); text-wrap: pretty; }
-.install { display: flex; align-items: stretch; max-width: 42rem; margin-top: 2.5rem; border: var(--ds-border-hairline) solid var(--ds-color-border-strong); border-radius: var(--ds-radius-md); background: var(--ds-color-code-bg); scroll-margin-top: calc(var(--ds-header-height) + 2rem); }
+/*
+ * 开头：一座雨夜里的城占满首屏（shots/town-night.*，生成的画），此刻在说话、在做事的人从各自亮着的窗边开口。
+ * 舞台按画的比例铺满宽度；屏幕比画窄时（手机）画保持一个最小高度、左右裁掉，挂在窗边的话按舞台的百分比定位，永远对着同一扇窗。
+ * 整块是 .night：不随页面的明暗变。
+ */
+.town { position: relative; }
+.town-night { position: relative; overflow: hidden; background: var(--ds-color-bg); color: var(--ds-color-fg); }
+/* 夜色的下沿羽化进页面的底色（亮色主题下由深到浅；暗色主题下两端同色，看不出来） */
+.town::after { content: ""; display: block; height: clamp(1.5rem, 2.5vw, 2.5rem); background: linear-gradient(to bottom, var(--site-night-bg), color-mix(in oklab, var(--site-night-bg) 40%, var(--ds-color-bg)) 45%, var(--ds-color-bg)); }
+.town-stage { position: relative; width: max(100%, 66rem); aspect-ratio: 3168 / 1344; margin-left: 50%; translate: -50% 0; }
+.town-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* 画的下沿融进页面的底色，标题压在上面也读得清 */
+.town-stage::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to bottom, transparent 58%, var(--ds-color-bg) 99%); pointer-events: none; }
+/* 细雨：极淡的斜线缓缓落下，只在画上 */
+.town-stage::before { content: ""; position: absolute; inset: -20% 0 30%; z-index: 1; background-image: repeating-linear-gradient(104deg, transparent 0 13px, var(--ds-color-border) 13px 14px, transparent 14px 41px); background-size: 220px 220px; mask-image: linear-gradient(to bottom, black, transparent); opacity: 0.55; animation: town-rain 1.6s linear infinite; pointer-events: none; }
+@keyframes town-rain { to { background-position: -48px 220px; } }
+
+.town-copy { position: relative; z-index: 2; margin-top: calc(-0.121 * min(100vw, 100%) / 2.357 - 0.625rem); padding-bottom: 1.75rem; }
+/* 下一章紧跟在城下面，标题在首屏底边露个头 */
+.town + .chapter { margin-top: 0; }
+/* 亮色主题下夜色要先褪完，下一章的标题上面留出一行的空 */
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .town + .chapter { margin-top: 1.75rem; } }
+:root[data-theme="light"] .town + .chapter { margin-top: 1.75rem; }
+.town h1 { font-size: clamp(1.75rem, 2.45vw, 3.125rem); line-height: 1.2; font-weight: var(--ds-weight-semibold); text-wrap: balance; text-shadow: 0 2px 24px var(--ds-color-bg); }
+.town h1 span { white-space: nowrap; }
+.lede { margin-top: 0.625rem; max-width: 52rem; color: var(--ds-color-fg-muted); font-size: clamp(0.9375rem, 1.14vw, 1.1875rem); line-height: 1.6; text-wrap: pretty; }
+.town .install { margin-top: 1.125rem; }
+
+/*
+ * 挂在窗边的话。.voice 是画里那一扇亮着的窗的位置（画的百分比，舞台与画同比例，所以任何宽度都对得上）：
+ * 窗上一圈细光框标出「就是这扇」，上面垂一根细线，再上面是深色玻璃小标签。左半边的标签往右展开，右半边的往左。
+ */
+.voices { position: absolute; inset: 0; z-index: 1; }
+.voice { position: absolute; left: var(--x); top: var(--y); width: 0; height: 0; }
+.v1 { --x: 33.97%; --y: 37.24%; --i: 0; }
+.v2 { --x: 36.92%; --y: 50.04%; --i: 1; }
+.v3 { --x: 60.16%; --y: 69.35%; --i: 2; }
+.v4 { --x: 93.24%; --y: 61.01%; --i: 3; }
+.v5 { --x: 89.77%; --y: 37.65%; --i: 4; }
+.v6 { --x: 92.67%; --y: 74.45%; --i: 5; }
+.voice-tag {
+  position: absolute; left: -1.25rem; bottom: calc(0.875rem + 0.375rem); display: inline-flex; align-items: baseline; padding: 0.375rem 0.75rem;
+  border: var(--ds-border-hairline) solid var(--ds-color-border-strong); border-radius: var(--ds-radius-md);
+  background: var(--ds-color-surface-glass); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  box-shadow: var(--ds-shadow-md);
+  color: var(--ds-color-fg); font-size: clamp(0.8125rem, 0.6rem + 0.45vw, 1rem); line-height: 1.4; white-space: nowrap;
+  animation: voice-in var(--ds-duration-reveal) var(--ds-ease-emphasized) backwards;
+  animation-delay: calc(0.5s + var(--i) * 0.42s);
+}
+:is(.v3, .v4, .v5, .v6) .voice-tag { left: auto; right: -1.25rem; }
+/* 玻璃上一层极细的扫描线 */
+.voice-tag::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(to bottom, var(--ds-color-border) 0 1px, transparent 1px 3px); opacity: 0.5; pointer-events: none; }
+/* 细线：从标签下沿垂到窗 */
+.voice-tag::after { content: ""; position: absolute; left: 1.25rem; top: 100%; width: 1px; height: calc(0.875rem + 0.375rem - 5px); background: linear-gradient(var(--ds-color-border-strong), var(--ds-color-fg-muted)); transform-origin: top; animation: voice-line var(--ds-duration-base) var(--ds-ease-standard) backwards; animation-delay: calc(0.35s + var(--i) * 0.42s); }
+:is(.v3, .v4, .v5, .v6) .voice-tag::after { left: auto; right: 1.25rem; }
+/* 那扇窗：一圈细光框，不盖住画里的窗 */
+.voice::after { content: ""; position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border: var(--ds-border-hairline) solid var(--ds-color-fg); box-shadow: 0 0 10px 1px var(--ds-color-orb-glow-mid), inset 0 0 6px var(--ds-color-orb-glow-mid); animation: voice-window var(--ds-duration-base) var(--ds-ease-standard) backwards; animation-delay: calc(0.2s + var(--i) * 0.42s); }
+.voice b { color: var(--ds-color-fg-display); font-weight: var(--ds-weight-medium); }
+.voice-dot { padding-inline: 0.4em; color: var(--ds-color-fg-subtle); }
+.voice-where, .voice-doing { color: var(--ds-color-fg-muted); }
+.voice-say { color: var(--ds-color-fg); }
+/* 此刻正在被用的产品：琥珀只给「正在用」与那扇窗（琥珀即此刻） */
+.voice-now { color: var(--ds-color-accent); font-weight: var(--ds-weight-medium); font-variant-numeric: tabular-nums; }
+.voice-sim { padding: 0 0.375rem; border: var(--ds-border-hairline) solid var(--ds-color-border-strong); border-radius: var(--ds-radius-full); color: var(--ds-color-fg-muted); font-size: 0.75em; }
+.is-now::after { border-color: var(--ds-color-accent); box-shadow: 0 0 12px 2px var(--ds-color-accent-glow), inset 0 0 6px var(--ds-color-accent-glow); animation: voice-window var(--ds-duration-base) var(--ds-ease-standard) backwards, voice-breath var(--ds-duration-breath) var(--ds-ease-breath) infinite; animation-delay: calc(0.2s + var(--i) * 0.42s), calc(1s + var(--i) * 0.42s); }
+@keyframes voice-window { from { opacity: 0; transform: scale(0.4); } }
+@keyframes voice-line { from { transform: scaleY(0); } }
+@keyframes voice-in { from { opacity: 0; filter: blur(6px); transform: translateY(4px); } }
+@keyframes voice-breath { 50% { box-shadow: 0 0 4px 1px var(--ds-color-accent-glow), inset 0 0 2px var(--ds-color-accent-glow); opacity: 0.75; } }
+/* 屏幕窄：画左右被裁，只留落在中间那两扇窗上的两句 */
+@media (max-width: 47.99rem) {
+  .v1, .v4, .v5, .v6 { display: none; }
+  .town-copy { margin-top: -3.5rem; }
+  /* 主操作完整可见：命令在窄屏上折行，不藏在横向滚动里 */
+  .install code[id] { white-space: normal; overflow-wrap: normal; }
+}
+
+.install { display: flex; align-items: stretch; max-width: 42rem; margin-top: 2.5rem; border: var(--ds-border-hairline) solid var(--ds-color-border-strong); border-radius: var(--ds-radius-md); background: var(--ds-color-code-bg); box-shadow: inset 0 1px 0 0 var(--ds-color-border-strong), var(--ds-shadow-lg); transition: border-color var(--ds-duration-fast) var(--ds-ease-standard), box-shadow var(--ds-duration-fast) var(--ds-ease-standard); scroll-margin-top: calc(var(--ds-header-height) + 2rem); }
+.install:hover, .install:focus-within { border-color: var(--ds-color-fg-subtle); box-shadow: inset 0 1px 0 0 var(--ds-color-border-strong), var(--ds-shadow-lg), 0 0 0 4px var(--ds-color-secondary-soft); }
 .install code { flex: 1; min-width: 0; padding: 0.875rem 1rem; overflow-x: auto; color: var(--ds-color-code-fg); font-size: var(--ds-text-sm); line-height: 1.6; white-space: nowrap; scrollbar-width: none; }
 .install code::-webkit-scrollbar { display: none; }
 .install button { flex: none; display: inline-flex; align-items: center; gap: 0.5rem; padding-inline: 1rem; border: 0; border-left: var(--ds-border-hairline) solid var(--ds-color-border-strong); border-radius: 0 var(--ds-radius-md) var(--ds-radius-md) 0; background: transparent; color: var(--ds-color-fg-muted); font: inherit; font-size: var(--ds-text-sm); font-weight: var(--ds-weight-medium); cursor: pointer; transition: color var(--ds-duration-fast) var(--ds-ease-standard), background-color var(--ds-duration-fast) var(--ds-ease-standard); }
@@ -171,8 +247,20 @@ code, pre { font-family: var(--ds-font-mono); }
 .need { margin-top: 0.875rem; max-width: var(--site-measure-sm); color: var(--ds-color-fg-muted); font-size: var(--ds-text-sm); line-height: var(--ds-text-sm--line-height); }
 .need a { margin-left: 0.25em; white-space: nowrap; }
 
-.shot { margin-top: clamp(3rem, 7vw, 5rem); }
-.shot img { width: 100%; border: var(--ds-border-hairline) solid var(--ds-color-border); border-radius: var(--ds-radius-lg); background: var(--ds-color-bg-elevated); }
+/* ------------------------------------------------------------ 夜色面板：示意图、截图、命令块共用的质感
+ * 底是由浅到深的两层炭色，顶边一道受光的细线（像楼顶的反光），往下沉的长影让它浮在夜里，再加一层几乎看不见的扫描线。
+ * 只用 tokens 的颜色；琥珀不在这里出现（琥珀只表示此刻）。 */
+.panel-night {
+  background:
+    repeating-linear-gradient(to bottom, var(--ds-color-border) 0 1px, transparent 1px 4px) top / 100% 100% no-repeat,
+    linear-gradient(to bottom, var(--ds-color-surface), var(--ds-color-bg-elevated) 70%);
+  background-blend-mode: soft-light, normal;
+  border: var(--ds-border-hairline) solid var(--ds-color-border);
+  box-shadow: inset 0 1px 0 0 var(--ds-color-border-strong), var(--ds-shadow-lg), 0 0 0 1px var(--ds-color-bg);
+}
+
+.shot { margin-top: var(--site-section); }
+.shot img { width: 100%; border: var(--ds-border-hairline) solid var(--ds-color-border-strong); border-radius: var(--ds-radius-lg); background: var(--ds-color-bg-elevated); box-shadow: var(--ds-shadow-lg), 0 48px 96px -48px var(--ds-color-secondary-soft); }
 .shot figcaption { margin-top: 0.875rem; max-width: var(--site-measure-sm); color: var(--ds-color-fg-muted); font-size: var(--ds-text-sm); line-height: var(--ds-text-sm--line-height); text-wrap: pretty; }
 .shot-light { display: none; }
 @media (prefers-color-scheme: light) {
@@ -183,11 +271,13 @@ code, pre { font-family: var(--ds-font-mono); }
 :root[data-theme="light"] .shot-dark { display: none; }
 
 /* 一章：一句标题、一段话、一幅图。图在文字下面，占满内容栏 */
-.chapter { margin-top: var(--site-section); }
+.chapter { position: relative; margin-top: var(--site-section); }
+/* 每章的标题后面一团极淡的街灯雾，让章节从平铺的底色里浮出来 */
+.chapter::before { content: ""; position: absolute; z-index: -1; left: 0; top: -4rem; width: min(48rem, 80%); height: 18rem; background: radial-gradient(closest-side, var(--ds-color-secondary-soft), transparent); opacity: 0.8; pointer-events: none; }
 .chapter h2, .closing h2 { font-size: clamp(1.625rem, 1.25rem + 1.6vw, var(--ds-text-4xl)); line-height: 1.18; }
 .chapter-head p, .also p { max-width: var(--site-measure); margin-top: 0.875rem; color: var(--ds-color-fg-muted); font-size: var(--ds-text-base); line-height: var(--ds-text-base--line-height); text-wrap: pretty; }
 /* 示意图的框：窄屏上不把图缩到看不清，改成在框里横向滑动 */
-.fig-wrap { margin-top: clamp(1.75rem, 4vw, 2.75rem); overflow-x: auto; border: var(--ds-border-hairline) solid var(--ds-color-border); border-radius: var(--ds-radius-lg); scrollbar-width: thin; }
+.fig-wrap { margin-top: clamp(1.75rem, 4vw, 2.75rem); overflow-x: auto; border-radius: var(--ds-radius-lg); scrollbar-width: thin; }
 .fig { display: block; width: 100%; min-width: 50rem; height: auto; }
 /* 有脚本时，图不在视口里就先不动（js/site.js），滑到了再从第一步开始 */
 .js .fig:not(.is-live) * { animation-play-state: paused; }
@@ -196,7 +286,7 @@ code, pre { font-family: var(--ds-font-mono); }
 @media (min-width: 60rem) {
   .also { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
 }
-.also pre { padding: 1.125rem 1.25rem; overflow-x: auto; border: var(--ds-border-hairline) solid var(--ds-color-border); border-radius: var(--ds-radius-md); background: var(--ds-color-code-bg); color: var(--ds-color-code-fg); font-size: var(--ds-text-xs); line-height: 1.8; tab-size: 2; scrollbar-width: thin; }
+.also pre { padding: 1.125rem 1.25rem; overflow-x: auto; border-radius: var(--ds-radius-md); color: var(--ds-color-code-fg); font-size: var(--ds-text-xs); line-height: 1.8; tab-size: 2; scrollbar-width: thin; }
 .also pre .c { color: var(--ds-color-fg-muted); }
 
 .facts { margin-top: clamp(1.75rem, 4vw, 2.75rem); }
@@ -209,7 +299,12 @@ code, pre { font-family: var(--ds-font-mono); }
 .facts p { max-width: var(--site-measure-sm); color: var(--ds-color-fg-muted); font-size: var(--ds-text-sm); line-height: 1.7; text-wrap: pretty; }
 
 /* 结尾：再给一次安装命令 */
-.closing { margin-top: var(--site-section); padding-block: var(--site-section); border-top: var(--ds-border-hairline) solid var(--ds-color-border); }
+/* 结尾回到开头那座城：同一幅画的街面一条，从下往上亮起来，接上页脚的街道（整块是 .night） */
+.closing { position: relative; isolation: isolate; overflow: hidden; margin-top: var(--site-section); padding-block: var(--site-section) calc(var(--site-section) + 4rem); background: var(--ds-color-bg); color: var(--ds-color-fg); }
+.closing-art { position: absolute; z-index: -1; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 62%; opacity: 0.55; mask-image: linear-gradient(to bottom, transparent, black 55%); }
+.closing::before { content: ""; position: absolute; z-index: -1; inset: 0; background: linear-gradient(to right, var(--ds-color-bg) 30%, transparent 85%); }
+.closing::after { content: ""; position: absolute; z-index: -1; inset: 0; pointer-events: none; background: linear-gradient(to bottom, var(--site-page-bg), transparent 7rem, transparent calc(100% - 5rem), var(--site-page-bg)); }
+.closing .need { color: var(--ds-color-fg-muted); }
 .closing .install { margin-top: 2rem; }
 
 /* ------------------------------------------------------------ 示意图（src/figures.mjs）
@@ -334,8 +429,10 @@ code, pre { font-family: var(--ds-font-mono); }
 .button:hover { opacity: 0.9; }
 
 /* ------------------------------------------------------------ 页脚 */
-.site-footer { margin-top: auto; background: var(--ds-color-bg-elevated); color: var(--ds-color-fg-muted); font-size: var(--ds-text-xs); line-height: 1.65; }
-.horizon { display: block; background: var(--ds-color-bg); }
+.site-footer { margin-top: auto; background: linear-gradient(to bottom, var(--ds-color-bg-elevated), var(--ds-color-bg)); color: var(--ds-color-fg-muted); font-size: var(--ds-text-xs); line-height: 1.65; }
+.horizon { display: block; background: linear-gradient(to bottom, var(--ds-color-bg), var(--ds-color-bg-elevated)); }
+/* 街上亮着的窗与地平线微微发光 */
+.horizon-lit { filter: drop-shadow(0 0 3px var(--ds-color-accent)) drop-shadow(0 0 10px var(--ds-color-accent-glow)); }
 .footer-grid { display: grid; gap: 2.5rem 4rem; padding-block: 2.5rem 3rem; }
 @media (min-width: 56rem) {
   .footer-grid { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }

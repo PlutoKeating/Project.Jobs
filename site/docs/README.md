@@ -26,15 +26,15 @@ site/
 ├── js/site.js                 # 手写：外观切换、语言记忆、语言菜单、窄屏菜单、复制安装命令、示意图滑进视口才动
 ├── css/tokens.css css/site.css        # 生成物
 ├── fonts/                     # InterVariable.woff2、思源黑体子集（生成物）与子集清单、两份 OFL 许可
-├── shots/ og.png              # 首页配图与分享图（build-shots.mjs 生成）
+├── shots/ og.png              # 首页配图与分享图（build-shots.mjs 生成）；town-night.webp/.png 是首页开头那座雨夜里的城（生成的画，见「外观」）
 ├── index.html about/ terms/ privacy/ 404.html en/…   # 生成物：每种语言 4 个页面 + 404
 ├── favicon.svg robots.txt sitemap.xml _headers       # 生成物
 ├── install                    # deploy/install.sh 的原样副本（pnpm site:build 复制；site:check 发现不一致会报错）
-├── wrangler.jsonc .assetsignore
+├── wrangler.jsonc .assetsignore  # .assetsignore 还排除 shots/*.json（生成图的提示词记录）
 └── docs/README.md             # 本文
 ```
 
-**生成物清单**（不手改；改了源之后重新生成并一起提交）：全部 `*.html`、`css/tokens.css`、`css/site.css`、`favicon.svg`、`robots.txt`、`sitemap.xml`、`_headers`、`fonts/NotoSansSC-*.subset.woff2`、`fonts/NotoSansSC.subset.txt`、`shots/*.webp`、`og.png`；以及 `site/` 之外的 `docs/images/*.svg`（README 的示意图）。
+**生成物清单**（不手改；改了源之后重新生成并一起提交）：全部 `*.html`、`css/tokens.css`、`css/site.css`、`favicon.svg`、`robots.txt`、`sitemap.xml`、`_headers`、`fonts/NotoSansSC-*.subset.woff2`、`fonts/NotoSansSC.subset.txt`、`shots/city-*.webp`、`og.png`；以及 `site/` 之外的 `docs/images/*.svg`（README 的示意图）。
 
 ## 改完之后
 
@@ -75,7 +75,14 @@ node site/scripts/build-shots.mjs    # 界面变了、想换首页配图时（�
 
 颜色、圆角、字号、时长全部来自 PlutoKeating design system：`css/tokens.css` 是 `apps/web/src/design-system/tokens.css` 的变量部分（构建时取出，不手改）。暗色是默认，访客的系统是亮色时用亮色；页眉右侧的按钮在「跟随系统 / 明亮 / 暗黑」之间切换，选择记在 `localStorage["jobs.theme"]`，由 `<head>` 里的内联脚本在首帧之前应用。首页配图按语言与外观各有一张。
 
-设计规则沿用仓库根的 `DESIGN.md`：琥珀只表示「此刻 / 选中 / 指向」，主按钮是骨白底，不用眉题，像素图形只有字标与页脚的街道（README 的条幅用的也是这条街）。示意图是细线与圆角，不画像素块。
+设计规则沿用仓库根的 `DESIGN.md`：琥珀只表示「此刻 / 选中 / 指向」，主按钮是骨白底，不用眉题，像素图形只有字标、首页开头的城与页脚的街道（README 的条幅用的也是这条街）。示意图是细线与圆角，不画像素块。
+
+**首页开头：雨夜里的城。** 首屏铺满一幅雨夜像素城（`shots/town-night.webp`，`.png` 兜底），城里此刻在说话、在做事的人从各自亮着的窗边开口：一张深色玻璃小标签，下沿垂一根细线到那扇窗。标签里的人、原话、地点和「正在用 N 人」取自开发实例里的真实运行（与示意图同源，地名见 `config/jobsworld/town.yaml`），写在 `src/pages/home.mjs` 的 `voices` 里；人数标注「模拟」，琥珀只给「正在用」和那扇窗。标签按画的百分比定位（`src/site.css` 的 `.v1`–`.v6`），画铺满宽度、在窄屏上保持最小高度并左右裁掉，所以标签永远对着同一扇窗；手机上只留两句。标签依次亮起（窗 → 细线 → 字），之后在用的那扇窗缓慢呼吸；`prefers-reduced-motion` 下全部静止、直接显示。
+
+- 这幅画不随明暗变（与网页里城市天空只跟模拟时钟走是同一条规则）：`build.mjs` 在 `css/tokens.css` 末尾生成一个 `.night` 作用域，内容是暗色那一套颜色变量，首屏整块用它。
+- 画是用 Gemini 图像模型按批准的设计稿生成的；完整提示词嵌在 `town-night.png` 里（PNG 文本块），webp 的写在同名的 `town-night.webp.json`（不上线）。换画时两份一起换，并保持 3168×1344 的比例，否则窗边标签的位置要重新对。
+
+**质感。** 示意图的外框、终端命令块用同一种「夜色面板」（`.panel-night`）：由浅到深的炭色底、顶边一道受光的细线、往下沉的长影、几乎看不见的扫描线；每章标题后面有一团极淡的石板灰绿雾，结尾与页脚的街道有自下而上的微光。都只用 tokens 的颜色。
 
 ## 合规
 

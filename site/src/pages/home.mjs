@@ -9,7 +9,18 @@ export const home = {
     title: 'Jobs — 发布之前，先让一座城的人用用看',
     description: '把产品发布到 JobsWorld：一座住着两百位虚拟居民的城。他们自己决定看不看、用不用、留不留、跟谁说。',
     heading: ['发布之前，', '先让一座城的人', '用用看。'],
-    lede: '把网址交给 Jobs。JobsWorld 里住着两百个各不相同的人：他们过着自己的日子，在应用商店、广告和朋友口中遇到你的产品，自己决定看不看、用不用、留不留、跟谁说。',
+    lede: '把网址交给 Jobs。城里两百个各不相同的人，自己决定看不看、用不用、留不留、跟谁说。',
+    townAlt: '雨夜里的 JobsWorld：几栋公寓楼，窗里亮着灯',
+    voicesLabel: '此刻，城里',
+    // 首屏挂在窗边的话：取自开发实例里的一次真实运行（与 src/figures.mjs 同源）。using 是此刻在用某个产品的人数（模拟）。
+    voices: [
+      { who: '赵红梅', where: '家里沙发上', say: '“这还得先登录啊，我哪有账号。”' },
+      { product: '闪念笔记', using: '正在用', count: '4 人', simulated: '模拟' },
+      { who: 'Ani Davis', where: '幸福里公寓 A 座', doing: '在玩手机' },
+      { who: '周诗涵', where: '带货主播', say: '“说好的自动保存呢？”' },
+      { who: 'April Thompson', where: '锦绣花园', doing: '在打电话' },
+      { product: '今天吃啥', using: '正在用', count: '9 人', simulated: '模拟' },
+    ],
     copy: '复制',
     copied: '已复制',
     copyLabel: '复制安装命令',
@@ -43,7 +54,17 @@ export const home = {
     title: 'Jobs — Before you launch, let a whole town try it',
     description: 'Launch your product into JobsWorld, a town of two hundred virtual residents who decide for themselves whether to look, to use it, to stay and whom to tell.',
     heading: ['Before you launch,', 'let a whole town', 'try it.'],
-    lede: 'Hand Jobs a URL. Two hundred very different people live in JobsWorld. They get on with their own days, come across your product in the app store, in ads and from friends, and decide for themselves whether to look, to use it, to stay and whom to tell.',
+    lede: 'Hand Jobs a URL. Two hundred very different people in town decide for themselves whether to look, to use it, to stay and whom to tell.',
+    townAlt: 'JobsWorld on a rainy night: apartment blocks with lit windows',
+    voicesLabel: 'Right now, in town',
+    voices: [
+      { who: 'Zhao Hongmei', where: 'On the sofa at home', say: '“I have to log in first? I don’t have an account.”' },
+      { product: '闪念笔记', using: 'In use', count: '4 people', simulated: 'simulated' },
+      { who: 'Ani Davis', where: 'Sunny Court A', doing: 'Phone and games' },
+      { who: 'Zhou Shihan', where: 'Livestream seller', say: '“What happened to auto-save?”' },
+      { who: 'April Thompson', where: 'Garden Heights', doing: 'On the phone' },
+      { product: '今天吃啥', using: 'In use', count: '9 people', simulated: 'simulated' },
+    ],
     copy: 'Copy',
     copied: 'Copied',
     copyLabel: 'Copy the install command',
@@ -83,9 +104,20 @@ const CHAPTER_FIGURES = ['journey', 'screen', 'verdict'];
 /** 安装命令的那一行。页面上有两处（开头与结尾），id 不同，复制按钮各管各的。 */
 function installBox(t, id, label) {
   return `<div class="install" id="${id}">
-      <code id="${id}-command">${esc(INSTALL_COMMAND)}</code>
+      <code id="${id}-command">${esc(INSTALL_COMMAND).replace('https://', 'https://<wbr>').replace('/install', '<wbr>/install')}</code>
       <button type="button" data-copy="${id}-command" data-label-copy="${esc(t.copy)}" data-label-copied="${esc(t.copied)}" aria-label="${esc(label)}">${ICON.copy}${ICON.check}<span aria-live="polite">${esc(t.copy)}</span></button>
     </div>`;
+}
+
+/**
+ * 挂在窗边的一句：一个人此刻在说的话 / 在做的事，或者一个产品此刻有几个人在用（模拟）。
+ * 位置由类名 v1–v6 决定（src/site.css），对着画里那几扇亮着的窗。
+ */
+function voice(v, i) {
+  const parts = v.product
+    ? [`<b>${esc(v.product)}</b>`, `<span class="voice-now">${esc(v.using)} ${esc(v.count)}</span>`, `<span class="voice-sim">${esc(v.simulated)}</span>`]
+    : [`<b>${esc(v.who)}</b>`, `<span class="voice-where">${esc(v.where)}</span>`, v.say ? `<span class="voice-say">${esc(v.say)}</span>` : `<span class="voice-doing">${esc(v.doing)}</span>`];
+  return `<li class="voice v${i + 1}${v.product ? ' is-now' : ''}"><span class="voice-tag">${parts.join('<span class="voice-dot" aria-hidden="true"> · </span>')}</span></li>`;
 }
 
 export function renderHome(lang, assets) {
@@ -101,25 +133,37 @@ export function renderHome(lang, assets) {
     ${renderFigure(CHAPTER_FIGURES[i], lang)}
   </section>`;
   return `<main id="main">
-  <section class="col hero">
-    <h1>${t.heading.map((part) => `<span>${esc(part)}</span>`).join(langOf(lang).spaced ? ' ' : '<wbr>')}</h1>
-    <p class="lede">${esc(t.lede)}</p>
-    ${installBox(t, 'install', t.copyLabel)}
-    <p class="need">${inline(t.need)}</p>
+  <section class="town" aria-labelledby="hero-heading">
+   <div class="town-night night">
+    <div class="town-stage">
+      <picture>
+        <source srcset="${assets.town.webp}" type="image/webp">
+        <img class="town-art" src="${assets.town.png}" width="3168" height="1344" alt="${esc(t.townAlt)}" fetchpriority="high" decoding="async">
+      </picture>
+      <ul class="voices" aria-label="${esc(t.voicesLabel)}">
+        ${t.voices.map(voice).join('\n        ')}
+      </ul>
+    </div>
+    <div class="col town-copy">
+      <h1 id="hero-heading">${t.heading.map((part) => `<span>${esc(part)}</span>`).join(langOf(lang).spaced ? ' ' : '<wbr>')}</h1>
+      <p class="lede">${esc(t.lede)}</p>
+      ${installBox(t, 'install', t.copyLabel)}
+    </div>
+   </div>
   </section>
+  ${t.chapters.map(chapter).join('\n  ')}
   <figure class="col shot">
     ${shot('dark')}
     ${shot('light')}
     <figcaption>${esc(shell[lang].tribute)}</figcaption>
   </figure>
-  ${t.chapters.map(chapter).join('\n  ')}
   <section class="col chapter" aria-labelledby="also-heading">
     <div class="also">
       <div>
         <h2 id="also-heading">${esc(a.heading)}</h2>
         <p>${esc(a.body)}</p>
       </div>
-      <pre tabindex="0"><span class="c">${esc(a.comment1)}</span>
+      <pre class="panel-night" tabindex="0"><span class="c">${esc(a.comment1)}</span>
 jobsworld publish http://127.0.0.1:3000/ \\
   --name ${esc(arg(a.productName))} --tagline ${esc(arg(a.productTagline))}
 jobsworld status ${esc(arg(a.productName))}
@@ -140,10 +184,16 @@ claude mcp add --transport http jobs https://&lt;jobs&gt;/mcp</pre>
       ${t.facts.map((s) => `<li><h3>${esc(s.heading)}</h3><p>${inline(s.body)}</p></li>`).join('\n      ')}
     </ul>
   </section>
-  <section class="col closing" aria-labelledby="closing-heading">
-    <h2 id="closing-heading">${esc(t.closing)}</h2>
-    ${installBox(t, 'install-again', t.copyLabelAgain)}
-    <p class="need">${inline(t.need)}</p>
+  <section class="closing night" aria-labelledby="closing-heading">
+    <picture>
+      <source srcset="${assets.town.webp}" type="image/webp">
+      <img class="closing-art" src="${assets.town.png}" width="3168" height="1344" alt="" loading="lazy" decoding="async">
+    </picture>
+    <div class="col">
+      <h2 id="closing-heading">${esc(t.closing)}</h2>
+      ${installBox(t, 'install-again', t.copyLabelAgain)}
+      <p class="need">${inline(t.need)}</p>
+    </div>
   </section>
 </main>`;
 }

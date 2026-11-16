@@ -218,3 +218,57 @@
   --ds-color-syntax-comment: #8d857c;
   --ds-color-syntax-punctuation: #6b655e;
 }
+
+/* 不随明暗变的夜色区域（首页开头与结尾的城）：暗色那一套颜色。--site-night-bg 给夜色区域外面的羽化用。 */
+:root {
+  --site-night-bg: #0e0f11;
+}
+.night {
+  color-scheme: dark;
+  --ds-color-bg: #0e0f11;
+  --ds-color-bg-elevated: #131417;
+  --ds-color-surface: #17181c;
+  --ds-color-surface-hover: #1d1e23;
+  --ds-color-surface-glass: rgb(14 15 17 / 0.72);
+  --ds-color-border: rgb(232 228 221 / 0.08);
+  --ds-color-border-strong: rgb(232 228 221 / 0.18);
+  --ds-color-fg: #e8e4dd;
+  --ds-color-fg-display: #e8e4dd;
+  --ds-color-display-shadow: rgb(0 0 0 / 0.45);
+  --ds-color-fg-muted: #a9a49c;
+  --ds-color-fg-subtle: #6f6b65;
+  --ds-color-link: #cfd8d5;
+  --ds-color-link-hover: #e8e4dd;
+  --ds-color-accent: #f0a35e;
+  --ds-color-accent-hover: #f5b67c;
+  --ds-color-accent-fg: #1a120a;
+  --ds-color-accent-soft: rgb(240 163 94 / 0.12);
+  --ds-color-accent-glow: rgb(240 163 94 / 0.32);
+  --ds-color-accent-glow-faint: rgb(240 163 94 / 0.08);
+  --ds-color-secondary: #7d8f8a;
+  --ds-color-secondary-fg: #c2cfcb;
+  --ds-color-secondary-soft: rgb(125 143 138 / 0.14);
+  --ds-color-success: #7fb08f;
+  --ds-color-warning: #d9b96a;
+  --ds-color-danger: #c97c7c;
+  --ds-color-overlay: rgb(0 0 0 / 0.6);
+  --ds-color-code-bg: #111215;
+  --ds-color-code-fg: #d8d4cc;
+  --ds-color-selection: rgb(240 163 94 / 0.28);
+  --ds-color-chart-line: #7d8f8a;
+  --ds-color-chart-fill: rgb(125 143 138 / 0.12);
+  --ds-color-chart-marker: #f0a35e;
+  --ds-color-orb-hi: #fffefc;
+  --ds-color-orb-mid: #ffd3ab;
+  --ds-color-orb: #ffb26e;
+  --ds-color-orb-rim: #fa7600;
+  --ds-color-orb-glow: rgb(255 178 110 / 0.64);
+  --ds-color-orb-glow-mid: rgb(255 178 110 / 0.19);
+  --ds-color-orb-glow-end: rgb(255 178 110 / 0);
+  --ds-color-syntax-keyword: #c9a7d9;
+  --ds-color-syntax-string: #a7c9a3;
+  --ds-color-syntax-constant: #e0c48a;
+  --ds-color-syntax-function: #9fc3d6;
+  --ds-color-syntax-comment: #6f6b65;
+  --ds-color-syntax-punctuation: #8f8a83;
+}

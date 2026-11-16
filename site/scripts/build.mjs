@@ -51,9 +51,17 @@ const tokenSource = readFileSync(resolve(repo, 'apps/web/src/design-system/token
 const cut = tokenSource.indexOf('@theme');
 if (cut < 0) throw new Error('apps/web/src/design-system/tokens.css 的结构变了：找不到 @theme');
 const tokenVars = tokenSource.slice(tokenSource.indexOf(':root'), cut).trimEnd();
+// .night：首页开头那座雨夜里的城不随页面的明暗变（与网页里「城市天空只跟模拟时钟走」同一条规则），
+// 它里面一律用暗色那一套颜色。直接取默认（暗色）:root 里的颜色变量，不另写颜色。
+const darkColors = tokenVars
+  .slice(0, tokenVars.indexOf('@media'))
+  .split('\n')
+  .filter((line) => /^\s*--ds-color-/.test(line))
+  .map((line) => `  ${line.trim()}`)
+  .join('\n');
 emit(
   'css/tokens.css',
-  `/* 生成物（site/scripts/build.mjs），勿手改。PlutoKeating design system 的变量，取自 apps/web/src/design-system/tokens.css（去掉了只给 Tailwind 用的部分）。 */\n${tokenVars}\n`,
+  `/* 生成物（site/scripts/build.mjs），勿手改。PlutoKeating design system 的变量，取自 apps/web/src/design-system/tokens.css（去掉了只给 Tailwind 用的部分）。 */\n${tokenVars}\n\n/* 不随明暗变的夜色区域（首页开头与结尾的城）：暗色那一套颜色。--site-night-bg 给夜色区域外面的羽化用。 */\n:root {\n  --site-night-bg: ${token('color-bg', 'dark')};\n}\n.night {\n  color-scheme: dark;\n${darkColors}\n}\n`,
 );
 /** 取某个变量的值：scope 为 'dark'（默认的 :root）或 'light'（:root[data-theme="light"]）。 */
 function token(name, scope) {
@@ -81,6 +89,8 @@ const assets = {
   themeLight: token('color-bg', 'light'),
   // 首页配图：每种语言 × 明暗各一张（scripts/build-shots.mjs 生成）
   shot: (lang, theme) => versioned(`shots/city-${lang}-${theme}.webp`),
+  // 首页开头那座雨夜里的城（生成的画，不随语言与明暗变）：webp 给现代浏览器，png 兜底
+  town: { webp: versioned('shots/town-night.webp'), png: versioned('shots/town-night.png') },
 };
 
 /* ------------------------------------------------------------ 内联脚本（首帧之前） */
