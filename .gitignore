@@ -23,3 +23,8 @@ game/tmodloader/.tml/
 game/tmodloader/JobsWorld/Shared/
 # Cloudflare wrangler 在本机预览或试部署时的缓存
 .wrangler/
+
+# impeccable 的过程文件：设计稿、测量、截图与比对（本机留存，不进仓库；方向约定在 .impeccable/surfaces/）
+.impeccable/build/
+.impeccable/mocks/
+.impeccable/review/
