@@ -282,6 +282,8 @@ const RUNNER = process.env.JW_RUNNER !== '0';
 const Engine = RUNNER ? await import('@pux/engine') : undefined;
 // 居民邮箱：旧的编号式地址换成像真人的，域名跟着设置页里部署好的邮件域名走（幂等）
 if (Engine) await Engine.assignMailAddresses().catch((e) => logger.warn({ err: String((e as Error).message).slice(0, 160) }, '居民邮箱地址更新失败'));
+// 已经开通了居民邮箱时，把还没建的收信规则补上（后台进行；新规则要一两分钟才生效）
+if (Engine) void Engine.prewarmRoutes().catch((e) => logger.warn({ err: String((e as Error).message).slice(0, 160) }, '预建收信规则失败'));
 const engine = Engine ? new Engine.LaunchEngine({ concurrency: Number(process.env.JW_CONCURRENCY ?? 3), say: (id, text, tone) => { const p = live.get(id); if (p) say(p, shorten(text), tone); }, log: (m) => logger.info(m) }) : undefined;
 /** 此刻已发布的产品与各自的漏斗人数 */
 async function launchesNow(): Promise<LaunchLive[]> {

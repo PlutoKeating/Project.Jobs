@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { jobsVersion, logger } from '@pux/core';
 import { count, getDb, isNull, mailbox, mailRoutes } from '@pux/db';
 import { CfError, cfDeleteWorker, cfEnableRouting, cfFindZone, cfRoutingStatus, cfUploadWorker, cfVerifyToken, CF_TOKEN_PERMISSIONS, type CfZone } from './cloudflare.ts';
-import { assignMailAddresses, currentCheck, dropAllRoutes, endMailCheck, ruleCap, type MailCheck } from './routes.ts';
+import { assignMailAddresses, currentCheck, dropAllRoutes, endMailCheck, prewarmRoutes, ruleCap, type MailCheck } from './routes.ts';
 import { FAKE_DOMAIN, isLocalUrl, mailSettings, openMail, publicUrl, saveMailSettings, sealMail, type MailSettings } from './settings.ts';
 import { WORKER_COMPAT_DATE, WORKER_NAME, WORKER_SOURCE } from './worker.ts';
 
@@ -57,11 +57,13 @@ export async function deployMail(rawToken?: string): Promise<MailSettings> {
   }
   const next: MailSettings = {
     token: sealMail(token), token_hint: mask(token), account_id: zone.account_id, zone_id: zone.id, zone_name: zone.name, domain, script: WORKER_NAME,
-    secret: sealMail(secret), status: 'ready', note: [note, status === 'ready' ? '' : `Cloudflare 报告收信状态是「${status}」：新加的 MX 记录生效通常要几分钟，之后用下面的测试信确认`].filter(Boolean).join('；') || undefined,
+    secret: sealMail(secret), status: 'ready', note: [note, status === 'ready' ? '' : `Cloudflare 报告收信状态是「${status}」`].filter(Boolean).join('；') || undefined,
     deployed_at: new Date().toISOString(), check: prev.domain === domain ? prev.check : undefined,
   };
   await saveMailSettings(next);
   await assignMailAddresses();
+  // 后台把居民的收信规则预先建好（新规则要一两分钟才生效，不能等到居民要验证码时才建）
+  void prewarmRoutes().catch((e) => logger.warn({ err: String((e as Error).message).slice(0, 160) }, '预建收信规则失败'));
   logger.info({ domain, zone: zone.name, status }, '居民邮箱已部署');
   return next;
 }
@@ -83,6 +85,8 @@ export interface MailStatus {
   status: MailSettings['status']; error?: string; note?: string; domain: string; real: boolean; token_hint?: string; zone?: string; deployed_at?: string;
   cloudflare?: { enabled: boolean; status?: string } | { error: string };
   routes: { used: number; cap: number }; unowned: number; check?: MailCheck; permissions: string[];
+  /** 刚开通（10 分钟内）：Cloudflare 还在生效，这期间发来的信可能被退回 */
+  warming: boolean;
 }
 
 /** 设置页显示的状态；live=true 时顺便问一下 Cloudflare 现在的收信状态 */
@@ -99,5 +103,6 @@ export async function mailStatus(live = false): Promise<MailStatus> {
   return {
     status: m.status, error: m.error, note: m.note, domain: m.deployed_at && m.domain ? m.domain : FAKE_DOMAIN, real: !!(m.deployed_at && m.domain), token_hint: m.token_hint, zone: m.zone_name, deployed_at: m.deployed_at,
     cloudflare, routes: { used, cap: ruleCap() }, unowned, check: await currentCheck(), permissions: CF_TOKEN_PERMISSIONS,
+    warming: !!m.deployed_at && Date.now() - Date.parse(m.deployed_at) < 10 * 60_000,
   };
 }

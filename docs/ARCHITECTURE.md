@@ -18,7 +18,7 @@
 
 - **唯一权威数据源**：Postgres（结构化数据）+ MinIO（截图、录像等大文件，按内容哈希寻址、只追加）。
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
-- **居民邮箱**：真实产品发的验证邮件经 Cloudflare 进来。邮件域名就是公网链接的主机名，它的 MX 由 Cloudflare Email Routing 接收；每个要用产品的居民按需建一条收信规则，交给 Cloudflare 上的转发 Worker；Worker 只把原始邮件加签名后 POST 回 `<公网链接>/inbound/email`。收信、解析、存储、界面都在 Jobs 里（`packages/engine/src/mail/`，见 §6）。维护者只在网页「设置」里填公网链接、贴一枚 Cloudflare API Token。
+- **居民邮箱**：真实产品发的验证邮件经 Cloudflare 进来。邮件域名就是公网链接的主机名，它的 MX 由 Cloudflare Email Routing 接收；每个居民一条收信规则（开通后在后台预先建到上限，其余的人开始用产品时再建），交给 Cloudflare 上的转发 Worker；Worker 只把原始邮件加签名后 POST 回 `<公网链接>/inbound/email`。收信、解析、存储、界面都在 Jobs 里（`packages/engine/src/mail/`，见 §6）。维护者只在网页「设置」里填公网链接、贴一枚 Cloudflare API Token。
 - **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
 上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列全部打进一个镜像，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」与「一键升级」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobsworld _control`（systemd 监视单元触发）执行；升级的进度与结果再写回同一个目录（`control/`）。版本号只有根 `package.json` 一个来源（`@pux/core` 的 `jobsVersion()`）；接口每小时读一次 GitHub 上最新的 Release（管理员打开网页时结果超过 15 分钟就当场重查），网页据此提示管理员升级（`apps/api/src/update.ts`）。升级流程（`deploy/jobs` 的 `update`，安装脚本重复运行时同理）：拉取镜像 → 取出新的编排文件与命令 → 备份数据库到 `~/.jobs/backups` → 重建容器（入口脚本迁移数据库）→ 更新装过的游戏服。
@@ -122,7 +122,7 @@ sequenceDiagram
 | 语音与摄像头 | 语音写进假麦克风：接入了 Vertex 连接时用 Gemini 语音合成，否则用本机的 espeak。摄像头画面来自图片或画图模型 | 语音合成没有通用的兼容接口 |
 | 切到后台 | 覆盖页面的可见性状态并冻结页面生命周期 | 无界面浏览器里切标签页不会改变可见性 |
 | 对象存储 | `pgsty/minio` 镜像（固定发布版本） | 官方 MinIO 镜像已从 Docker Hub 撤下；`elestio/minio` 的 arm64 镜像里是 x86-64 二进制，ARM 机器上起不来 |
-| 居民邮箱 | 收信靠 Cloudflare Email Routing + 一个只转发的 Worker，Worker 用 HMAC 签名把原始邮件 POST 回 Jobs；邮件域名是公网链接的主机名（Cloudflare 不接受时退到 `mail.<主机名>`），每个居民一条收信规则，开始一次使用时按需建，满了先回收从没收到过真实邮件的人，再按最久没用回收；原始邮件进 MinIO（证据 `email`，永久保留），正文进 `mailbox`；居民看信用一个在浏览器里拦截出来的邮箱 App，像看产品一样只看截图 | Tunnel 只转发 HTTP，家宽和多数云主机封了 25 端口，所以不能在容器里直接收 SMTP；Cloudflare 的子域不能用通配规则，每个域最多 200 条规则；切到邮箱、记住验证码的麻烦本身是体验的一部分 |
+| 居民邮箱 | 收信靠 Cloudflare Email Routing + 一个只转发的 Worker，Worker 用 HMAC 签名把原始邮件 POST 回 Jobs；邮件域名是公网链接的主机名（Cloudflare 不接受时退到 `mail.<主机名>`），每个居民一条收信规则：开通后（以及每次启动时）在后台预先建到上限（`prewarmRoutes`，最近用过产品的人优先），其余的人开始一次使用时再建，满了先回收从没收到过真实邮件的人，再按最久没用回收；Tunnel 的 CNAME 与 MX 实测可以共存；原始邮件进 MinIO（证据 `email`，永久保留），正文进 `mailbox`；居民看信用一个在浏览器里拦截出来的邮箱 App，像看产品一样只看截图 | Tunnel 只转发 HTTP，家宽和多数云主机封了 25 端口，所以不能在容器里直接收 SMTP；Cloudflare 的子域不能用通配规则，每个域最多 200 条规则；Cloudflare 上新开的子域、新建的规则要一两分钟才生效（实测期间分别退回 Domain / Address does not exist），等到居民要验证码时才建规则就来不及；切到邮箱、记住验证码的麻烦本身是体验的一部分 |
 | 模型调用记录 | Postgres 的 `llm_traces`：每一次尝试一行（角色、模型组、实际目标、配置版本、凭证脱敏标识、第几次、错误类别、用量、耗时、费用估计） | 单机部署，够用 |
 
 其他机制：

@@ -1,6 +1,8 @@
-// 居民的地址与按需路由规则。
+// 居民的地址与收信规则。
 // 邮件域名是公网链接的主机名（子域）：Cloudflare 不允许在子域上用通配规则，只能一个地址一条，每个域最多 200 条。
-// 所以只给要用产品的人建规则：开始一次使用时确保他有一条；名额不够时，先回收从没收到过真实邮件的人，再回收收到过的，各按最久没用的先回收。
+// Cloudflare 上新建的规则要一两分钟才在它的收信服务器上生效（实测：刚建好就发来的信被退回「Address does not exist」），
+// 而居民开始用产品后几十秒就可能要验证码，所以开通后就在后台把规则预先建到上限（prewarmRoutes），城里绝大多数人一开始就能收信；
+// 超出上限的人在开始一次使用时按需建（ensureMailRoute），名额不够时先回收从没收到过真实邮件的人，再回收收到过的，各按最久没用的先回收。
 // 被回收的人地址不变，下次再用产品时重新建规则。
 import { randomBytes } from 'node:crypto';
 import { logger, type PersonaSpec } from '@pux/core';
@@ -60,6 +62,40 @@ export async function ensureMailRoute(personaId: string): Promise<string | undef
     }
   }
   return address;
+}
+
+let warming: Promise<number> | undefined;
+/** 把收信规则预先建到上限：先给最近用过产品的人，再给其余的人。已经建好的跳过；重复调用时等上一次做完。返回新建了几条 */
+export function prewarmRoutes(): Promise<number> {
+  warming ??= (async () => {
+    const ctx = await cfCtx(); if (!ctx) return 0;
+    const db = getDb();
+    const have = new Set((await db.select({ a: mailRoutes.address }).from(mailRoutes)).map((x) => x.a));
+    let room = ruleCap() - have.size; if (room <= 0) return 0;
+    const recent = new Map((await db.select({ p: sessions.persona_id, at: sql<Date>`max(${sessions.started_at})` }).from(sessions).groupBy(sessions.persona_id)).map((x) => [x.p, x.at ? new Date(x.at).getTime() : 0]));
+    const rows = (await db.select({ id: residents.persona_id, email: residents.email }).from(residents))
+      .map((r) => ({ id: r.id, address: r.email?.toLowerCase() ?? '' }))
+      .filter((r) => r.address.endsWith(`@${ctx.domain}`) && !have.has(r.address))
+      .sort((a, b) => (recent.get(b.id) ?? 0) - (recent.get(a.id) ?? 0));
+    let made = 0;
+    for (const r of rows) {
+      if (room <= 0) break;
+      const [again] = await db.select({ a: mailRoutes.address }).from(mailRoutes).where(eq(mailRoutes.address, r.address));
+      if (again) continue;
+      try {
+        const rule_id = await cfCreateRule(ctx.token, ctx.zone, r.address, ctx.script);
+        await db.insert(mailRoutes).values({ address: r.address, persona_id: r.id, rule_id }).onConflictDoNothing();
+        made++; room--;
+      } catch (e) {
+        if (isRuleLimit(e)) break;
+        logger.warn({ address: r.address, err: String((e as Error).message).slice(0, 160) }, '预建收信规则失败');
+        break;
+      }
+    }
+    if (made) logger.info({ made }, '已预先为居民开通收信');
+    return made;
+  })().finally(() => { warming = undefined; });
+  return warming;
 }
 
 export async function touchRoute(address: string, _o: { received?: boolean } = {}) {

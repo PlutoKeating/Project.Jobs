@@ -1,6 +1,6 @@
 # 安装与运维
 
-> **现状（2026-11-17）**：最新是 `v0.4.1`（升级先比较版本：`jobsworld update` 和重新运行安装那一行只在确实有新版本时才拉镜像、备份、重建，`--check` 只看、`--force` 强制；`v0.4.0` 起有居民邮箱：在网页「设置」里填公网链接、贴一枚 Cloudflare API Token 一键开通，真实产品的验证邮件就能送到居民手里，见下面「居民邮箱」；收信经过 Cloudflare 的整条路只用模拟的 Cloudflare 接口和本机的收信、解析、网页邮箱端到端验证过，还没在真实域名上跑过；GitHub Release 与三个镜像的版本号 / `latest` 标签在 CI 跑完后公开，匿名可拉取；从 `v0.2.1` 起三个镜像都同时有 `linux/amd64` 与 `linux/arm64`，arm64 的镜像只在 GitHub 的 arm64 机器上构建过、两个游戏服在 QEMU 下启动过，还没在 arm64 真机上装过），`jobs.plutokeating.beer/install` 放的就是仓库里的安装脚本。下面这一行在一个全新的、没有登录任何镜像仓库的 Docker 环境（Linux）里装成功过（`v0.1.0` 时；`v0.2.0` 的升级流程在本机用隔离的安装目录端到端验证过，没有在一台全新机器上重新装过）。macOS / Windows 的安装路径只有单元测试，没有在真机上装过。
+> **现状（2026-11-17）**：最新是 `v0.4.1`（升级先比较版本：`jobsworld update` 和重新运行安装那一行只在确实有新版本时才拉镜像、备份、重建，`--check` 只看、`--force` 强制；`v0.4.0` 起有居民邮箱：在网页「设置」里填公网链接、贴一枚 Cloudflare API Token 一键开通，真实产品的验证邮件就能送到居民手里，见下面「居民邮箱」；整条收信的路已经在一个真实的 Cloudflare 域名（Cloudflare Tunnel 的主机名）上从外部邮箱收到过测试信；居民在真实产品里收验证码走完全程的情况还没观察过；GitHub Release 与三个镜像的版本号 / `latest` 标签在 CI 跑完后公开，匿名可拉取；从 `v0.2.1` 起三个镜像都同时有 `linux/amd64` 与 `linux/arm64`，arm64 的镜像只在 GitHub 的 arm64 机器上构建过、两个游戏服在 QEMU 下启动过，还没在 arm64 真机上装过），`jobs.plutokeating.beer/install` 放的就是仓库里的安装脚本。下面这一行在一个全新的、没有登录任何镜像仓库的 Docker 环境（Linux）里装成功过（`v0.1.0` 时；`v0.2.0` 的升级流程在本机用隔离的安装目录端到端验证过，没有在一台全新机器上重新装过）。macOS / Windows 的安装路径只有单元测试，没有在真机上装过。
 
 ## 一行安装
 
@@ -163,10 +163,12 @@ Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等
 1. 一个能从外网访问这台 Jobs 的 https 链接，域名托管在 Cloudflare（例如用 Cloudflare Tunnel 把 `jobs.example.com` 指到 `http://127.0.0.1:7777`）。怎么做到由维护者自己决定。
 2. 一枚 Cloudflare API Token（[在这里创建](https://dash.cloudflare.com/profile/api-tokens)，选「创建自定义令牌」），权限：`Zone › Zone › Read`、`Zone › Zone Settings › Edit`、`Zone › Email Routing Rules › Edit`、`Account › Workers Scripts › Edit`，区域资源包含这个域名。
 
-在网页的「设置」里填好公网链接、贴上令牌，点「开通」。Jobs 会确认链接能回到自己、上传一个只转发的 Worker（`jobsworld-mail`）、在 `jobs.example.com` 上开启 Email Routing（Cloudflare 自动加 MX、SPF、DKIM 记录），然后把每位居民的地址换成 `<像真人的用户名>@jobs.example.com`。主机名上已有的记录让 Cloudflare 不接受时，改用 `mail.jobs.example.com`，设置页上会写明。新加的 MX 记录生效通常要几分钟；用「给一个临时地址发测试信」从你自己的邮箱发一封，看到「收到了」就说明整条路通了。
+在网页的「设置」里填好公网链接、贴上令牌，点「开通」。Jobs 会确认链接能回到自己、上传一个只转发的 Worker（`jobsworld-mail`）、在 `jobs.example.com` 上开启 Email Routing（Cloudflare 自动加 MX、SPF、DKIM 记录），然后把每位居民的地址换成 `<像真人的用户名>@jobs.example.com`。Cloudflare Tunnel 的主机名上本来就有一条 CNAME，实测它和 Email Routing 加的 MX 可以共存；万一 Cloudflare 不接受，会改用 `mail.jobs.example.com`，设置页上会写明。开通后，后台会把居民的收信规则预先建好。
+
+Cloudflare 上新建的东西要过一两分钟才在它的收信服务器上生效，这期间发来的信会被退回：新开的子域退回 `550 5.1.1 Domain does not exist`，新建的地址退回 `550 5.1.1 Address does not exist`。所以开通后先等几分钟（设置页上有提示），再用「给一个临时地址发测试信」：建好临时地址后等一两分钟，从你自己的邮箱发一封，看到「收到了」就说明整条路通了。
 
 - 收信不需要 25 端口，也不需要公网 IP：信先到 Cloudflare，Worker 再用 https 把原始邮件（带签名）送回 `<公网链接>/inbound/email`。只收不发。
-- 子域不能用通配规则，每个域最多 200 条规则：Jobs 只给开始用产品的居民建规则（默认最多占 190 条，`JOBS_MAIL_RULE_CAP` 可改），满了先回收从没收到过真实邮件的人。被回收的人地址不变，下次用产品时自动重建。
+- 子域不能用通配规则，每个域最多 200 条规则：Jobs 开通后（以及每次启动时）在后台把规则预先建到上限（默认 190 条，`JOBS_MAIL_RULE_CAP` 可改；最近用过产品的人优先），新装的城 199 人里绝大多数一开始就能收信。其余的人在开始用产品时才建；新规则要一两分钟才生效，这时候来的第一封信可能被退回。名额不够时先回收从没收到过真实邮件的人，被回收的人地址不变，下次用产品时自动重建。
 - 改了公网链接后要点「重新部署」，居民的地址会跟着变，之前用旧地址注册的账号就收不到信了。
 - 「关闭」会删掉 Worker 和收信规则，居民地址回到 `jobsworld.test`；Cloudflare 上的 MX 记录留着，要删在 Cloudflare 里删。
 - 原始邮件存在 MinIO（证据），正文与仪器提取的验证码、链接存在 Postgres，永久保留；网页「人」页有每个人的收件箱。

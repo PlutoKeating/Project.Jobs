@@ -11,7 +11,7 @@ import { MailList, type MailBrief } from '../components/Mail.tsx';
 interface MailStatus {
   status: 'off' | 'deploying' | 'ready' | 'error'; error?: string; note?: string; domain: string; real: boolean; token_hint?: string; zone?: string; deployed_at?: string;
   cloudflare?: { enabled: boolean; status?: string } | { error: string };
-  routes: { used: number; cap: number }; unowned: number; permissions: string[];
+  routes: { used: number; cap: number }; unowned: number; permissions: string[]; warming: boolean;
   check?: { address: string; created_at: string; received_at?: string; sender?: string; subject?: string };
 }
 interface Settings { public_url: string; public_url_env: string; public_url_effective: string; mail: MailStatus }
@@ -81,6 +81,7 @@ export function SettingsPage() {
           <span className={m.real ? 'text-fg-display' : 'text-fg-muted'}>{m.real ? t('s_mail_on', { d: m.domain }) : t('s_mail_off', { d: m.domain })}</span>
         </p>
         {m.note && <p className="mt-2 text-xs text-fg-muted">{m.note}</p>}
+        {m.real && m.warming && <p className="mt-2 flex items-center gap-1.5 text-xs text-warning"><RotateCw size={12} className="animate-spin" />{t('s_warming')}</p>}
         {(err || m.error) && <p role="alert" className="mt-2 text-xs text-danger">{err || m.error}</p>}
 
         <form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); void deploy(); }}>
