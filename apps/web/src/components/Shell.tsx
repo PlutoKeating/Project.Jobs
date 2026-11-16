@@ -306,7 +306,7 @@ export function Shell() {
           </div>
         </div>
       </header>
-      <main className={onWorld ? 'flex min-h-0 flex-col' : 'mx-auto w-full max-w-[var(--container-wide)] flex-1 px-4 pb-16 pt-8 sm:px-6'}>
+      <main className={onWorld ? 'flex min-h-0 flex-col' : 'w-full flex-1 px-4 pb-16 pt-8 sm:px-6 lg:px-8'}>
         <Outlet />
       </main>
       {!onWorld && <footer><Horizon /></footer>}

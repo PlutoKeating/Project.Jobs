@@ -301,7 +301,7 @@ export function ModelsPage() {
   ] : [];
 
   return (
-    <div className="mx-auto max-w-[var(--container-content)]">
+    <div>
       <header className="sticky top-[var(--ds-header-height)] z-20 -mx-4 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <div className="min-w-0">
