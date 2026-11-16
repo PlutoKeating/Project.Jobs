@@ -175,6 +175,8 @@ jobsworld：把产品发布到 JobsWorld
   jobsworld ls | status <产品> | report <产品> [--eng]          看状况与结论
   jobsworld promote <产品> --intensity 0.8 | --pause | --end    调宣发
   jobsworld invite <产品> -n 3                                   把手机递给几个人
+  jobsworld reset <产品>                                         清零：城里关于它的经历归零，产品留着、重新上线
+  jobsworld remove <产品> [--wipe]                               下线（默认保留经历；--wipe 连同经历一起删）
   jobsworld mcp                                                  给 coding agent 用的 MCP 服务（stdio）
 
   jobsworld url | passcode | ps | logs | restart | up | down    服务本身

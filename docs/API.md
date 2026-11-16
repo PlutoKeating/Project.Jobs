@@ -122,7 +122,7 @@
 
 ## 2. 命令行与 MCP
 
-装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ### MCP 工具
 
@@ -137,6 +137,8 @@
 | `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`），返回 `session_ids` |
 | `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，最多 `max_minutes`（默认 5，最多 15）分钟；客户端带了 `progressToken` 时推送进度 |
 | `mark_new_version` | 管理员 | 标记新版本（`note`），见 `POST /launches/:id/versions` |
+| `reset_product` | 管理员 | 清零（`product`），见 `POST /launches/:id/reset`：城里关于它的经历全部归零，产品本身不动，此刻重新上线 |
+| `remove_product` | 管理员 | 下线（`product`、可选 `wipe_history`），见 `DELETE /launches/:id`：默认保留城里的经历，`wipe_history: true` 时一起删除 |
 | `set_promotion` | 管理员 | 宣发强度、暂停 / 恢复 / 结束、广告文案 |
 | `ask_person` | 访客 | 向用过产品的居民追问（`persona_id`、`question`） |
 | `person_inbox` | 访客 | 一位居民收到的邮件和短信（`persona_id`）：验证邮件有没有到、什么时候到、他点没点开；居民邮箱还没开通时会说明 |

@@ -95,6 +95,27 @@ export const JOBS_TOOLS: JobsTool[] = [
     run: async ({ product, note }, { api }) => { const l = await launchOf(api, product); const v = await api<{ n: number }>(`/launches/${l.id}/versions`, { body: { note } }); return `「${l.name}」已标记为第 ${v.n} 版。接下来用 invite_people 请人试新版本，wait_for_people 等他们用完，再用 product_report 看问题还在不在。`; },
   },
   {
+    name: 'reset_product', admin: true,
+    description: '把一个产品在城里的经历全部清零：谁见过它、用过它、说过什么，评论、动态、居民对它的记忆与信任、问题清单和一页结论都归零（同名产品发布过的每一版都算）。产品本身（地址、介绍、商店截图、宣发设置）不动，此刻重新上线、花费归零，等于第一次发布。正在用它的人会被停下来。想在大改之后从一张白纸重新看反应时用；只是修了问题、想对比修复前后，用 mark_new_version。',
+    input: { product: z.string().describe('发布 id 或产品名') },
+    run: async ({ product }, { api }) => {
+      const l = await launchOf(api, product);
+      const o = await api<LaunchView & { cleared: Record<string, number> }>(`/launches/${l.id}/reset`, { body: {}, timeoutMs: 300_000 });
+      const c = o.cleared ?? {};
+      return `「${o.name}」已清零并重新上线（id=${o.id}）。清掉了 ${c.sessions ?? 0} 次使用、${c.exposures ?? 0} 次曝光、${c.reviews ?? 0} 条评论、${c.posts ?? 0} 条动态；${c.people ?? 0} 位居民忘掉了它（${c.memories ?? 0} 条记忆）。城里的人会重新遇到它，也可以用 invite_people 马上请人试。`;
+    },
+  },
+  {
+    name: 'remove_product', admin: true,
+    description: '让一个产品下线：从城里拿掉（同名产品发布过的每一版），商店、广告、熟人的念头里都不再有它，list_products 里也没有了；正在用它的人会被停下来。默认保留城里的经历（用过的人还记得它，同名产品以后再发布时居民认得它）；wipe_history=true 时连同使用过程、评论、动态、居民的记忆一起删掉，就像从没发布过。',
+    input: { product: z.string().describe('发布 id 或产品名'), wipe_history: z.boolean().optional().describe('连同城里的经历一起删除。默认 false：保留') },
+    run: async ({ product, wipe_history }, { api }) => {
+      const l = await launchOf(api, product);
+      const o = await api<{ kept: boolean; sessions: number; reviews: number; posts: number; memories: number; people: number }>(`/launches/${l.id}${wipe_history ? '?history=delete' : ''}`, { method: 'DELETE', timeoutMs: 300_000 });
+      return o.kept ? `「${l.name}」已下线，城里的经历保留（作废了 ${o.sessions} 次没用完的使用）。` : `「${l.name}」已下线，经历一起删除：${o.sessions} 次使用、${o.reviews} 条评论、${o.posts} 条动态，${o.people} 位居民忘掉了它（${o.memories} 条记忆）。`;
+    },
+  },
+  {
     name: 'ask_person', admin: false,
     description: '向一位用过产品的虚拟居民追问（例如「你刚才为什么关掉了？」）。基于他最近一次已结束的使用来回答。',
     input: { persona_id: z.string().describe('人物 id（见 product_status、wait_for_people 列出的 persona_id）'), question: z.string() },
@@ -113,4 +134,4 @@ export const JOBS_TOOLS: JobsTool[] = [
   },
 ];
 
-export const MCP_INSTRUCTIONS = 'JobsWorld 是一座住着约两百位虚拟居民的城。把真实可访问的产品发布进来（publish_product），城里的人会自己遇到、决定用不用；想马上得到反馈就 invite_people 请几个人试，wait_for_people 等他们用完，product_report 取回结论和带复现步骤的问题清单。改好并上线后 mark_new_version，再请人试一轮，看问题还在不在。人数是这座城里实际发生的（模拟），不是对真实市场的预测。';
+export const MCP_INSTRUCTIONS = 'JobsWorld 是一座住着约两百位虚拟居民的城。把真实可访问的产品发布进来（publish_product），城里的人会自己遇到、决定用不用；想马上得到反馈就 invite_people 请几个人试，wait_for_people 等他们用完，product_report 取回结论和带复现步骤的问题清单。改好并上线后 mark_new_version，再请人试一轮，看问题还在不在。想从一张白纸重来用 reset_product，不再需要时用 remove_product 下线。人数是这座城里实际发生的（模拟），不是对真实市场的预测。';

@@ -76,7 +76,7 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 | 入口 | 在这里做什么 |
 |---|---|
 | **网页** | 第一眼是城。发布、看谁正在用、读结论、调宣发、把手机递给几个人。 |
-| **命令行** | `jobsworld publish`、`status`、`invite`、`report`、`promote`。 |
+| **命令行** | `jobsworld publish`、`status`、`invite`、`report`、`promote`、`reset`、`remove`。 |
 | **Coding agent** | 一个 MCP 服务：写完代码就发布，取回带复现步骤的问题清单，接着改。 |
 | **飞书** | 在网页上扫码接入后，在飞书里发布、看状况、向居民追问；有进展时机器人会主动告诉你。 |
 | **Terraria** | 用原版或 tModLoader 客户端走进同一座城。`/jw launches`、`/jw publish`、`/jw invite`。 |
@@ -99,7 +99,7 @@ claude mcp add --transport http jobs https://<你的 Jobs 地址>/mcp
 codex mcp add jobs --url https://<你的 Jobs 地址>/mcp
 ```
 
-MCP 工具：`publish_product`、`list_products`、`product_status`、`product_report`、`invite_people`、`wait_for_people`、`mark_new_version`、`set_promotion`、`ask_person`。用管理员口令授权能用全部工具，用访客口令只能用只读的那几个。网页右上角的机器人图标里有链接和各家 agent 的接入命令。Jobs 装在别的机器或云端时，要在反向代理后面设置 `JOBS_PUBLIC_URL`（https，见 [`docs/INSTALL.md`](docs/INSTALL.md)）；发布的产品也必须是那台机器能打开的地址。JobsWorld 是用来体验真实产品的，不是给你电脑上的工程 demo 用的。和 Jobs 在同一台机器上时，`jobsworld mcp`（stdio）照样能用。
+MCP 工具：`publish_product`、`list_products`、`product_status`、`product_report`、`invite_people`、`wait_for_people`、`mark_new_version`、`set_promotion`、`reset_product`、`remove_product`、`ask_person`。用管理员口令授权能用全部工具，用访客口令只能用只读的那几个。网页右上角的机器人图标里有链接和各家 agent 的接入命令。Jobs 装在别的机器或云端时，要在反向代理后面设置 `JOBS_PUBLIC_URL`（https，见 [`docs/INSTALL.md`](docs/INSTALL.md)）；发布的产品也必须是那台机器能打开的地址。JobsWorld 是用来体验真实产品的，不是给你电脑上的工程 demo 用的。和 Jobs 在同一台机器上时，`jobsworld mcp`（stdio）照样能用。
 
 > [!TIP]
 > 装好之后的命令叫 `jobsworld`。`jobs` 这个名字留作别名，给直接执行它的配置用；但在终端里 `jobs` 是 bash、zsh、fish 的内建命令，直接敲会被 shell 截走。在仓库里开发时用 `pnpm jobs`。

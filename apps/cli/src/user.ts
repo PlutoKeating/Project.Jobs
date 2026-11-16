@@ -1,4 +1,4 @@
-// 日常命令：发布、看状况、看结论、调宣发、把手机递给人。全部通过本机的 Jobs 服务（HTTP）完成。
+// 日常命令：发布、看状况、看结论、调宣发、把手机递给人、清零、下线。全部通过本机的 Jobs 服务（HTTP）完成。
 import type { Command } from 'commander';
 import { api, apiBase, funnelLine, reportText, type EngineeringView, type LaunchView, type ReportView } from './client.ts';
 
@@ -47,6 +47,21 @@ export function userCommands(program: Command) {
       const l = await find(ref);
       const out = await api<{ invited: number }>(`/launches/${l.id}/invite`, { body: { n: Number(o.n), segment: o.segment, locale: o.locale, persona_ids: o.who?.split(','), want: o.want } });
       console.log(`已请 ${out.invited} 个人试用「${l.name}」。几分钟后：jobsworld status ${l.id}`);
+    }));
+
+  program.command('reset').argument('<product>', '发布 id 或产品名').description('清零：城里关于它的经历全部归零（使用、曝光、评论、动态、居民的记忆与信任、问题与结论），产品本身不动，此刻重新上线、花费归零')
+    .action(run(async (ref: string) => {
+      const l = await find(ref);
+      const o = await api<LaunchView & { cleared: Record<string, number> }>(`/launches/${l.id}/reset`, { body: {}, timeoutMs: 300_000 });
+      const c = o.cleared ?? {};
+      console.log(`✅「${o.name}」已清零并重新上线：清掉 ${c.sessions ?? 0} 次使用、${c.exposures ?? 0} 次曝光、${c.reviews ?? 0} 条评论、${c.posts ?? 0} 条动态，${c.people ?? 0} 位居民忘掉了它`);
+    }));
+
+  program.command('remove').argument('<product>', '发布 id 或产品名').description('下线：从城里拿掉这个产品。默认保留城里的经历；--wipe 连同经历一起删除').option('--wipe', '连同使用过程、评论、动态、居民的记忆一起删除')
+    .action(run(async (ref: string, o: { wipe?: boolean }) => {
+      const l = await find(ref);
+      const r = await api<{ kept: boolean; sessions: number; reviews: number; posts: number; people: number }>(`/launches/${l.id}${o.wipe ? '?history=delete' : ''}`, { method: 'DELETE', timeoutMs: 300_000 });
+      console.log(r.kept ? `✅「${l.name}」已下线，城里的经历保留` : `✅「${l.name}」已下线，删除了 ${r.sessions} 次使用、${r.reviews} 条评论、${r.posts} 条动态，${r.people} 位居民忘掉了它`);
     }));
 
   program.command('people').description('城里的人').option('--using', '只看正在用产品的人').action(run(async (o: { using?: boolean }) => {

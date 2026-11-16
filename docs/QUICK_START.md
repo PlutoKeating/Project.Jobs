@@ -88,6 +88,8 @@ docker compose --profile game up -d --build --no-deps tml      # tModLoader（�
 |---|---|
 | `pnpm jobs ls` | 已发布的产品与各自的人数 |
 | `pnpm jobs promote <产品> --intensity 0.8` / `--pause` / `--resume` / `--end` | 调宣发 |
+| `pnpm jobs reset <产品>` | 清零：城里关于它的经历全部归零，产品本身不动，此刻重新上线、花费归零 |
+| `pnpm jobs remove <产品>` / `--wipe` | 下线：从城里拿掉；默认保留经历，`--wipe` 连同使用过程、评论、动态、居民的记忆一起删 |
 | `pnpm jobs people --using` | 此刻正在用产品的人 |
 | `pnpm jobs ask <人物 id> <问题>` | 向用过产品的居民追问 |
 | `pnpm jobs clock --pause` / `--resume` / `--speed 20` / `--jump 19:30` | 世界时钟 |
