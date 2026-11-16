@@ -108,7 +108,7 @@
 |---|---|
 | `GET /version` | `version`（当前版本，来自根 `package.json`）、`check`（是否在检查新版本，`JOBS_UPDATE_CHECK=0` 关闭）、`latest`（GitHub 上最新的正式 Release：`version`、`url`、`published_at`；还没有时为空）、`checked_at`、`error`、`update_available`。管理员另有：`can_update`（能一键升级：在容器里运行，且宿主机上的监视单元与 `jobsworld` 命令认得 `update`）、`command`（不能一键升级时要运行的命令）、`update`（`requested`；`host`：宿主机写回的 `{ state: running \| ok \| failed, at }`；`log`：失败时输出的最后 20 行） |
 | `POST /version/check`（管理员） | 立刻检查一次新版本（平时后台每小时一次；管理员打开网页时结果超过 15 分钟也会当场重查） |
-| `POST /update`（管理员） | 一键升级。能一键升级时返回 `{ requested: true }`：服务只往 `control/requests/` 放一个名为 `update` 的请求，由宿主机上的 `jobsworld _control` 执行 `jobsworld update`（拉取 → 备份数据库 → 重建）；正在升级时返回 `{ requested: true, already: true }`。不能时返回 409 `{ error: "manual", command }` |
+| `POST /update`（管理员） | 一键升级。能一键升级时返回 `{ requested: true }`：服务只往 `control/requests/` 放一个名为 `update` 的请求，由宿主机上的 `jobsworld _control` 执行 `jobsworld update`（先比较版本，确实有新版本才拉取 → 备份数据库 → 重建）；正在升级时返回 `{ requested: true, already: true }`。不能时返回 409 `{ error: "manual", command }` |
 
 ### 单端口网关（`apps/gateway`，`JW_PORT`，默认 `0.0.0.0:7777`）
 

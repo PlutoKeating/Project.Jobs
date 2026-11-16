@@ -1,8 +1,9 @@
 // 安装与打包：发出去的安装脚本就是仓库里的那一份；脚本语法正确；编排文件里我们自己的代码只有一个镜像
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '@pux/core';
 
 const read = (p: string) => readFileSync(join(REPO_ROOT, p), 'utf8');
@@ -92,3 +93,61 @@ describe('编排', () => {
     expect(read('deploy/compose.host.yml')).toContain('network_mode: host');
   });
 });
+
+// 先比较版本再动手：用假的 docker 和 curl 跑真的脚本（docker 只记下被调用了什么，不碰本机的 Docker）
+describe('有新版本才升级', () => {
+  const root = mkdtempSync(join(tmpdir(), 'jobs-upd-'));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  const bin = join(root, 'bin'); mkdirSync(bin);
+  writeFileSync(join(bin, 'docker'), '#!/usr/bin/env bash\necho "docker $*" >> "$LOG"\ncase "$1 $2" in "image inspect") exit 0;; "run --rm") echo "$IMGVER"; exit 0;; "pull "*) exit 1;; esac\nexit 0\n');
+  writeFileSync(join(bin, 'curl'), '#!/usr/bin/env bash\nu="${@: -1}"\ncase "$u" in *healthz) [ -n "$CUR" ] && echo "{\\"ok\\":true,\\"version\\":\\"$CUR\\"}" && exit 0; exit 7;; *releases*) [ -n "$REL" ] && echo "{\\"tag_name\\": \\"v$REL\\", \\"html_url\\": \\"x\\"}" && exit 0; exit 22;; esac\nexit 22\n');
+  writeFileSync(join(bin, 'sleep'), '#!/usr/bin/env bash\nexit 0\n');
+  for (const f of ['docker', 'curl', 'sleep']) chmodSync(join(bin, f), 0o755);
+  let n = 0;
+  const home = (image = 'ghcr.io/plutokeating/jobs:latest') => {
+    const h = join(root, `h${n++}`); mkdirSync(h);
+    writeFileSync(join(h, 'compose.yml'), 'services: {}\n'); writeFileSync(join(h, '.env'), `JOBS_IMAGE=${image}\nJOBS_PORT=7777\nJOBS_GCLOUD_DIR=${join(h, 'gc')}\n`);
+    writeFileSync(join(h, '.installed'), 'x'); writeFileSync(join(h, 'jobs'), read('deploy/jobs')); chmodSync(join(h, 'jobs'), 0o755);
+    return h;
+  };
+  const run = (script: string, args: string[], env: Record<string, string>) => {
+    const log = join(root, `log${n++}`); writeFileSync(log, '');
+    let out = ''; let code = 0;
+    try { out = execFileSync('bash', [script, ...args], { env: { PATH: `${bin}:/usr/bin:/bin`, HOME: root, LOG: log, ...env }, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }); }
+    catch (e) { const x = e as { stdout: string; stderr: string; status: number }; out = `${x.stdout}${x.stderr}`; code = x.status; }
+    return { out, code, pulled: /pull/.test(readFileSync(log, 'utf8')) };
+  };
+  const upd = (args: string[], env: Record<string, string>, image?: string) => { const h = home(image); return run(join(h, 'jobs'), ['update', ...args], { JOBS_HOME: h, ...env }); };
+
+  it('jobsworld update：本机已经是 GitHub 上最新的发布时什么都不动（不拉镜像、不备份、不重建）', () => {
+    const r = upd([], { CUR: '0.3.4', REL: '0.3.4' });
+    expect(r.code).toBe(0); expect(r.pulled).toBe(false); expect(r.out).toContain('已经是最新版本 0.3.4');
+  });
+  it('有新版本时才去拉镜像', () => {
+    const r = upd([], { CUR: '0.3.4', REL: '0.4.0' });
+    expect(r.out).toContain('0.3.4 → 0.4.0'); expect(r.pulled).toBe(true);
+  });
+  it('本机比最新发布还新、或查不到最新发布时不动；--force 照样重建', () => {
+    expect(upd([], { CUR: '0.4.1', REL: '0.4.0' }).pulled).toBe(false);
+    const off = upd([], { CUR: '0.4.0', REL: '' }); expect(off.pulled).toBe(false); expect(off.out).toContain('--force');
+    expect(upd(['--force'], { CUR: '0.4.0', REL: '0.4.0' }).pulled).toBe(true);
+    expect(upd([], { CUR: '0.4.0', REL: '0.4.0', JOBS_FORCE_UPDATE: '1' }).pulled).toBe(true);
+  });
+  it('--check 只看不动；锁定版本时按锁定的版本比较；自己构建的镜像比较镜像里的版本', () => {
+    const c = upd(['--check'], { CUR: '0.3.4', REL: '0.4.0' }); expect(c.pulled).toBe(false); expect(c.out).toContain('有新版本');
+    expect(upd([], { CUR: '0.3.4', REL: '0.4.0' }, 'ghcr.io/plutokeating/jobs:0.3.4').pulled).toBe(false);
+    expect(upd([], { CUR: '0.3.3', REL: '0.4.0' }, 'ghcr.io/plutokeating/jobs:v0.3.4').out).toContain('0.3.3 → 0.3.4');
+    expect(upd([], { CUR: '0.4.0', IMGVER: '0.4.0', JOBS_SKIP_PULL: '1' }, 'jobs:local').out).toContain('已经是最新版本');
+    expect(upd(['--bogus'], { CUR: '0.4.0' }).code).toBe(2);
+  });
+  it('重复运行安装脚本：已是最新就直接结束；有新版本、JOBS_FORCE=1、改了配置时才往下装', () => {
+    const inst = join(REPO_ROOT, 'deploy/install.sh');
+    const same = run(inst, [], { JOBS_HOME: home(), CUR: '0.4.0', REL: '0.4.0' });
+    expect(same.code).toBe(0); expect(same.pulled).toBe(false); expect(same.out).toContain('JOBS_FORCE=1');
+    expect(run(inst, [], { JOBS_HOME: home(), CUR: '0.3.4', REL: '0.4.0' }).pulled).toBe(true);
+    expect(run(inst, [], { JOBS_HOME: home(), CUR: '0.4.0', REL: '0.4.0', JOBS_FORCE: '1' }).pulled).toBe(true);
+    expect(run(inst, ['--force'], { JOBS_HOME: home(), CUR: '0.4.0', REL: '0.4.0' }).pulled).toBe(true);
+    expect(run(inst, [], { JOBS_HOME: home(), CUR: '0.4.0', REL: '0.4.0', JOBS_PUBLIC_URL: 'https://jobs.example.com' }).pulled).toBe(true);
+  });
+});
+

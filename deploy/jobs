@@ -70,9 +70,58 @@ wait_ready() {
   done
   return 1
 }
+# ---- 版本比较：先看本机的版本和要升级到的版本，确实有新版本（或者要求强制）才动手 ----
+image() { local i; i="$(envv JOBS_IMAGE)"; echo "${i:-ghcr.io/plutokeating/jobs:latest}"; }
+image_version() {  # 本机已有的某个镜像里装的是哪一版（不联网；本机没有这个镜像时为空）
+  "${DOCKER[@]}" image inspect "$1" >/dev/null 2>&1 || return 0
+  "${DOCKER[@]}" run --rm --entrypoint node "$1" -p "require('/app/package.json').version" 2>/dev/null || true
+}
+latest_release() {  # GitHub 上最新的正式发布（镜像都推上去之后才建，和网页上的升级提示同一个来源）；查不到时为空
+  curl -fsSL -m 10 -H 'accept: application/vnd.github+json' -H 'user-agent: jobs-update-check' "${JOBS_UPDATE_URL:-https://api.github.com/repos/PlutoKeating/Project.Jobs/releases/latest}" 2>/dev/null \
+    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"[vV]\{0,1\}\([^"]*\)".*/\1/p' | head -1 || true
+}
+target_version() {  # 要升级到的版本，输出「版本|来源」；不知道时版本为空
+  local img tag
+  img="$(image)"
+  if [ -n "${JOBS_SKIP_PULL:-}" ]; then echo "$(image_version "$img")|本机的镜像 $img"; return 0; fi
+  case "$img" in *@sha256:*) echo "|按摘要固定的镜像 $img"; return 0;; esac
+  tag="${img##*/}"; case "$tag" in *:*) tag="${tag##*:}";; *) tag=latest;; esac
+  if [ "$tag" = latest ]; then
+    case "$img" in ghcr.io/plutokeating/jobs:latest|ghcr.io/plutokeating/jobs) echo "$(latest_release)|GitHub 上最新的发布"; return 0;; esac
+  elif printf '%s' "$tag" | grep -Eq '^[vV]?[0-9]+\.[0-9]+\.[0-9]+'; then echo "${tag#[vV]}|.env 里锁定的版本"; return 0; fi
+  echo "|自己指定的镜像 $img"
+}
+ver_gt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]; }
+# 要不要真的升级：返回 0 = 要；1 = 不用（原因已经打印）。src 是来源（GitHub 上最新的发布时，本机更新就不降级），hint 是强制的写法
+need_update() {
+  local cur="$1" target="$2" src="$3" hint="${4:-jobsworld update --force}"
+  if [ -z "$cur" ]; then echo "看不到本机正在运行的版本（服务没在运行），照常拉取并重建。"; return 0; fi
+  if [ -z "$target" ]; then echo "查不到要升级到的版本（$src；或者访问不了 GitHub）。本机是 $cur，没有改动。确定要重新拉取并重建：$hint"; return 1; fi
+  if [ "$cur" = "$target" ]; then echo "已经是最新版本 $cur（$src），没有改动。要强制重新拉取并重建：$hint"; return 1; fi
+  if [ "$src" = "GitHub 上最新的发布" ] && ver_gt "$cur" "$target"; then echo "本机的 $cur 比 GitHub 上最新的发布 $target 还新，没有改动。"; return 1; fi
+  echo "本机 $cur → $target（$src）。"; return 0
+}
+
 update() {  # 函数里逐步检查返回值：在 if 里调用时 set -e 不起作用
-  local before after
+  local before after force="" check="" a t target src
+  for a in "$@"; do
+    case "$a" in
+      -f|--force) force=1 ;;
+      --check) check=1 ;;
+      *) echo "用法：jobsworld update [--check | --force]" >&2; return 2 ;;
+    esac
+  done
+  [ -n "${JOBS_FORCE_UPDATE:-}" ] && force=1
   before="$(running_version)"
+  echo "== 检查版本 =="
+  t="$(target_version)"; target="${t%%|*}"; src="${t#*|}"
+  if [ -n "$check" ]; then
+    echo "本机：${before:-（服务没在运行）}"; echo "可升级到：${target:-（查不到）}（$src）"
+    if [ -n "$before" ] && [ -n "$target" ] && [ "$before" != "$target" ] && ! { [ "$src" = "GitHub 上最新的发布" ] && ver_gt "$before" "$target"; }; then echo "有新版本：jobsworld update"; else echo "没有可升级的版本。"; fi
+    return 0
+  fi
+  if [ -n "$force" ]; then echo "强制重新拉取并重建（本机 ${before:-未知}，${src} ${target:-未知}）。"
+  elif ! need_update "$before" "$target" "$src"; then return 0; fi
   if [ -z "${JOBS_SKIP_PULL:-}" ]; then echo "== 拉取新镜像 =="; dc pull || return 1; fi   # 自己构建的镜像：JOBS_SKIP_PULL=1
   refresh_files || { echo "从新镜像取编排文件失败。" >&2; return 1; }
   if [ -z "${JOBS_SKIP_BACKUP:-}" ]; then echo "== 备份数据库 =="; backup || { echo "备份失败，没有升级（数据没有动）。确定不要备份：JOBS_SKIP_BACKUP=1 jobsworld update" >&2; return 1; }; fi
@@ -93,7 +142,7 @@ case "${1:-}" in
   logs) shift; dc logs -f --tail 200 "${@:-jobs}" ;;
   url) echo "http://127.0.0.1:$(port)/"; ip="$(lan_ip)"; [ -n "$ip" ] && echo "http://$ip:$(port)/" ;;
   passcode) echo "管理员口令：$(envv JW_ADMIN_PASSCODE)"; echo "访客口令：  $(envv JW_PASSCODE)"; g="$(envv JW_GAME_PASSWORD)"; [ -n "$g" ] && echo "游戏服密码：$g" ;;
-  update) update ;;
+  update) shift; update "$@" ;;
   backup) backup ;;
   version) v="$(running_version)"; echo "Jobs ${v:-（服务没在运行）}"; echo "镜像：$(envv JOBS_IMAGE)" ;;
   _refresh-games) refresh_games ;;
@@ -130,7 +179,7 @@ jobsworld：把产品发布到 JobsWorld
 
   jobsworld url | passcode | ps | logs | restart | up | down    服务本身
   jobsworld game on|off [tshock|tml]                            Terraria 游戏服
-  jobsworld update                                               升级到最新版本（先自动备份数据库）
+  jobsworld update [--check|--force]                             有新版本才升级（先自动备份数据库）；--check 只看不动，--force 强制重新拉取并重建
   jobsworld version | backup                                     当前版本 | 手动备份数据库
   jobsworld uninstall [--purge]                                  停止（--purge 连数据一起删）
 
