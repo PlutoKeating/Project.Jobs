@@ -29,6 +29,8 @@ export interface ChatOptions<S extends z.ZodType | undefined> {
   /** 0 = 只试一次（探测用）；不填 = 在总预算内重试与换目标 */
   retries?: number;
   reasoning?: 'low' | 'medium' | 'high';
+  /** 单次上游调用的超时；不填用适配层的默认值（180 秒）。输入很长、要想很久的归纳调用需要更长 */
+  timeoutMs?: number;
 }
 
 /** alias：模型组；family：实际目标所属的厂商；model：实际调用的上游模型 */
@@ -115,7 +117,7 @@ export class Gateway {
         attempt++; const t0 = Date.now();
         try {
           const secret = await secretOf(t.provider.id, cred.secret_id);
-          const req: ChatReq = { messages: convo, temperature: opts.temperature, maxTokens: opts.maxTokens, reasoning: opts.reasoning ?? (use === 'step' ? 'low' : undefined), json };
+          const req: ChatReq = { messages: convo, temperature: opts.temperature, maxTokens: opts.maxTokens, reasoning: opts.reasoning ?? (use === 'step' ? 'low' : undefined), json, timeoutMs: opts.timeoutMs };
           const r = await upstreamChat(t.provider, t.model, secret, req);
           const latency = Date.now() - t0;
           let data: unknown = r.text;

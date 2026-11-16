@@ -176,6 +176,7 @@ function VerdictTab({ id, basis, admin }: { id: string; basis: number; admin: bo
       <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-fg-muted">
         <span className={`h-2 w-2 rounded-full ${VERDICT_TONE[r.verdict]}`} /><span className="text-fg">{L(`v_${r.verdict}`)}</span>
         <span>· {t('used_n', { n: r.people_used })}</span>
+        {r.refreshing && <span className="flex items-center gap-1.5">· <span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('refreshing_report')}</span>}
         {admin && <button aria-label={t('resummarize')} title={t('resummarize')} disabled={busy} onClick={async () => { setBusy(true); try { const fresh = await get<LaunchReport>(`/launches/${id}/report?lang=${lang}&force=1`); qc.setQueryData(['launch-report', id, lang, basis], fresh); } finally { setBusy(false); } }} className="ml-1 rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><RefreshCw size={13} className={busy ? 'animate-spin' : ''} /></button>}
       </p>
       <p className="mt-5 max-w-[65ch] text-base leading-relaxed text-fg">{r.summary}</p>

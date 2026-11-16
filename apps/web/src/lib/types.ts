@@ -80,7 +80,7 @@ export interface LaunchDetail extends Launch { uses: Use[]; passersby: PasserbyR
 export interface Moment { ref: string; session_id: string; step_idx: number; persona_id: string; persona: string; who: string; quote: string; screenshot_ev?: string; kind: string }
 export interface CitedPasserby { ref: string; persona_id: string; persona: string; who: string; channel: string; reaction: string; thought: string }
 export interface Cited { text: string; moments: Moment[]; passersby: CitedPasserby[] }
-export interface LaunchReport { launch_id: string; lang: string; generated_at: string; verdict: 'works' | 'mixed' | 'not_yet' | 'too_early'; headline: string; summary: string; hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string; funnel: Funnel; people_used: number }
+export interface LaunchReport { launch_id: string; lang: string; generated_at: string; verdict: 'works' | 'mixed' | 'not_yet' | 'too_early'; headline: string; summary: string; hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string; funnel: Funnel; people_used: number; refreshing?: boolean }
 export interface Engineering {
   experienced: { id: string; severity: string; title: string; title_en?: string | null; description: string; where: string | null; people: number; sessions: number; reproduced: boolean | null; steps: string[] }[];
   appendix: { id: string; severity: string; category: string; title: string; title_en?: string | null; description: string; recommendation: string | null; where: string | null; sessions: number }[];

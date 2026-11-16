@@ -1,6 +1,6 @@
 // 一页人话：这个产品在城里过得怎么样。每句结论都指回当时那个人、那一步、那句话（点开就是画面）。
 // 数字是这座城里实际发生的人数（模拟），不是对真实市场的预测。技术信号与专家检查在工程附录里，不出现在这一页。
-import { z, type PersonaSpec, langOf } from '@pux/core';
+import { logger, z, type PersonaSpec, langOf } from '@pux/core';
 import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { launchFunnel, type Funnel, type LaunchRow } from './launch.ts';
@@ -13,7 +13,17 @@ export interface LaunchReport {
   verdict: 'works' | 'mixed' | 'not_yet' | 'too_early'; headline: string; summary: string;
   hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string;
   funnel: Funnel; people_used: number; simulated: true;
+  /** 这是上一版结论，新的正在后台归纳 */
+  refreshing?: boolean;
 }
+
+/** 正在归纳的结论：同一个产品同一种语言只归纳一份，期间的请求都等它（或先拿上一版） */
+const inflight = new Map<string, Promise<LaunchReport>>();
+/** 一页结论的输入很长（上百条痕迹），模型要想两三分钟，比默认的 180 秒超时更久 */
+const REPORT_TIMEOUT_MS = 480_000;
+/** 后台重写失败后，这么久之内不再自动重试（上一版照常给），免得轮询把失败的调用一遍遍发出去 */
+const RETRY_AFTER_FAIL_MS = 10 * 60_000;
+const failedAt = new Map<string, number>();
 
 const Item = z.object({ text: z.string(), refs: z.array(z.string()) });
 const ReportSchema = z.object({
@@ -51,17 +61,35 @@ export async function gatherMoments(l: LaunchRow): Promise<{ moments: Moment[]; 
   return { moments: moments.slice(-140), passersby, sessions: ss.length, people };
 }
 
-/** 生成（或读取缓存的）一页结论 */
+/** 一页结论：素材没变就读缓存；变了就重新归纳（有上一版时先返回上一版并标 refreshing） */
 export async function launchReport(l: LaunchRow, lang: 'zh' | 'en' = 'zh', opts: { force?: boolean } = {}): Promise<LaunchReport> {
-  const db = getDb(); const zh = lang === 'zh';
+  const db = getDb();
   const funnel = await launchFunnel(l.id);
-  const { moments, passersby, sessions: nSess, people } = await gatherMoments(l);
+  const { moments, passersby, sessions: nSess } = await gatherMoments(l);
   const used = new Set(moments.filter((m) => m.session_id).map((m) => m.persona_id)).size;
   // 什么时候重新归纳：有人用完了、有了新评论，或者路过没点开的人明显变多了。只是多几个人刷到广告不重算（那只改人数，人数每次都取最新）
   const basis = `${nSess}:${funnel.reviews}:${moments.length}:${Math.floor(passersby.length / 10)}:${funnel.reached > 0 ? 1 : 0}:${funnel.opened > 0 ? 1 : 0}`;
   const [cached] = await db.select().from(launchReports).where(and(eq(launchReports.launch_id, l.id), eq(launchReports.lang, lang)));
   if (cached && cached.basis === basis && !opts.force) return { ...(cached.data as LaunchReport), funnel, people_used: used };
-  const base = { launch_id: l.id, lang, generated_at: new Date().toISOString(), basis, funnel, people_used: used, simulated: true as const };
+  const key = `${l.id}:${lang}`;
+  const stale = cached && !opts.force ? { ...(cached.data as LaunchReport), funnel, people_used: used } : undefined;
+  let job = inflight.get(key);
+  if (!job) {
+    if (stale && Date.now() - (failedAt.get(key) ?? 0) < RETRY_AFTER_FAIL_MS) return stale;
+    job = writeReport(l, lang, { funnel, moments, passersby, nSess, used, basis })
+      .then((r) => { failedAt.delete(key); return r; }, (e) => { failedAt.set(key, Date.now()); throw e; })
+      .finally(() => inflight.delete(key));
+    inflight.set(key, job);
+    job.catch((e) => logger.warn({ launch: l.id, lang, err: String((e as Error).message).slice(0, 200) }, '归纳一页结论失败'));
+  }
+  // 有上一版时先给上一版，新的在后台写（要几分钟）；强制重写或从没写过时才等
+  return stale ? { ...stale, refreshing: true } : job;
+}
+
+async function writeReport(l: LaunchRow, lang: 'zh' | 'en', g: { funnel: Funnel; moments: Moment[]; passersby: Passerby[]; nSess: number; used: number; basis: string }): Promise<LaunchReport> {
+  const db = getDb(); const zh = lang === 'zh';
+  const { funnel, moments, passersby, nSess, used, basis } = g;
+  const base ={ launch_id: l.id, lang, generated_at: new Date().toISOString(), basis, funnel, people_used: used, simulated: true as const };
   if (nSess === 0) {
     // 还没有人打开过：只说「为什么没点开」
     // 有人已经打开、只是还没用完时，不能说「没有人点开」
@@ -113,13 +141,12 @@ ${passersby.map((x) => `${x.ref} | ${x.persona}（${x.who}）| ${x.channel} | ${
 
 ${zh ? '归并后的问题（虚拟人亲历）' : 'Merged issues (experienced)'}：
 ${iss.slice(0, 20).map((i) => `- [${i.severity}] ${zh ? i.title : (i.title_en ?? i.title)}（${(i.session_ids ?? []).length} ${zh ? '次使用遇到' : 'sessions'}）`).join('\n') || '—'}`;
-  const r = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], schema: ReportSchema, schemaName: 'launch_report', reasoning: 'medium', tags: { study_id: l.study_id, purpose: 'launch_report' } });
+  const r = await gateway().chatWithFallback(['judge_meta', 'judge_0'], { messages: [{ role: 'system', content: sys }, { role: 'user', content: user }], schema: ReportSchema, schemaName: 'launch_report', reasoning: 'medium', timeoutMs: REPORT_TIMEOUT_MS, tags: { study_id: l.study_id, purpose: 'launch_report' } });
   const mById = new Map(moments.map((m) => [m.ref, m])); const xById = new Map(passersby.map((x) => [x.ref, x]));
   const cite = (it: z.infer<typeof Item>): Cited => ({ text: it.text.trim(), moments: it.refs.map((x) => mById.get(x.trim())).filter((x): x is Moment => !!x).slice(0, 4), passersby: it.refs.map((x) => xById.get(x.trim())).filter((x): x is Passerby => !!x).slice(0, 4) });
   const keep = (xs: z.infer<typeof Item>[]) => xs.map(cite).filter((c) => c.text && (c.moments.length || c.passersby.length)).slice(0, 3);
   const d = r.data;
   const rep: LaunchReport = { ...base, verdict: d.verdict, headline: d.headline.trim(), summary: d.summary.trim(), hurts: keep(d.hurts), delights: keep(d.delights), who_stays: keep(d.who_stays), who_leaves: keep(d.who_leaves), why_not_opened: keep(d.why_not_opened), next: d.next.trim() };
-  void people;
   await save(l.id, lang, basis, rep);
   return rep;
 }

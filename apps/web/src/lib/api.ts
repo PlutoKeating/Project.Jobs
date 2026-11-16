@@ -26,7 +26,7 @@ export const usePersona = (id: string) => useQuery({ queryKey: ['persona', id], 
 export const useLaunches = () => useQuery({ queryKey: ['launches'], queryFn: () => get<Launch[]>('/launches'), refetchInterval: 30_000 });
 export const useLaunch = (id: string) => useQuery({ queryKey: ['launch', id], queryFn: () => get<LaunchDetail>(`/launches/${id}`), refetchInterval: 10_000 });
 /** 一页结论由模型归纳，首次要等一会儿。basis 是已结束的使用次数：有人用完了才重新取，期间先显示上一版 */
-export const useLaunchReport = (id: string, lang: string, enabled: boolean, basis: number) => useQuery({ queryKey: ['launch-report', id, lang, basis], queryFn: () => get<LaunchReport>(`/launches/${id}/report?lang=${lang}`), enabled, staleTime: 300_000, retry: false, placeholderData: keepPreviousData });
+export const useLaunchReport = (id: string, lang: string, enabled: boolean, basis: number) => useQuery({ queryKey: ['launch-report', id, lang, basis], queryFn: () => get<LaunchReport>(`/launches/${id}/report?lang=${lang}`), enabled, staleTime: 300_000, retry: false, placeholderData: keepPreviousData, refetchInterval: (q) => (q.state.data?.refreshing ? 20_000 : false) });
 export const useEngineering = (id: string, enabled: boolean) => useQuery({ queryKey: ['launch-eng', id], queryFn: () => get<Engineering>(`/launches/${id}/engineering`), enabled });
 export const useSession = (id: string) => useQuery({ queryKey: ['session', id], queryFn: () => get<SessionDetail>(`/sessions/${id}`), refetchInterval: (q) => (q.state.data && ['running', 'waiting_human', 'planned'].includes(q.state.data.session.status) ? 4000 : false) });
 export const useHuman = () => useQuery({ queryKey: ['human'], queryFn: () => get<HumanTask[]>('/human'), refetchInterval: 8000 });

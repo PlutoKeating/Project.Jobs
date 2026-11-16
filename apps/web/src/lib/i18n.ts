@@ -14,7 +14,7 @@ const D = {
   'simulated_hint': ['这座城里实际发生的人数，不是对真实市场的预测', 'Head counts from this simulated city, not a forecast of the real market'], 'using_n': ['{n} 人在用', '{n} using it'], 'st_paused': ['已暂停', 'Paused'], 'st_ended': ['已结束', 'Ended'], 'no_products': ['还没有发布过产品', 'Nothing published yet'],
   'promotion': ['宣发强度', 'Promotion'], 'audience': ['投给谁', 'Audience'], 'age_min': ['最小年龄', 'Youngest'], 'age_max': ['最大年龄', 'Oldest'], 'years_old': ['岁', 'yrs'], 'anyone': ['任何人', 'Anyone'],
   'hand_phone': ['把手机递给几个人', 'Hand it to a few people'], 'hand_over': ['递过去', 'Hand it over'], 'invited_n': ['已请 {n} 人', '{n} invited'], 'want': ['想请他们做的一件事（可不填）', 'One thing to try (optional)'],
-  'summarizing': ['正在归纳大家的反应…', 'Reading what people did…'], 'resummarize': ['重新归纳', 'Rewrite'], 'used_n': ['{n} 人用过', '{n} used it'], 'one_thing': ['如果只改一件事', 'If you fix one thing'],
+  'summarizing': ['正在归纳大家的反应…', 'Reading what people did…'], 'resummarize': ['重新归纳', 'Rewrite'], 'refreshing_report': ['有新的使用，正在重新归纳', 'New uses came in; rewriting'], 'used_n': ['{n} 人用过', '{n} used it'], 'one_thing': ['如果只改一件事', 'If you fix one thing'],
   'hurts': ['最让人难受的地方', 'What hurt most'], 'delights': ['让人高兴的地方', 'What delighted'], 'who_stays': ['会留下的人', 'Who stays'], 'who_leaves': ['会走的人', 'Who leaves'], 'why_not_opened': ['看到了却没点开', 'Saw it, did not open it'],
   'used_it': ['用过的人', 'Used it'], 'walked_past': ['注意到了没点开', 'Noticed, did not open'], 'visit_n': ['第 {n} 次', 'Visit {n}'], 'show_all': ['全部 {n} 人', 'All {n}'], 'voices': ['口碑', 'Word of mouth'], 'engineering': ['工程附录', 'Engineering'],
   'store_page': ['商店页', 'Store page'], 'no_rating': ['还没有评分', 'No ratings yet'], 'reviews': ['评论', 'Reviews'], 'no_reviews': ['还没有人评论', 'No reviews yet'], 'posts': ['动态', 'Posts'],

@@ -49,7 +49,7 @@ flowchart LR
 | `engine.ts` | `LaunchEngine.tick`：先处理之前留下的念头（熟人提过、想以后看看、用过想再用），再算新的曝光；决定与使用都有并发上限；每累计几次使用后重新合成问题 |
 | `usage.ts` | `startUsage`（把这个人此时此地的处境定下来，建一次使用）、`inviteToLaunch`（把手机递给人，标记为受邀）、`afterUse`（把用完后的打算落成评论、动态、口碑和回访念头） |
 | `identity.ts` | 城里发的邮箱、手机号、惯用的用户名与密码、钱包；`deliverMail` 把验证邮件与短信送到对应的人；`payFromWallet` |
-| `report.ts` | `gatherMoments`（每个人的关键时刻：第一眼、卡住、离开、办成、用完后说的话、评论与动态；路过没点开的人的想法）→ `launchReport`（用「归纳」模型组写成一页，每条必须引用痕迹）；`experiencedIssues`、`engineeringAppendix` |
+| `report.ts` | `gatherMoments`（每个人的关键时刻：第一眼、卡住、离开、办成、用完后说的话、评论与动态；路过没点开的人的想法）→ `launchReport`（用「归纳」模型组写成一页，每条必须引用痕迹；输入有上百条痕迹，单次调用的超时放宽到 8 分钟，素材变了时先给上一版、后台重写）；`experiencedIssues`、`engineeringAppendix` |
 
 规则决定「遇没遇到、注没注意」，模型只在决定点出场：要不要点开、使用时的每一步、用完之后怎么说。数据：`launches`、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports`（迁移 `0007`）。每次发布内部对应一个 `studies` 行，作为使用过程、证据与花费的容器（`trigger = 'launch'`）。
 
