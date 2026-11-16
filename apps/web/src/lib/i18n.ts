@@ -68,6 +68,14 @@ const D = {
   'inbox': ['收件箱', 'Inbox'], 'inbox_empty': ['还没有收到信', 'No mail yet'], 'mail_opened': ['他点开看过', 'He opened it'], 'mail_unopened': ['没点开', 'Not opened'], 'mail_raw': ['原始邮件', 'Raw message'], 'mail_sms': ['短信', 'Text'],
   'mail_fake_warn': ['居民还收不到真实邮件：需要邮箱验证的产品他们注册不了', 'Residents cannot receive real mail yet: products that verify email will block them'], 'mail_fake_fix': ['去设置', 'Open settings'],
   'session_mail': ['这次收到的信', 'Mail during this use'],
+  'lc_reset': ['清零', 'Reset'], 'lc_remove': ['下线', 'Take offline'],
+  'lc_reset_title': ['把「{n}」的经历清零？', 'Reset everything about "{n}"?'],
+  'lc_reset_body': ['城里关于它的一切都归零：谁见过它、用过它、说过什么，评论、动态、居民对它的记忆与信任，问题清单和一页结论。产品本身（地址、介绍、商店截图、宣发设置）不动，此刻重新上线，就像第一次发布。正在用它的人会被停下来。', 'Everything the town knows about it goes back to zero: who saw it, who used it and what they said, reviews, posts, residents\' memories of it and trust in it, the issue list and the verdict. The product itself (link, description, store shots, promotion) stays and goes live again now, as if published for the first time. Anyone using it right now is stopped.'],
+  'lc_remove_title': ['让「{n}」下线？', 'Take "{n}" offline?'],
+  'lc_remove_body': ['它从城里消失：商店、广告、熟人的念头里都不再有它，产品列表里也没有了。正在用它的人会被停下来。', 'It disappears from town: no more store listing, ads or friends\' reminders, and it leaves the product list. Anyone using it right now is stopped.'],
+  'lc_keep': ['保留城里的经历', 'Keep what happened'], 'lc_keep_hint': ['用过的人还记得它，人物页里还能看到那些使用；同名产品以后再发布时，居民认得它', 'People who used it still remember it and their uses stay on their pages; if you publish it again under the same name, residents will recognise it'],
+  'lc_wipe': ['连同经历一起删除', 'Delete what happened too'], 'lc_wipe_hint': ['使用过程、评论、动态、居民的记忆全部删掉，就像它从来没有发布过', 'Uses, reviews, posts and residents\' memories are all deleted, as if it was never published'],
+  'lc_doing': ['处理中…', 'Working…'],
 } as const;
 type Key = keyof typeof D;
 

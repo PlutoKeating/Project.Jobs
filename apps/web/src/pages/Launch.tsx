@@ -2,8 +2,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { ArrowRight, ArrowUpRight, ChevronDown, Minus, Pause, Play, Plus, RefreshCw, Square, Star } from 'lucide-react';
-import { evidenceUrl, get, post, useEngineering, useLaunch, useLaunchReport, useMe } from '../lib/api.ts';
+import { ArrowRight, ArrowUpRight, ChevronDown, Minus, Pause, Play, Plus, PowerOff, RefreshCw, RotateCcw, Square, Star } from 'lucide-react';
+import { ApiError, del, evidenceUrl, get, post, queryClient, useEngineering, useLaunch, useLaunchReport, useMe } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import type { Audience, Cited, Launch, LaunchDetail, LaunchReport, LaunchStatus, Use } from '../lib/types.ts';
 import { Avatar, Button, ErrorState, PersonLink, Seg, Sev, Skeleton } from '../components/ui.tsx';
@@ -337,6 +337,62 @@ function EngineeringTab({ id }: { id: string }) {
   );
 }
 
+/** 清零（经历归零、产品留着、此刻重新上线）与下线（可选是否连经历一起删）。都要确认 */
+function Lifecycle({ d }: { d: LaunchDetail }) {
+  const { t } = useT(); const nav = useNavigate();
+  const ref = useRef<HTMLDialogElement>(null);
+  const [mode, setMode] = useState<'reset' | 'remove' | null>(null);
+  const [keep, setKeep] = useState(true); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { const x = ref.current; if (!x) return; if (mode && !x.open) x.showModal(); else if (!mode && x.open) x.close(); }, [mode]);
+  const close = () => { if (!busy) { setMode(null); setErr(null); } };
+  const run = async () => {
+    setBusy(true); setErr(null);
+    try {
+      if (mode === 'reset') {
+        await post(`/launches/${d.id}/reset`);
+        await queryClient.invalidateQueries({ predicate: (q) => ['launch', 'launch-report', 'launch-eng', 'launches', 'overview', 'personas', 'persona'].includes(String(q.queryKey[0])) });
+        setMode(null);
+      } else {
+        await del(`/launches/${d.id}${keep ? '' : '?history=delete'}`);
+        await queryClient.invalidateQueries({ queryKey: ['launches'] });
+        setMode(null); void nav({ to: '/products' });
+      }
+    } catch (e) { setErr(e instanceof ApiError ? e.code : t('error')); } finally { setBusy(false); }
+  };
+  const Choice = ({ v, title, hint }: { v: boolean; title: string; hint: string }) => (
+    <label className={`flex cursor-pointer gap-3 rounded-md border px-3 py-2.5 transition-colors ${keep === v ? 'border-fg-subtle bg-surface' : 'border-border hover:border-border-strong'}`}>
+      <input type="radio" name="lc-keep" className="mt-1 accent-[var(--color-accent)]" checked={keep === v} onChange={() => setKeep(v)} disabled={busy} />
+      <span><span className="block text-sm text-fg-display">{title}</span><span className="mt-0.5 block text-xs leading-relaxed text-fg-muted">{hint}</span></span>
+    </label>
+  );
+  return (
+    <>
+      <Button size="sm" variant="ghost" onClick={() => setMode('reset')}><RotateCcw size={13} />{t('lc_reset')}</Button>
+      <Button size="sm" variant="ghost" onClick={() => { setKeep(true); setMode('remove'); }}><PowerOff size={13} />{t('lc_remove')}</Button>
+      <dialog ref={ref} onClose={close} onCancel={(e) => { if (busy) e.preventDefault(); }} onClick={(e) => { if (e.target === ref.current) close(); }}
+        className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-xl border border-border-strong bg-bg-elevated p-0 text-fg backdrop:bg-overlay">
+        {mode && (
+          <div className="p-6">
+            <h2 className="text-lg font-semibold">{t(mode === 'reset' ? 'lc_reset_title' : 'lc_remove_title', { n: d.name })}</h2>
+            <p className="mt-3 text-sm leading-relaxed text-fg-muted">{t(mode === 'reset' ? 'lc_reset_body' : 'lc_remove_body')}</p>
+            {mode === 'remove' && (
+              <div className="mt-4 space-y-2" role="radiogroup">
+                <Choice v title={t('lc_keep')} hint={t('lc_keep_hint')} />
+                <Choice v={false} title={t('lc_wipe')} hint={t('lc_wipe_hint')} />
+              </div>
+            )}
+            {err && <p role="alert" className="mt-3 break-words text-xs text-danger">{err}</p>}
+            <div className="mt-6 flex justify-end gap-2">
+              <Button type="button" variant="ghost" disabled={busy} onClick={close}>{t('cancel')}</Button>
+              <Button type="button" variant="danger" disabled={busy} onClick={() => void run()}>{busy ? t('lc_doing') : t(mode === 'reset' ? 'lc_reset' : 'lc_remove')}</Button>
+            </div>
+          </div>
+        )}
+      </dialog>
+    </>
+  );
+}
+
 export function LaunchPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const search = useSearch({ strict: false }) as { tab?: Tab };
@@ -366,9 +422,10 @@ function Loaded({ d: raw, tab, admin, lang, t, onTab, onStatus }: { d: LaunchDet
           </p>
         </div>
         {admin && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {d.status === 'live' ? <Button size="sm" onClick={() => void onStatus('paused')}><Pause size={13} />{t('pause')}</Button> : <Button size="sm" onClick={() => void onStatus('live')}><Play size={13} />{t('resume')}</Button>}
             {d.status !== 'ended' && <Button size="sm" variant="ghost" onClick={() => void onStatus('ended')}><Square size={12} />{t('end')}</Button>}
+            <Lifecycle d={d} />
           </div>
         )}
       </header>
