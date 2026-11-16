@@ -3,7 +3,7 @@
 import { logger, z, type PersonaSpec, langOf } from '@pux/core';
 import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
 import { gateway } from '@pux/llm';
-import { launchFunnel, type Funnel, type LaunchRow } from './launch.ts';
+import { launchFunnel, launchVersionList, type Funnel, type LaunchRow } from './launch.ts';
 
 export interface Moment { ref: string; session_id: string; step_idx: number; persona_id: string; persona: string; who: string; quote: string; screenshot_ev?: string; kind: 'first_look' | 'stuck' | 'left' | 'done' | 'said_after' | 'review' | 'post' }
 export interface Passerby { ref: string; persona_id: string; persona: string; who: string; channel: string; reaction: string; thought: string }
@@ -166,10 +166,13 @@ export async function engineeringAppendix(l: LaunchRow) {
 export async function experiencedIssues(l: LaunchRow) {
   const db = getDb(); const { reproPaths } = await import('@pux/db');
   const rows = (await db.select().from(issues).where(and(eq(issues.app_version_id, l.app_version_id), eq(issues.track, 'experience')))).filter((i) => !['rejected', 'folded'].includes(i.status));
+  // 标过新版本时：只看最新版本之后开始的使用，问题在新版本里还出没出现
+  const latest = (await launchVersionList(l)).at(-1)!;
+  const since = latest.n > 1 ? new Set((await db.select({ id: sessions.id, started_at: sessions.started_at }).from(sessions).where(eq(sessions.study_id, l.study_id))).filter((s) => s.started_at && s.started_at.getTime() >= Date.parse(latest.at)).map((s) => s.id)) : null;
   const out = [];
   for (const i of rows) {
     const rp = i.repro_path_id ? (await db.select().from(reproPaths).where(eq(reproPaths.id, i.repro_path_id)))[0] : undefined;
-    out.push({ id: i.id, severity: i.severity, title: i.title, title_en: i.title_en, description: (i.description ?? '').split('\n\n')[0], where: i.url_pattern, people: (i.affected_personas ?? []).length, sessions: (i.session_ids ?? []).length, reproduced: rp ? rp.replay_ok_rate === 1 : null, steps: rp ? (rp.steps as { verb: string; target_name?: string; args?: { text?: string } }[]).map((s) => `${s.verb}${s.target_name ? ` "${s.target_name}"` : ''}${s.args?.text ? ` → "${String(s.args.text).slice(0, 60)}"` : ''}`) : [] });
+    out.push({ id: i.id, severity: i.severity, title: i.title, title_en: i.title_en, description: (i.description ?? '').split('\n\n')[0], where: i.url_pattern, people: (i.affected_personas ?? []).length, sessions: (i.session_ids ?? []).length, sessions_since_version: since ? (i.session_ids ?? []).filter((s) => since.has(s)).length : null, reproduced: rp ? rp.replay_ok_rate === 1 : null, steps: rp ? (rp.steps as { verb: string; target_name?: string; args?: { text?: string } }[]).map((s) => `${s.verb}${s.target_name ? ` "${s.target_name}"` : ''}${s.args?.text ? ` → "${String(s.args.text).slice(0, 60)}"` : ''}`) : [] });
   }
   const order: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
   return out.sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9));

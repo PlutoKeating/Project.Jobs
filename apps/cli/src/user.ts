@@ -62,5 +62,5 @@ export function userCommands(program: Command) {
   program.command('clock').description('世界时钟：--pause / --resume / --speed <n> / --jump HH:MM').option('--pause').option('--resume').option('--speed <n>').option('--jump <hhmm>')
     .action(run(async (o: { pause?: boolean; resume?: boolean; speed?: string; jump?: string }) => { console.log(JSON.stringify(await api('/world/clock', { body: { paused: o.pause ? true : o.resume ? false : undefined, speed: o.speed ? Number(o.speed) : undefined, jump_to: o.jump } }))); }));
 
-  program.command('mcp').description('启动给 coding agent 用的 MCP 服务（stdio）：publish_product / product_status / product_report / set_promotion / invite_people / ask_person').action(async () => { const { runMcp } = await import('./mcp.ts'); await runMcp(); });
+  program.command('mcp').description('启动给同一台机器上的 coding agent 用的 MCP 服务（stdio）。Jobs 在别处时，把 <Jobs 地址>/mcp 直接加给 agent 即可').action(async () => { const { runMcp } = await import('./mcp.ts'); await runMcp(); });
 }

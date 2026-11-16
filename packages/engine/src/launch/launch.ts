@@ -1,7 +1,7 @@
 // 发布：把一个产品发布到 JobsWorld。此后城里的人会自己看到它、决定用不用、用完跟谁说。
 import { chromium } from 'playwright';
 import { logger, newId } from '@pux/core';
-import { and, appVersions, apps, desc, eq, exposures, getDb, inArray, launches, sessions, storeReviews, studies, type AudienceRow } from '@pux/db';
+import { and, appVersions, apps, desc, eq, exposures, getDb, inArray, launches, launchVersions, sessions, storeReviews, studies, type AudienceRow } from '@pux/db';
 import { putEvidence } from '@pux/executor';
 import { absMinute, worldClock } from '@pux/jobsworld';
 import { addApp, addVersion } from '../control/apps.ts';
@@ -136,4 +136,18 @@ export async function appOfLaunch(l: LaunchRow) {
   const [app] = await db.select().from(apps).where(eq(apps.id, l.app_id));
   const [av] = await db.select().from(appVersions).where(and(eq(appVersions.id, l.app_version_id)));
   return { app, av };
+}
+
+export interface LaunchVersion { n: number; note: string | null; at: string }
+
+/** 这个产品的版本点（发布那一刻是第 1 版）。开发者改好之后标一下，之后的使用就算新版本 */
+export async function launchVersionList(l: LaunchRow): Promise<LaunchVersion[]> {
+  const rows = await getDb().select().from(launchVersions).where(eq(launchVersions.launch_id, l.id)).orderBy(launchVersions.n);
+  return [{ n: 1, note: null, at: new Date(l.created_at).toISOString() }, ...rows.map((r) => ({ n: r.n, note: r.note, at: new Date(r.created_at).toISOString() }))];
+}
+
+export async function markLaunchVersion(l: LaunchRow, note?: string): Promise<LaunchVersion> {
+  const n = (await launchVersionList(l)).at(-1)!.n + 1;
+  const [row] = await getDb().insert(launchVersions).values({ id: newId('lv'), launch_id: l.id, n, note: note?.trim().slice(0, 500) || null }).returning();
+  return { n: row.n, note: row.note, at: new Date(row.created_at).toISOString() };
 }

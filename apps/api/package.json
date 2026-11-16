@@ -12,6 +12,7 @@
     "@fastify/static": "^10.1.11",
     "@fastify/websocket": "^11.3.7",
     "@larksuiteoapi/node-sdk": "1.76.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@pux/core": "workspace:*",
     "@pux/db": "workspace:*",
     "@pux/demos": "workspace:*",
@@ -21,10 +22,12 @@
     "@pux/memory": "workspace:*",
     "@pux/storage": "workspace:*",
     "drizzle-orm": "^0.45.4",
+    "express": "^5.3.0",
     "fastify": "^5.12.8",
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/qrcode": "^1.5.6"
   }
 }

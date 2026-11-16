@@ -21,6 +21,13 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
   const spend = async (studyId: string) => { const [s] = await getDb().select({ cost: studies.cost_usd, tokens: studies.tokens }).from(studies).where(eq(studies.id, studyId)); return { usd: Math.round((s?.cost ?? 0) * 100) / 100, tokens: s?.tokens ?? 0 }; };
   const view = async (l: E.LaunchRow) => ({ id: l.id, app_id: l.app_id, name: l.name, tagline: l.tagline, description: l.description, url: l.url, landing_url: l.landing_url, form: l.form, shots: l.shot_evs ?? [], ad_text: l.ad_text, intensity: l.intensity, audience: l.audience ?? {}, status: l.status, created_at: l.created_at, funnel: await E.launchFunnel(l.id), spend: await spend(l.study_id) });
 
+  /** 最新的版本点和它之后的使用次数；还没标过新版本时为 null */
+  const versionView = async (l: E.LaunchRow) => {
+    const v = (await E.launchVersionList(l)).at(-1)!; if (v.n === 1) return null;
+    const ss = (await getDb().select({ status: sessions.status, started_at: sessions.started_at }).from(sessions).where(eq(sessions.study_id, l.study_id))).filter((s) => s.started_at && s.started_at.getTime() >= Date.parse(v.at));
+    return { ...v, sessions: ss.length, finished: ss.filter((s) => !['running', 'planned', 'waiting_human'].includes(s.status)).length };
+  };
+
   app.get('/api/v1/launches', async () => Promise.all((await E.listLaunches()).map(view)));
 
   app.post('/api/v1/launches', async (q, r) => {
@@ -41,6 +48,7 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
     const nm = (id: string) => who.get(id) ?? { name: id, age: 0, occupation: '', segment: '', locale: 'zh-CN' };
     return {
       ...(await view(l)),
+      versions: await E.launchVersionList(l),
       // 用过的人：每次使用在什么处境下、怎么遇到的、结局如何
       uses: ss.map((s) => { const c = s.ctx as { name?: string; clock?: string; date?: string; device?: string } | null; const p = (s.plan ?? {}) as { channel?: string; invited?: boolean; visit?: number }; const m = (s.summary as { memory?: { come_back?: string; would_return?: boolean } } | null)?.memory;
         return { session_id: s.id, persona_id: s.persona_id, ...nm(s.persona_id), status: s.status, outcome: s.outcome, end_reason: s.end_reason, steps: s.steps, started_at: s.started_at, where: c?.name ?? null, when: c ? `${c.date ?? ''} ${c.clock ?? ''}`.trim() : null, device: c?.device ?? null, channel: p.channel ?? null, invited: !!p.invited, visit: p.visit ?? 1, come_back: m?.come_back ?? null }; }),
@@ -59,7 +67,18 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
 
   app.get('/api/v1/launches/:id/engineering', async (q, r) => {
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
-    return { experienced: await E.experiencedIssues(l), appendix: await E.engineeringAppendix(l) };
+    return { version: await versionView(l), experienced: await E.experiencedIssues(l), appendix: await E.engineeringAppendix(l) };
+  });
+
+  // ---- 版本点：开发者改好之后标一下，之后的使用算新版本 ----
+  app.get('/api/v1/launches/:id/versions', async (q, r) => {
+    const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
+    return E.launchVersionList(l);
+  });
+  app.post('/api/v1/launches/:id/versions', async (q, r) => {
+    if (!requireAdmin(q, r)) return;
+    const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
+    return E.markLaunchVersion(l, (q.body as { note?: string } | undefined)?.note);
   });
 
   app.post('/api/v1/launches/:id/promotion', async (q, r) => {

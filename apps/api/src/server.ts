@@ -6,7 +6,9 @@ import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { dataPath, jobsVersion, logger, REPO_ROOT } from '@pux/core';
 import { connectBus, SUBJ, type Bus } from '@pux/jobsworld';
-import { evidenceAllowed, roleOf } from './auth.ts';
+import { bearerOf, evidenceAllowed, isPasscode, roleOf, setOAuthRole } from './auth.ts';
+import { lookupAccess } from './oauth.ts';
+import { mcpRoutes } from './mcp.ts';
 import { routes } from './routes.ts';
 import { warmAvatars } from './avatars.ts';
 
@@ -24,6 +26,9 @@ await app.register(fstatic, { root: WEB_DIST, prefix: '/', wildcard: true, index
 const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout', '/healthz', '/api/v1/inbox/email', '/api/v1/inbox/sms']);
 app.addHook('onRequest', async (q, r) => {
   const path = q.url.split('?')[0];
+  // 远程 MCP 授权出去的令牌（不是口令本身时才查库）
+  const bearer = bearerOf(q);
+  if (bearer && path.startsWith('/api/') && !isPasscode(bearer)) { const t = await lookupAccess(bearer).catch(() => null); if (t) setOAuthRole(q, t.role); }
   const guarded = path.startsWith('/api/') || path.startsWith('/reports/') || path.startsWith('/evidence/');
   if (guarded && !OPEN.has(path) && !roleOf(q).viewer && !evidenceAllowed(q)) return r.code(401).send({ error: 'auth_required' });
 });
@@ -52,6 +57,7 @@ app.get('/api/v1/stream', { websocket: true }, (socket, req) => {
 });
 
 routes(app, bus);
+await mcpRoutes(app);
 app.get('/healthz', async () => ({ ok: true, version: jobsVersion(), nats: !!bus }));
 
 // SPA 回退：非 API 的 GET 都返回 index.html

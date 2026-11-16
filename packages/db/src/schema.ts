@@ -727,3 +727,35 @@ export const intentions = pgTable('intentions', {
   created_min: integer('created_min').notNull(),
   done: boolean('done').notNull().default(false),
 }, (t) => [index('intentions_launch').on(t.launch_id)]);
+
+/** 产品的版本点：开发者说「我改好了」的时刻。之后的使用算新版本，问题清单据此分出修复前后 */
+export const launchVersions = pgTable('launch_versions', {
+  id: text('id').primaryKey(),
+  launch_id: text('launch_id').notNull(),
+  n: integer('n').notNull(),                             // 第几版（发布时是第 1 版，不落表；第一次标记是第 2 版）
+  note: text('note'),                                    // 改了什么
+  created_at: createdAt(),
+}, (t) => [uniqueIndex('launch_versions_n').on(t.launch_id, t.n)]);
+
+// ---- 远程 MCP 的 OAuth（coding agent 只拿一个链接接入，浏览器里输口令授权）----
+/** 动态注册的客户端（Claude Code、Codex、Cursor…各自注册一次）。都是公开客户端（PKCE，无密钥） */
+export const oauthClients = pgTable('oauth_clients', {
+  id: text('id').primaryKey(),
+  info: jsonb('info').notNull(),                         // RFC 7591 注册结果（redirect_uris、client_name …）
+  created_at: createdAt(),
+});
+
+/** 发出去的令牌（只存哈希）。role 来自授权时输入的口令；口令换了，fp 对不上，令牌即失效 */
+export const oauthTokens = pgTable('oauth_tokens', {
+  hash: text('hash').primaryKey(),
+  kind: text('kind').notNull(),                          // access|refresh
+  client_id: text('client_id').notNull(),
+  grant_id: text('grant_id').notNull(),                  // 一次授权（同一次浏览器登录）发出的全部令牌共享它；撤销按它撤
+  role: text('role').notNull(),                          // admin|viewer
+  fp: text('fp').notNull(),                              // 授权时那个口令的指纹
+  resource: text('resource'),
+  expires_at: ts('expires_at').notNull(),
+  last_used_at: ts('last_used_at'),
+  revoked: boolean('revoked').notNull().default(false),
+  created_at: createdAt(),
+}, (t) => [index('oauth_tokens_grant').on(t.grant_id)]);

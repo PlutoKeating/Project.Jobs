@@ -15,7 +15,27 @@ function cookies(req: FastifyRequest): Record<string, string> {
   return out;
 }
 
+/** 远程 MCP 的 OAuth 令牌在 server.ts 的 onRequest 里先查好，挂在请求上（查库是异步的，roleOf 是同步的） */
+export type OAuthRole = 'admin' | 'viewer';
+const oauthRoles = new WeakMap<object, OAuthRole>();
+export const setOAuthRole = (req: FastifyRequest, role: OAuthRole) => { oauthRoles.set(req.raw, role); };
+export const bearerOf = (req: FastifyRequest) => /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization ?? ''))?.[1] ?? '';
+/** 这串是不是口令本身（是的话不用去查 OAuth 令牌） */
+export const isPasscode = (s: string) => (!!process.env.JW_ADMIN_PASSCODE && eq(s, process.env.JW_ADMIN_PASSCODE)) || (!!process.env.JW_PASSCODE && eq(s, process.env.JW_PASSCODE));
+
+/** 在 OAuth 授权页输入的口令对应什么身份；与 roleOf 的规则一致。null = 口令不对 */
+export function roleForPasscode(passcode: string): OAuthRole | null {
+  if (adminEnabled() && eq(passcode, process.env.JW_ADMIN_PASSCODE!)) return 'admin';
+  const viewer = !authEnabled() || eq(passcode, process.env.JW_PASSCODE!);
+  if (!viewer) return null;
+  return adminEnabled() ? 'viewer' : 'admin';
+}
+/** 两个口令的指纹：任何一个换了，之前发出的 OAuth 令牌就全部失效 */
+export const passcodeFp = () => createHash('sha256').update(`jw-oauth|${process.env.JW_ADMIN_PASSCODE ?? ''}|${process.env.JW_PASSCODE ?? ''}`).digest('hex').slice(0, 32);
+
 export function roleOf(req: FastifyRequest): { viewer: boolean; admin: boolean } {
+  const o = oauthRoles.get(req.raw);
+  if (o) return { viewer: true, admin: o === 'admin' };
   const c = cookies(req);
   // 命令行、MCP、飞书等非浏览器入口：用口令作为 Bearer 令牌
   const bearer = /^Bearer\s+(.+)$/i.exec(String(req.headers.authorization ?? ''))?.[1] ?? '';
