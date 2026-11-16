@@ -18,14 +18,14 @@
   font-style: normal;
   font-weight: 100 500;
   font-display: swap;
-  src: url("/fonts/NotoSansSC-Regular.subset.woff2?v=19ccd7c915") format("woff2");
+  src: url("/fonts/NotoSansSC-Regular.subset.woff2?v=84cb7a6ccf") format("woff2");
 }
 @font-face {
   font-family: "Noto Sans SC";
   font-style: normal;
   font-weight: 501 900;
   font-display: swap;
-  src: url("/fonts/NotoSansSC-Bold.subset.woff2?v=198792e9b0") format("woff2");
+  src: url("/fonts/NotoSansSC-Bold.subset.woff2?v=fe4106c174") format("woff2");
 }
 
 :root {

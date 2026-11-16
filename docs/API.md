@@ -2,9 +2,9 @@
 
 ## 1. REST API（`apps/api`，默认 `http://127.0.0.1:5320`，对外经网关 `:7777`）
 
-下面的路径都省略了前缀 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）；没设置管理员口令时，能进来的人都是管理员。设置 `JW_PASSCODE`（访客口令）后，除 `/me`、`/auth/*`、`/inbox/*` 外都需要登录（否则 401）。身份有两种带法：网页登录后的 HttpOnly Cookie；命令行、MCP、示例产品与脚本用 `Authorization: Bearer <口令>`。装好的 Jobs 两个口令都在安装时随机生成。
+下面的路径都省略了前缀 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）；没设置管理员口令时，能进来的人都是管理员。设置 `JW_PASSCODE`（访客口令）后，除 `/me`、`/auth/*`、`/inbox/*` 外都需要登录（否则 401）。身份有三种带法：网页登录后的 HttpOnly Cookie；命令行、本机 MCP、示例产品与脚本用 `Authorization: Bearer <口令>`；远程 MCP 授权发出的访问令牌（`Bearer jwa_…`，身份是授权时输入的那个口令对应的身份，见 §2）。装好的 Jobs 两个口令都在安装时随机生成。
 
-不在 `/api/v1` 下的：`GET /healthz`（`{ ok, version, nats }`，免登录）；`/reports/…`（内部校准批次的离线报告，需登录）；其余 GET 返回网页。
+不在 `/api/v1` 下的：`GET /healthz`（`{ ok, version, nats }`，免登录）；`/reports/…`（内部校准批次的离线报告，需登录）；远程 MCP 与它的 OAuth 路径（`/mcp`、`/authorize`、`/token`、`/register`、`/revoke`、`/oauth/login`、`/.well-known/oauth-*`，见 §2）；其余 GET 返回网页。
 
 ### 身份
 
@@ -22,7 +22,9 @@
 | `POST /launches`（管理员） | 发布。必填 `name`、`tagline`、`url`；可选 `landing_url`、`description`、`ad_text`、`intensity`（0–1，默认 0.3）、`audience`、`form`（`web` 电脑和手机都能开 / `h5` 只在手机上开）。返回同上的一行 |
 | `GET /launches/:id` | 上面的一行，加上 `uses`（每次使用：谁、在哪、什么时候、什么设备、怎么遇到的、是否受邀、第几次、结局、离开时的原话）、`passersby`（注意到了没点开的人和当时的想法）、`reviews`（商店评论）、`posts`（公开动态）。`:id` 也可以写产品名 |
 | `GET /launches/:id/report?lang=zh\|en[&force=1]` | 一页结论：`verdict`（`works` / `mixed` / `not_yet` / `too_early`）、`headline`、`summary`、`hurts`、`delights`、`who_stays`、`who_leaves`、`why_not_opened`、`next`、`funnel`、`people_used`。每一条是 `{ text, moments[], passersby[] }`：`moments` 带当事人、原话、`session_id`、`step_idx`、`screenshot_ev`。有人用完、有了新评论或路过的人明显变多时重新归纳，否则读缓存（人数始终是最新的）。重新归纳要几分钟：有上一版时先返回上一版并带 `refreshing: true`，新的在后台写（同一产品同一语言只写一份；失败后 10 分钟内不自动重试，照常给上一版）；从没写过或 `force=1` 时等它写完 |
-| `GET /launches/:id/engineering` | `experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议） |
+| `GET /launches/:id/versions` | 版本点：`[{ n, note, at }]`，发布那一刻是第 1 版 |
+| `POST /launches/:id/versions`（管理员） | 标记新版本（「我改好了，线上已经是新版本」）：`{ note? }`，返回 `{ n, note, at }`。之后开始的使用算新版本；产品地址不变时不用重新发布 |
+| `GET /launches/:id/engineering` | `version`：最新的版本点和它之后开始的使用次数 `{ n, note, at, sessions, finished }`（还没标过新版本时为 `null`）；`experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤；标过新版本时还有 `sessions_since_version`：这个问题在最新版本之后开始的使用里出现了几次。问题清单每累计几次使用重新归并一次，最新的使用可能还没算进去）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议） |
 | `POST /launches/:id/promotion`（管理员） | 调宣发：`intensity`、`audience`、`status`、`ad_text`、`tagline`，只改传了的字段 |
 | `POST /launches/:id/invite`（管理员） | 把手机递给人：`n`（1–20，默认 3）、`segment`、`locale`、`persona_ids`、`want`（希望他们做的一件事）。返回 `{ invited, session_ids }` |
 | `GET /store` | 城里的人看到的应用商店：每个上架产品的介绍、截图、评分与评论 |
@@ -103,7 +105,63 @@
 
 ## 2. 命令行与 MCP
 
-装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`；`jobsworld mcp` 以 stdio 启动 MCP 服务，工具为 `publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+
+### MCP 工具
+
+工具只定义一次（`packages/engine/src/launch/tools.ts`），远程与本机两种接法注册的是同一份，都只经 REST 接口工作，权限检查只在接口那一层。
+
+| 工具 | 身份 | 做什么 |
+|---|---|---|
+| `publish_product` | 管理员 | 发布：`name`、`tagline`、`url`（Jobs 服务能打开的真实地址），可选 `landing_url`、`description`、`ad_text`、`intensity`、`form` |
+| `list_products` | 访客 | 已发布的产品和漏斗人数 |
+| `product_status` | 访客 | 一个产品此刻的状况：漏斗、谁在用（带 `persona_id`）、路过的人怎么想 |
+| `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
+| `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`），返回 `session_ids` |
+| `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，最多 `max_minutes`（默认 5，最多 15）分钟；客户端带了 `progressToken` 时推送进度 |
+| `mark_new_version` | 管理员 | 标记新版本（`note`），见 `POST /launches/:id/versions` |
+| `set_promotion` | 管理员 | 宣发强度、暂停 / 恢复 / 结束、广告文案 |
+| `ask_person` | 访客 | 向用过产品的居民追问（`persona_id`、`question`） |
+
+访客身份连接时，管理员工具不出现在工具列表里。
+
+### 远程 MCP（Streamable HTTP + OAuth 2.1）
+
+coding agent 只要一个链接：`<JOBS_PUBLIC_URL>/mcp`。
+
+```bash
+claude mcp add --transport http jobs https://jobs.example.com/mcp     # Claude Code
+codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex（然后 codex mcp login jobs）
+# Cursor 等：{"mcpServers":{"jobs":{"url":"https://jobs.example.com/mcp"}}}
+```
+
+第一次连接时 agent 打开浏览器，到 Jobs 的授权页输入口令：管理员口令 → 全部工具，访客口令 → 只读工具。之后 agent 自己刷新令牌，不再弹出。
+
+- **传输**：Streamable HTTP，无状态（每个 `POST /mcp` 一个 `McpServer`，没有会话）；`GET`/`DELETE /mcp` 返回 405。实现用 MCP SDK（`@modelcontextprotocol/sdk` 的 `StreamableHTTPServerTransport`），见 `apps/api/src/mcp.ts`。
+- **授权**：只接受 OAuth 访问令牌，不接受把口令直接放进请求头。不带令牌时返回 `401`，`WWW-Authenticate` 里有 `resource_metadata`，客户端据此自动发现授权服务。协议部分（元数据、动态注册、PKCE S256、令牌接口、限流）用 SDK 的 `mcpAuthRouter`，Jobs 只实现 provider（`apps/api/src/oauth.ts`）。
+
+| 路径 | 说明 |
+|---|---|
+| `GET /.well-known/oauth-protected-resource/mcp` | RFC 9728 资源元数据：`resource` = `<JOBS_PUBLIC_URL>/mcp`，授权服务 = `<JOBS_PUBLIC_URL>` |
+| `GET /.well-known/oauth-authorization-server` | RFC 8414 授权服务元数据 |
+| `POST /register` | RFC 7591 动态注册（公开客户端，`token_endpoint_auth_method: none`） |
+| `GET /authorize` | 授权页（输入口令；没有设置任何口令时只有「授权 / 拒绝」） |
+| `POST /oauth/login` | 授权页提交：口令对了发授权码（10 分钟、只能用一次）并跳回 agent；同一来源 10 分钟内最多输错 10 次 |
+| `POST /token` | `authorization_code`（校验 PKCE）与 `refresh_token` |
+| `POST /revoke` | 撤销令牌（整次授权一起撤销） |
+
+- **令牌**：访问令牌 1 小时，刷新令牌 30 天，每次刷新都换一对新的；用过的刷新令牌再次出现时，整次授权作废（可能被人拿走了）。数据库只存哈希（`oauth_tokens`）。任何一个口令换了，之前发出的令牌全部失效。访问令牌也能直接调 REST（身份同上）。
+- **对外地址**：`JOBS_PUBLIC_URL`（https；放在反向代理后面，见 [`INSTALL.md`](INSTALL.md)「对外访问」）。不设置时是 `http://127.0.0.1:<JW_PORT>`，只有同一台机器上的 agent 能用；设置成非本机的 http 地址时远程 MCP 不启用（这些路径返回 503），因为 OAuth 要求 https。
+- **产品地址**：Jobs 在云端时，城里的人是在那台机器上打开你的产品的，`localhost`、内网地址都打不开。JobsWorld 用来体验真实产品：先部署到公网（预览环境也可以）再发布。
+
+| 管理接口（管理员） | 说明 |
+|---|---|
+| `GET /agents` | `{ mcp_url, enabled, public_url_set, grants }`：远程 MCP 的链接、是否启用、是否设置了 `JOBS_PUBLIC_URL`，以及已授权的 agent（每次授权一行：`id`、`client`、`role`、`authorized_at`、`last_used_at`） |
+| `DELETE /agents/:id` | 撤销一次授权（它的访问令牌与刷新令牌立即失效） |
+
+### 本机 MCP（stdio）
+
+和 Jobs 在同一台机器上（或能直接访问它的 REST 接口）时，也可以用 `jobsworld mcp`（stdio）：`claude mcp add jobs -- jobsworld mcp`。它用 `JOBS_API`、`JOBS_KEY` 调接口；装好的 `jobsworld` 在容器里执行，不用另外设置。
 
 ## 3. UAP v0.2（执行层接口）
 

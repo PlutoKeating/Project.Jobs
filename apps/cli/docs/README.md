@@ -5,7 +5,7 @@
 | 文件 | 说明 |
 |---|---|
 | `src/user.ts` | 日常命令，全部经 HTTP 调本机的 Jobs 服务：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`people`、`ask`、`clock`、`mcp` |
-| `src/mcp.ts` | `jobsworld mcp`：给 coding agent 用的 MCP 服务（stdio，`@modelcontextprotocol/sdk`）。工具：`publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person` |
+| `src/mcp.ts` | `jobsworld mcp`：给同一台机器上的 coding agent 用的 MCP 服务（stdio，`@modelcontextprotocol/sdk`）。工具定义在 `@pux/engine/launch/tools`，与远程的 `/mcp` 同一份（`publish_product`、`list_products`、`product_status`、`product_report`、`invite_people`、`wait_for_people`、`mark_new_version`、`set_promotion`、`ask_person`）。Jobs 在别的机器或云端时不用它，直接把 `<JOBS_PUBLIC_URL>/mcp` 加给 agent（见 `docs/API.md` §2） |
 | `src/client.ts` | HTTP 客户端（`JOBS_API`，默认 `http://127.0.0.1:7777`；`JOBS_KEY` 作为 Bearer 口令）与纯文本排版：`funnelLine`、`reportText`（终端与 coding agent 读同一份） |
 | `src/index.ts` | 运维命令，直接访问数据库：`doctor`、`init`、`db`、`persona`、`world`；`dev` 分组收纳内部校准用的指派式批次（`app`、`demo`、`product`、`study`、`issue`、`calibrate`、`human`） |
 

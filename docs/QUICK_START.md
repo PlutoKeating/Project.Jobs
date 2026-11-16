@@ -49,15 +49,17 @@ pnpm jobs report 闪念笔记 --eng    # 一页结论 + 亲历的问题（含复
 
 居民是按自己的日程遇到产品的，自然流量需要时间。想快一点：`pnpm jobs clock --speed 20`（有人正在使用产品时，时钟自动不超过 4 倍速，免得他被生活催着走）。
 
-产品地址只要这台机器能访问即可（本地开发服务器也行）。产品需要邮箱或短信验证码时，把测试环境的发信地址指到 `POST /api/v1/inbox/email`、`/inbox/sms`（见 [`API.md`](API.md)），对应的居民会真的收到。
+产品地址只要 Jobs 所在的机器能访问即可（Jobs 就在你自己电脑上时，本地开发服务器也行；Jobs 在云端时，产品要部署到那台机器能打开的地址）。产品需要邮箱或短信验证码时，把测试环境的发信地址指到 `POST /api/v1/inbox/email`、`/inbox/sms`（见 [`API.md`](API.md)），对应的居民会真的收到。
 
 ## 5. 接入 coding agent（MCP）
 
 ```bash
-claude mcp add jobs -- pnpm --dir /path/to/Project.Jobs -s jobs mcp
+claude mcp add --transport http jobs http://127.0.0.1:7777/mcp
 ```
 
-服务不在默认地址时设置 `JOBS_API`（默认 `http://127.0.0.1:7777`）；设置了管理员口令时把它放进 `JOBS_KEY`。
+第一次连接时会打开浏览器，到 Jobs 的授权页输入口令（管理员口令能发布，访客口令只能看）。网页右上角的机器人图标里有这个链接和 Codex、Cursor 的写法。要让别的机器上的 agent 接入，在 `.env` 设置 `JOBS_PUBLIC_URL`（反向代理之后的 https 地址），见 [`API.md`](API.md) §2 与 [`INSTALL.md`](INSTALL.md)「对外访问」。
+
+也可以用 stdio：`claude mcp add jobs -- pnpm --dir /path/to/Project.Jobs -s jobs mcp`（服务不在默认地址时设置 `JOBS_API`；设置了管理员口令时把它放进 `JOBS_KEY`）。
 
 ## 6. 访问控制
 

@@ -27,7 +27,7 @@ export const home = {
       comment1: '# 发布、看状况、要结论',
       productName: '闪念笔记',
       productTagline: '想到什么，马上记下',
-      comment2: '# 接进 Claude Code（其他支持 MCP 的 agent 同理）',
+      comment2: '# 接进 Claude Code：只要一个链接，浏览器里输口令授权（Codex、Cursor 同理）',
     },
     factsHeading: '全部跑在你自己的机器上',
     factsBody: '网页、命令行、coding agent、飞书、Terraria 是同一套能力的五个入口。往外走的只有两处：你的产品，和你接入的模型供应商。',
@@ -60,7 +60,7 @@ export const home = {
       comment1: '# launch, check on it, get the conclusion',
       productName: 'Quick Notes',
       productTagline: 'Write it down the moment you think of it',
-      comment2: '# add it to Claude Code (any agent that speaks MCP works the same way)',
+      comment2: '# add it to Claude Code: one link, then enter the passcode in the browser (Codex and Cursor work the same way)',
     },
     factsHeading: 'It all runs on your machine',
     factsBody: 'The web page, the command line, coding agents, Feishu and Terraria are five ways into the same capabilities. Only two things reach outside: your product, and the model providers you connect.',
@@ -126,7 +126,7 @@ jobsworld status ${esc(arg(a.productName))}
 jobsworld report ${esc(arg(a.productName))} --eng
 
 <span class="c">${esc(a.comment2)}</span>
-claude mcp add jobs -- jobsworld mcp</pre>
+claude mcp add --transport http jobs https://&lt;jobs&gt;/mcp</pre>
     </div>
     ${renderFigure('loop', lang)}
   </section>

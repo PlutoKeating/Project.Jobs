@@ -7,8 +7,8 @@
 ```
 宿主机（pnpm / Node 24 原生运行）                     docker compose（只跑依赖）
 ┌──────────────────────────────────────────┐        ┌──────────────────────────────┐
-│ apps/cli      命令行 + MCP 服务             │        │ postgres  pgvector/pg17      │ 55432
-│ apps/api      接口 + 网页 + 飞书机器人      │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
+│ apps/cli      命令行 + 本机 MCP（stdio）     │        │ postgres  pgvector/pg17      │ 55432
+│ apps/api      接口 + 网页 + 飞书 + 远程 MCP │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
 │ apps/world    世界服务 + 发布引擎           │        │ nats      事件总线            │ 54222/58222
 │ apps/gateway  单端口网关 0.0.0.0:7777       │        │ tshock/tml 游戏服（profile game）│ 57777/57778
 │ demos/kit     11 个示例产品（22 个实例）     │        └──────────────────────────────┘
@@ -66,7 +66,8 @@ flowchart LR
 | 执行层 | `packages/executor/` | UAP 接口（`packages/core/src/types/uap.ts`）的浏览器实现：一个会话一个独立的 Chromium、看截图定位、人类化的手、六层错误分类、Policy Gate、语音与摄像头注入、录像、rrweb、无障碍扫描 |
 | 证据 | `packages/executor/src/evidence.ts`；`evidence`、`evidence_links`、`repro_paths` 表 | 所有截图、录像、日志按内容哈希登记，并与步骤、问题关联；复现路径可以干净重放 |
 | 事后评估 | `packages/engine/src/evaluation/` | 客观指标、问题候选（分「亲历」与「工程」两路）、评审、被测产品里 AI 回答的质量、事后访谈、干净重放、归因复核、问题合成与去重 |
-| 结论 | `packages/engine/src/launch/report.ts`、`launch/text.ts` | 一页结论与工程附录；纯文本排版（命令行、MCP、飞书共用） |
+| 结论 | `packages/engine/src/launch/report.ts`、`launch/text.ts` | 一页结论与工程附录（标过新版本时，亲历的问题注明在新版本里还在不在）；纯文本排版（命令行、MCP、飞书共用） |
+| Coding agent（MCP） | `packages/engine/src/launch/tools.ts`、`apps/api/src/mcp.ts`、`apps/api/src/oauth.ts`、`apps/cli/src/mcp.ts` | 工具只定义一次，只经 REST 工作。远程：`/mcp`（Streamable HTTP，无状态）+ OAuth 2.1（协议用 MCP SDK 的 `mcpAuthRouter`，授权页输入口令），工具调用在进程内转发到 `/api/v1` 并带上这次授权的令牌；本机：`jobsworld mcp`（stdio，经 HTTP）。见 [`API.md`](API.md) §2 |
 | 模型 | `packages/llm/` | 见 [`MODELS.md`](MODELS.md) |
 | 接口与网页 | `apps/api/`、`apps/web/` | 见 [`API.md`](API.md)、`apps/web/docs/README.md` |
 | 内部校准 | `packages/engine/src/{control,exploration,product,calibration,intelligence}/` | 见 §9 |
@@ -136,7 +137,8 @@ sequenceDiagram
 
 | 组 | 表 |
 |---|---|
-| 发布 | `launches`、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports` |
+| 发布 | `launches`、`launch_versions`（开发者标记的版本点，迁移 `0009`）、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports` |
+| 远程 MCP 授权 | `oauth_clients`（动态注册的 agent）、`oauth_tokens`（只存哈希；`grant_id` 是一次授权，`fp` 是授权时口令的指纹）（迁移 `0009`） |
 | 人与城 | `personas`、`persona_memory_trees`、`persona_global_state`、`persona_agendas`、`persona_avatars`、`households`、`residents`、`relations`、`world_events`、`world_kv` |
 | 一次使用 | `sessions`（含 `world_context`）、`steps`、`observations`、`world_states`、`events`、`goals`、`interviews`、`human_tasks` |
 | 证据与问题 | `evidence`、`evidence_links`、`repro_paths`、`issue_candidates`、`issues`（两者都有 `track`：`experience` 亲历 / `engineering` 工程）、`judgments` |

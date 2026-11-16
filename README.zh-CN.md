@@ -94,11 +94,12 @@ jobsworld report 闪念笔记 --eng      # 一页结论 + 带复现步骤的问�
 </picture>
 
 ```bash
-# Claude Code；其他支持 MCP 的 agent 同理（stdio）
-claude mcp add jobs -- jobsworld mcp
+# agent 只要一个链接；第一次连接时会打开浏览器，输入口令授权
+claude mcp add --transport http jobs https://<你的 Jobs 地址>/mcp
+codex mcp add jobs --url https://<你的 Jobs 地址>/mcp
 ```
 
-MCP 工具：`publish_product`、`list_products`、`product_status`、`product_report`、`set_promotion`、`invite_people`、`ask_person`。
+MCP 工具：`publish_product`、`list_products`、`product_status`、`product_report`、`invite_people`、`wait_for_people`、`mark_new_version`、`set_promotion`、`ask_person`。用管理员口令授权能用全部工具，用访客口令只能用只读的那几个。网页右上角的机器人图标里有链接和各家 agent 的接入命令。Jobs 装在别的机器或云端时，要在反向代理后面设置 `JOBS_PUBLIC_URL`（https，见 [`docs/INSTALL.md`](docs/INSTALL.md)）；发布的产品也必须是那台机器能打开的地址。JobsWorld 是用来体验真实产品的，不是给你电脑上的工程 demo 用的。和 Jobs 在同一台机器上时，`jobsworld mcp`（stdio）照样能用。
 
 > [!TIP]
 > 装好之后的命令叫 `jobsworld`。`jobs` 这个名字留作别名，给直接执行它的配置用；但在终端里 `jobs` 是 bash、zsh、fish 的内建命令，直接敲会被 shell 截走。在仓库里开发时用 `pnpm jobs`。

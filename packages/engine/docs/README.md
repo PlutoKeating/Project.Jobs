@@ -4,7 +4,7 @@
 
 | 目录 | 职责 | 主要导出 |
 |---|---|---|
-| `launch/` | **发布主线**：发布与商店页、曝光与注意（规则）、注意到之后由人物自己决定（模型）、把处境定下来开始使用、用完后的评论 / 动态 / 口碑 / 回访念头、虚拟身份（邮箱、手机号、钱包、收件箱）、一页结论与工程附录。流程见 `docs/ARCHITECTURE.md` §1.1 | `publishProduct` `setPromotion` `launchFunnel` `LaunchEngine` `decide` `startUsage` `inviteToLaunch` `afterUse` `deliverMail` `payFromWallet` `reachableUrl` `launchReport` `experiencedIssues` `engineeringAppendix` `funnelLine` `reportText` |
+| `launch/` | **发布主线**：发布与商店页、曝光与注意（规则）、注意到之后由人物自己决定（模型）、把处境定下来开始使用、用完后的评论 / 动态 / 口碑 / 回访念头、虚拟身份（邮箱、手机号、钱包、收件箱）、一页结论与工程附录、版本点（开发者标记「改好了」，问题清单据此分出修复前后）、给 coding agent 的 MCP 工具定义（`tools.ts`：远程 `/mcp` 与本机 stdio 共用，只经 REST 工作，不依赖 MCP SDK）。流程见 `docs/ARCHITECTURE.md` §1.1 | `publishProduct` `setPromotion` `launchVersionList` `markLaunchVersion` `JOBS_TOOLS` `launchFunnel` `LaunchEngine` `decide` `startUsage` `inviteToLaunch` `afterUse` `deliverMail` `payFromWallet` `reachableUrl` `launchReport` `experiencedIssues` `engineeringAppendix` `funnelLine` `reportText` |
 | `human/` | 人物六层描述的导入与版本、手的能力、身心状态规则、感知滤镜（注意力与阅读预算、视力、识字量、凑近看）、识字量模型、记忆检索与整理（ewave 记忆树）与态度规则、人口合成（`population.ts` 统计骨架与规则推导，`populate.ts` 抽样、叙事、入库、入住） | `importPersonas` `motorProfile` `updateState` `perceive` `recall` `consolidate` `updateAttitudes` `generatePopulation` `importResidents` `settleExisting` |
 | `world/` | `WorldSimulator`（一次使用期间的时钟、时间线、概率事件、身边的人、资源、约束）；`live.ts` 把居民此时此地的处境接到一次使用上（处境由 `@pux/jobsworld` 计算） | `WorldSimulator` `nextFreeContext` `contextRecord` `worldOfSession` |
 | `exploration/` | 把一件要做的事写成生活里的话（发布主线的受邀使用也用它）；校准批次的覆盖率与自适应采样 | `makeLifeGoal` `touch` `planRound` |
