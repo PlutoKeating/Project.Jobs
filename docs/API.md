@@ -197,7 +197,8 @@ interface Executor {
 | 方法 路径 | 说明 |
 |---|---|
 | `GET /models` | 当前状态：`version`、`config`（连接、凭证的脱敏提示、已选模型、全局顺序；不含任何凭证正文）、`instances`（各在线实例用的是第几版、各自暂时跳过了谁）、`tests`（每个目标每项能力最近一次测试）、`catalog`（目录来源、更新时间、供应商清单）、`ready` / `missing`（每一步、归纳、定位是否各有可用目标）、`poll_ms` |
-| `GET /models/gcloud` | 「使用这台机器的 gcloud 登录」按钮用：`found`、`dir`、`account`、`project`、`error`（没登录、没有默认项目、目录没挂进来）、`tried`（找过的目录）、`in_container`。不返回任何凭证内容 |
+| `GET /models/gcloud` | 「使用这台机器的 gcloud 登录」按钮用：`found`、`dir`、`account`、`project`、`error`（没登录、没有默认项目、目录没挂进来）、`tried`（找过的目录）、`in_container`、`host_dir`（挂进来的宿主机目录）、`mounted`（从源码运行时恒为真）、`can_connect`（还没挂、宿主机能一键补上）。不返回任何凭证内容 |
+| `POST /models/gcloud/connect` | 请宿主机把 gcloud 配置目录挂进容器：往 `control/requests/` 放一个 `gcloud` 请求，宿主机上的 `jobsworld _control` 写好 `JOBS_GCLOUD_DIR` 并重建 `jobs` 容器（服务会重启）。已经挂好时返回 `{ requested: false, mounted: true }`；宿主机做不到时返回 409 `{ error: "manual", command: "jobsworld up" }` |
 | `GET /models/catalog/:id` | 目录里一家供应商的模型：标识、名字、类型、能力、价格、能否用于定位 |
 | `POST /models/catalog/refresh` | 重新拉取目录；失败返回 502，旧目录与已保存的配置不受影响 |
 | `POST /models/publish` `{ base_version, submit_id?, config, new_secrets?, note? }` | 保存一份完整配置。`base_version` 是编辑起点的版本，线上已经变了返回 409 `{ error: "conflict", version, config }`；`submit_id` 相同的重复提交返回同一结果（`replay: true`）；`new_secrets` 是 `凭证 id → 明文`，只在这一次请求里出现；校验不过返回 422 |

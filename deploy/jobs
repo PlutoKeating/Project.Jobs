@@ -7,6 +7,17 @@ if docker info >/dev/null 2>&1; then DOCKER=(docker); elif sudo -n docker info >
 dc() { (cd "$JOBS_HOME" && "${DOCKER[@]}" compose "$@"); }
 envv() { grep -E "^$1=" "$JOBS_HOME/.env" 2>/dev/null | head -1 | cut -d= -f2-; }
 port() { local p; p="$(envv JOBS_PORT)"; echo "${p:-7777}"; }
+ensure_gcloud() {  # 把这台机器的 gcloud 配置目录写进 .env（JOBS_GCLOUD_DIR，编排里只读挂进容器）。目录还不存在就先建一个空的（属于当前用户），以后再装 gcloud、登录，容器里直接看得到
+  local d h
+  d="$(envv JOBS_GCLOUD_DIR || true)"
+  if [ -z "$d" ]; then
+    h="${HOME:-}"; [ -n "$h" ] || h="$(getent passwd "$(id -un)" 2>/dev/null | cut -d: -f6 || true)"   # systemd 执行网页上的请求时不一定有 HOME
+    [ -n "$h" ] || return 0
+    d="${CLOUDSDK_CONFIG:-$h/.config/gcloud}"
+    printf '\n# 这台机器的 gcloud 配置目录，只读挂进容器：「模型」页的「使用这台机器的 gcloud 登录」读它\nJOBS_GCLOUD_DIR=%s\n' "$d" >> "$JOBS_HOME/.env"
+  fi
+  mkdir -p "$d" 2>/dev/null || true
+}
 lan_ip() { (hostname -I 2>/dev/null | awk '{print $1}') || true; }
 game() {  # game on|off [tshock|tml]
   local act="${1:-}" kind="${2:-tshock}"
@@ -65,6 +76,7 @@ update() {  # 函数里逐步检查返回值：在 if 里调用时 set -e 不起
   if [ -z "${JOBS_SKIP_PULL:-}" ]; then echo "== 拉取新镜像 =="; dc pull || return 1; fi   # 自己构建的镜像：JOBS_SKIP_PULL=1
   refresh_files || { echo "从新镜像取编排文件失败。" >&2; return 1; }
   if [ -z "${JOBS_SKIP_BACKUP:-}" ]; then echo "== 备份数据库 =="; backup || { echo "备份失败，没有升级（数据没有动）。确定不要备份：JOBS_SKIP_BACKUP=1 jobsworld update" >&2; return 1; }; fi
+  ensure_gcloud
   echo "== 重建服务 =="; dc up -d || return 1
   refresh_games || echo "游戏服没有更新成功（不影响 Jobs 本身）：jobsworld game on tshock|tml 重试" >&2
   echo "== 等待服务就绪 =="
@@ -74,7 +86,7 @@ update() {  # 函数里逐步检查返回值：在 if 里调用时 set -e 不起
 }
 
 case "${1:-}" in
-  up|start) dc up -d ;;
+  up|start) ensure_gcloud; dc up -d ;;
   down|stop) dc stop ;;
   restart) dc restart jobs ;;
   ps) dc ps ;;
@@ -85,12 +97,13 @@ case "${1:-}" in
   backup) backup ;;
   version) v="$(running_version)"; echo "Jobs ${v:-（服务没在运行）}"; echo "镜像：$(envv JOBS_IMAGE)" ;;
   _refresh-games) refresh_games ;;
+  _ensure-gcloud) ensure_gcloud ;;
   game) shift; game "$@" ;;
   uninstall)
     if [ "${2:-}" = "--purge" ]; then dc --profile game down -v; echo "已停止并删除全部数据。安装目录还在：$JOBS_HOME（可以直接删掉）"; else dc --profile game down; echo "已停止。数据还在（docker volume）；彻底删除：jobsworld uninstall --purge"; fi ;;
-  _control)  # 网页上的「一键开关游戏服」「一键升级」：容器只能往 control/requests 里放一个文件名，这里只认下面这几个动作
+  _control)  # 网页上的「一键开关游戏服」「一键升级」「使用这台机器的 gcloud 登录」：容器只能往 control/requests 里放一个文件名，这里只认下面这几个动作
     ctl="$JOBS_HOME/control"; mkdir -p "$ctl/requests"
-    echo "update" > "$ctl/host-features"   # 告诉网页：这一版的命令认得 update
+    echo "update gcloud" > "$ctl/host-features"   # 告诉网页：这一版的命令认得 update 与 gcloud
     for f in "$ctl"/requests/*; do
       [ -e "$f" ] || continue; act="$(basename "$f")"; act="${act#*.}"; rm -f "$f"
       case "$act" in
@@ -99,6 +112,7 @@ case "${1:-}" in
         update)
           echo "running|$(date -u +%FT%TZ)" > "$ctl/update-status"
           if update > "$ctl/update.log" 2>&1; then echo "ok|$(date -u +%FT%TZ)" > "$ctl/update-status"; else echo "failed|$(date -u +%FT%TZ)" > "$ctl/update-status"; fi ;;
+        gcloud) ensure_gcloud; dc up -d jobs ;;   # 把 gcloud 配置目录挂进去：重建 jobs 容器（数据都在卷里）
         ping) ;;
         *) echo "忽略未知请求：$act" >&2 ;;
       esac || echo "执行 $act 失败" >&2

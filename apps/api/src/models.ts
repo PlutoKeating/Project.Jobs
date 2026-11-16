@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { desc, getDb, llmTests } from '@pux/db';
 import * as L from '@pux/llm';
 import { requireAdmin, roleOf } from './auth.ts';
+import { hostHas, hostRequest, probeHost } from './update.ts';
 
 export const modelsReady = L.modelsReady;
 
@@ -27,8 +28,22 @@ export function modelRoutes(app: FastifyInstance) {
   };
 
   app.get('/api/v1/models', async (q, r) => { if (!requireAdmin(q, r)) return; return state(); });
-  // 「使用这台机器的 gcloud 登录」：服务能不能读到 gcloud 的配置目录、当前账号与默认项目（不返回凭证内容）
-  app.get('/api/v1/models/gcloud', async (q, r) => { if (!requireAdmin(q, r)) return; return L.probeGcloud(); });
+  // 「使用这台机器的 gcloud 登录」：服务能不能读到 gcloud 的配置目录、当前账号与默认项目（不返回凭证内容）。
+  // 装好的 Jobs 跑在容器里：编排把宿主机的 gcloud 配置目录（.env 的 JOBS_GCLOUD_DIR）只读挂进来，并把这个路径放在 JOBS_GCLOUD_HOST 里。
+  // 还没挂（从旧版本升上来、还没 jobsworld up 过）时，宿主机上的命令认得 gcloud 这个动作就能一键补上：写好 JOBS_GCLOUD_DIR 并重建 jobs 容器
+  const gcloudState = () => {
+    const inContainer = !!process.env.JOBS_IN_CONTAINER; const host = process.env.JOBS_GCLOUD_HOST || undefined;
+    if (inContainer && !host) probeHost(60_000);
+    return { ...L.probeGcloud(), host_dir: host, mounted: !inContainer || !!host, can_connect: inContainer && !host && hostHas('gcloud') };
+  };
+  app.get('/api/v1/models/gcloud', async (q, r) => { if (!requireAdmin(q, r)) return; return gcloudState(); });
+  app.post('/api/v1/models/gcloud/connect', async (q, r) => {
+    if (!requireAdmin(q, r)) return;
+    const g = gcloudState();
+    if (g.mounted) return { requested: false, mounted: true };
+    if (!g.can_connect) return r.code(409).send({ error: 'manual', command: 'jobsworld up' });
+    hostRequest('gcloud'); return { requested: true };
+  });
 
   app.get('/api/v1/models/catalog/:id', async (q, r) => {
     if (!requireAdmin(q, r)) return;

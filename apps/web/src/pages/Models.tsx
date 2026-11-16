@@ -69,7 +69,7 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
   const cat = useQuery({ queryKey: ['m-catalog', p.catalog_id], queryFn: () => get<MCatalogProvider>(`/models/catalog/${p.catalog_id}`), enabled: open && !!p.catalog_id, staleTime: Infinity, retry: false });
   const [key, setKey] = useState(''); const [q, setQ] = useState(''); const [only, setOnly] = useState(false); const [custom, setCustom] = useState(''); const [customVision, setCustomVision] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
-  const [gc, setGc] = useState<{ busy?: boolean; msg?: string; mount?: boolean } | null>(null);
+  const [gc, setGc] = useState<{ busy?: boolean; msg?: string } | null>(null);
   const json = lite?.credential === 'google_json' || p.protocol === 'vertex';
   const hasSavedCred = p.credentials.some((c) => !(c.id in secrets));
   const selected = new Map(p.models.map((m) => [m.model, m]));
@@ -83,11 +83,24 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
   const shown = rows.slice(0, 60);
   const toggle = (m: MCatalogModel) => update((x) => { const i = x.models.findIndex((y) => y.model === m.id); if (i >= 0) x.models.splice(i, 1); else x.models.push({ id: rid('tgt'), model: m.id, name: m.name, kind: m.kind, uses: defaultUses(m), caps: m.caps, cost: m.cost }); });
   const addKey = () => { const v = key.trim(); if (!v) return; const id = rid('cred'); setSecret(id, v); update((x) => { x.credentials.push({ id, label: '', enabled: true, hint: t('m_new'), secret_id: 'pending' }); }); setKey(''); };
-  const addGcloud = async () => {
+  // 装好的 Jobs 跑在容器里：gcloud 配置目录还没挂进来时，请宿主机补上（重建容器），等服务回来再读一次；之后只剩「在这台机器上 gcloud auth login」
+  const addGcloud = async (connected = false) => {
     setGc({ busy: true });
     try {
       const g = await get<MGcloud>('/models/gcloud');
-      if (!g.found || !g.project) { setGc({ msg: t('m_gcloud_none', { error: g.error ?? '' }), mount: !g.found && g.in_container }); return; }
+      if (!g.mounted && g.can_connect && !connected) {
+        setGc({ busy: true, msg: t('m_gcloud_connecting') });
+        await post('/models/gcloud/connect', {});
+        const until = Date.now() + 180_000;
+        while (Date.now() < until) {
+          await new Promise((r) => setTimeout(r, 3000));
+          const n = await get<MGcloud>('/models/gcloud').catch(() => null);   // 重启期间请求会失败
+          if (n?.mounted) return void (await addGcloud(true));
+        }
+        setGc({ msg: t('m_gcloud_slow') }); return;
+      }
+      if (!g.mounted) { setGc({ msg: t('m_gcloud_run_up') }); return; }
+      if (!g.found || !g.project) { setGc({ msg: t('m_gcloud_none', { error: g.error ?? '' }) }); return; }
       const id = rid('cred'); setSecret(id, JSON.stringify({ gcloud: 'auto' }));
       update((x) => { x.credentials.push({ id, label: `gcloud · ${g.account}`, enabled: true, hint: 'gcloud', secret_id: 'pending' }); });
       setGc({ msg: t('m_gcloud_added', { account: g.account ?? '', project: g.project }) });
@@ -141,12 +154,6 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
               <div className="mt-2 space-y-2">
                 <Button type="button" variant="ghost" size="sm" disabled={gc?.busy} onClick={() => void addGcloud()}>{t('m_gcloud_use')}</Button>
                 {gc?.msg && <p role="status" className="text-xs text-fg-muted">{gc.msg}</p>}
-                {gc?.mount && (
-                  <div className="space-y-1.5 text-xs text-fg-muted">
-                    <p>{t('m_gcloud_mount')}</p>
-                    <pre className="overflow-x-auto rounded-md border border-border p-2 font-mono text-[11px] text-fg">{'services:\n  jobs:\n    volumes:\n      - /home/<you>/.config/gcloud:/root/.config/gcloud:ro'}</pre>
-                  </div>
-                )}
               </div>
             )}
           </section>

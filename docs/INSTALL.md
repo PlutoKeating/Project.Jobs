@@ -75,20 +75,9 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash  # 重新运行安装�
 
 如果这台机器上已经 `gcloud auth login` 过，Vertex 不用粘贴任何凭证：「模型」页 Vertex 连接的凭证下面有「使用这台机器的 gcloud 登录」按钮，点一下、保存就行。Jobs 保存的只是「用 gcloud 的登录」这一句话（`{"gcloud": "auto"}`），每次换访问令牌前直接读 gcloud 自己的配置目录：当前账号与默认项目（`gcloud config set project`）、以及 `gcloud auth login` 存下的凭证。所以组织策略要求每天重新登录时，每天只需要在这台机器上 `gcloud auth login`，不用回到「模型」页；换账号、换默认项目也一样直接生效。
 
-装好的 Jobs 跑在容器里，按钮第一次会提示要先把 gcloud 的配置目录只读挂进去（只需做一次）：
+装好的 Jobs 跑在容器里，所以安装脚本会把这台机器的 gcloud 配置目录只读挂进去：`~/.jobs/.env` 里的 `JOBS_GCLOUD_DIR`（默认 `~/.config/gcloud`，设了 `CLOUDSDK_CONFIG` 时用它），编排把它挂到容器里的 `/root/.config/gcloud`。这个目录还不存在时会先建一个空的（属于你自己），以后再装 gcloud、再登录，容器里直接看得到。挂整个目录而不是单个文件，是因为 gcloud 写文件时会整份替换，单个文件的挂载会一直停在旧内容上。容器只读这个目录，只有你在「模型」页加了 gcloud 登录这把凭证时才会用到。
 
-1. 在 `~/.jobs/` 下新建 `compose.local.yml`（`jobsworld update` 和重新运行安装脚本都不会动它；左边写这台机器上 gcloud 配置目录的绝对路径，不要用 `~` 或 `$HOME`：网页上的一键升级由 systemd 执行，那里不一定有 `HOME`）：
-
-   ```yaml
-   services:
-     jobs:
-       volumes:
-         - /home/<你>/.config/gcloud:/root/.config/gcloud:ro    # macOS 是 /Users/<你>/.config/gcloud
-   ```
-
-   挂整个目录而不是单个文件，是因为 gcloud 写文件时会整份替换，单个文件的挂载会一直停在旧内容上。
-
-2. 在 `~/.jobs/.env` 的 `COMPOSE_FILE` 末尾加上 `:compose.local.yml`（例如 Linux 上是 `COMPOSE_FILE=compose.yml:compose.host.yml:compose.local.yml`），运行 `jobsworld up`，再点一次按钮。
+从 0.3.3 及更早版本升上来的安装还没有这一项：在网页上点按钮时，Linux 上（有网页一键升级的那个监视单元）会请宿主机自动补上并重建 `jobs` 容器，等大约半分钟按钮就接着完成；没有监视单元的机器（macOS / Windows）按提示在这台机器上运行一次 `jobsworld up`。`jobsworld up`、`jobsworld update` 和重新运行安装的那一行都会补上它。Windows 上 gcloud 装在 Windows 侧（`%APPDATA%\gcloud`）而不是 WSL 里时，把 `.env` 里的 `JOBS_GCLOUD_DIR` 改成那个目录（例如 `/mnt/c/Users/<你>/AppData/Roaming/gcloud`）再 `jobsworld up`。
 
 从源码运行（`pnpm jobsworld`）时服务就在这台机器上，按钮直接可用。gcloud 没有默认项目时按钮会提示先 `gcloud config set project <项目 ID>`。登录过期的那段时间里模型调用会失败、这把凭证暂时跳过 10 分钟，所以重新登录后最迟约 10 分钟恢复。细节见 [`MODELS.md`](MODELS.md)。
 
@@ -119,10 +108,10 @@ codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex
 
 | 位置 | 内容 |
 |---|---|
-| `~/.jobs/.env` | 配置：端口、监听地址、口令、密钥。改完运行 `jobsworld up` |
+| `~/.jobs/.env` | 配置：端口、监听地址、口令、密钥、只读挂进容器的 gcloud 配置目录（`JOBS_GCLOUD_DIR`）。改完运行 `jobsworld up` |
 | `~/.jobs/compose*.yml`、`~/.jobs/jobs` | 编排文件与命令入口。它们随镜像发布，`jobsworld update` 会重新取一遍，不要手改 |
-| `~/.jobs/compose.local.yml`（可选） | 你自己的补充编排（比如把 gcloud 的配置目录挂进容器），要在 `.env` 的 `COMPOSE_FILE` 里列上才生效；升级不会动它 |
-| `~/.jobs/control/` | 网页向宿主机提出的请求（只有「开 / 关某个游戏服」「升级」这几种）、升级的进度与输出（`update-status`、`update.log`）、宿主机命令认得哪些动作（`host-features`） |
+| `~/.jobs/compose.local.yml`（可选） | 你自己的补充编排，要在 `.env` 的 `COMPOSE_FILE` 里列上才生效；升级不会动它 |
+| `~/.jobs/control/` | 网页向宿主机提出的请求（只有「开 / 关某个游戏服」「升级」「把 gcloud 配置目录挂进容器」这几种）、升级的进度与输出（`update-status`、`update.log`）、宿主机命令认得哪些动作（`host-features`） |
 | `~/.jobs/backups/` | 每次升级前自动导出的数据库（`jobs-<时间>-v<版本>.dump`，最近 5 份）；`jobsworld backup` 手动导出一份 |
 | Docker 卷 `jobs_pgdata` | 数据库：居民、记忆、发布、使用过程、模型配置（凭证是密文） |
 | Docker 卷 `jobs_s3data` | 截图、录像等证据 |

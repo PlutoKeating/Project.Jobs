@@ -57,9 +57,13 @@ services:
     environment:
       S3_BUCKET: jobs-evidence
       JOBS_DEMOS: ${JOBS_DEMOS:-1}
+      JOBS_GCLOUD_HOST: ${JOBS_GCLOUD_DIR:-}
     volumes:
       - jobsdata:/data
       - ./control:/data/control
+      # 这台机器的 gcloud 配置目录，只读：「模型」页的「使用这台机器的 gcloud 登录」读它（安装脚本与 jobsworld up 会写好 JOBS_GCLOUD_DIR）。
+      # 挂整个目录而不是单个文件：gcloud 写文件时整份替换，单文件挂载会停在旧内容上。还没写好时挂一个安装目录里的空目录占位
+      - ${JOBS_GCLOUD_DIR:-./gcloud}:/root/.config/gcloud:ro
 
   # 游戏服默认不装。网页右上角的手柄里一键开启，或 jobsworld game on tshock / jobsworld game on tml
   tshock:

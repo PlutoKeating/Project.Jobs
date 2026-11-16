@@ -2,7 +2,8 @@
 # Jobs 一行安装：
 #   curl -fsSL https://jobs.plutokeating.beer/install | bash
 #
-# 它做的事：确认有 Docker（Linux 上没有就装）→ 拉取镜像 → 在 ~/.jobs 写好编排文件和带随机口令的 .env → 启动
+# 它做的事：确认有 Docker（Linux 上没有就装）→ 拉取镜像 → 在 ~/.jobs 写好编排文件和带随机口令的 .env
+#           （连同这台机器的 gcloud 配置目录，只读挂进容器，「模型」页一键使用 gcloud 登录）→ 启动
 #           → 装好 jobsworld 命令。服务随 Docker 开机自启、异常自动重启。
 #           重复运行就是升级：已有的 .env 和数据原样保留，换上新镜像之前先把数据库备份到 ~/.jobs/backups。
 # 可用的环境变量：JOBS_HOME（安装目录，默认 ~/.jobs）、JOBS_PORT（默认 7777）、JOBS_BIND（默认 0.0.0.0，只想本机访问设为 127.0.0.1）、
@@ -100,6 +101,8 @@ else
     echo "对外地址改为 $JOBS_PUBLIC_URL（已写进 .env）"
   fi
 fi
+# 这台机器的 gcloud 配置目录只读挂进容器（.env 里的 JOBS_GCLOUD_DIR）：「模型」页点一下「使用这台机器的 gcloud 登录」就能用
+JOBS_HOME="$JOBS_HOME" "$JOBS_HOME/jobs" _ensure-gcloud || true
 # 以前有没有完整装好过（上一次如果半路失败，这次仍然算第一次）
 FIRST=""; [ -f "$JOBS_HOME/.installed" ] || FIRST=1
 PORT="$(envv JOBS_PORT)"; PORT="${PORT:-7777}"

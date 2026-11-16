@@ -43,12 +43,15 @@ const controlDir = () => dataPath('control');
 const readText = (f: string) => { try { return readFileSync(join(controlDir(), f), 'utf8'); } catch { return ''; } };
 /** 宿主机上有监视单元，而且宿主机上的 jobsworld 命令认得 update 这个动作（旧版本的命令不认得，会忽略） */
 const watcher = () => existsSync(join(controlDir(), 'watcher'));
-const hostCanUpdate = () => watcher() && readText('host-features').split(/\s+/).includes('update');
-const request = (action: string) => { const dir = join(controlDir(), 'requests'); mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, `${Date.now()}.${action}`), ''); };
+/** 宿主机上有监视单元，而且宿主机上的 jobsworld 命令认得这个动作（update、gcloud；旧版本的命令不认得的会忽略） */
+export const hostHas = (feature: string) => watcher() && readText('host-features').split(/\s+/).includes(feature);
+const hostCanUpdate = () => hostHas('update');
+export const hostRequest = (action: string) => { const dir = join(controlDir(), 'requests'); mkdirSync(dir, { recursive: true }); writeFileSync(join(dir, `${Date.now()}.${action}`), ''); };
+const request = hostRequest;
 
-// 宿主机上的命令是不是新版本，只能问一次：放一个 ping，新版本的 _control 会写下 host-features
+// 宿主机上的命令是不是新版本，只能问一次：放一个 ping，新版本的 _control 会写下 host-features（网页升级换上新命令之后，下一次 ping 就能认出来）
 let pingedAt = 0;
-function probeHost() { if (!watcher() || hostCanUpdate() || Date.now() - pingedAt < 10 * 60_000) return; pingedAt = Date.now(); try { request('ping'); } catch { /* 目录不可写：当作不能一键升级 */ } }
+export function probeHost(every = 10 * 60_000) { if (!watcher() || hostHas('gcloud') || Date.now() - pingedAt < every) return; pingedAt = Date.now(); try { request('ping'); } catch { /* 目录不可写：当作不能一键执行 */ } }
 
 /** 宿主机写回的升级状态：「running|时间」「ok|时间」「failed|时间」 */
 function hostUpdate() {

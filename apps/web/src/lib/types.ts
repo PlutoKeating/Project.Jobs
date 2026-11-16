@@ -104,7 +104,7 @@ export interface MModel { id: string; model: string; name?: string; kind: MKind;
 export interface MCred { id: string; label: string; enabled: boolean; hint: string; secret_id: string }
 export interface MProvider { id: string; name: string; catalog_id?: string; protocol: 'openai' | 'anthropic' | 'vertex'; base_url: string; enabled: boolean; credentials: MCred[]; models: MModel[] }
 export interface MConfig { providers: MProvider[]; order: string[] }
-export interface MGcloud { found: boolean; dir?: string; account?: string; project?: string; error?: string; tried: string[]; in_container: boolean }
+export interface MGcloud { found: boolean; dir?: string; account?: string; project?: string; error?: string; tried: string[]; in_container: boolean; host_dir?: string; mounted: boolean; can_connect: boolean }
 export interface MCatalogLite { id: string; name: string; protocol: MProvider['protocol']; base_url: string; credential: 'api_key' | 'google_json'; doc?: string; models: number }
 export interface MCatalogModel { id: string; name: string; kind: MKind; caps: MCaps; cost: { input: number; output: number } | null; locate: boolean; released?: string }
 export interface MCatalogProvider extends Omit<MCatalogLite, 'models'> { models: MCatalogModel[] }
