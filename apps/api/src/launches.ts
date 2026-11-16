@@ -89,6 +89,31 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
     return out ? view(out) : r.code(404).send({ error: 'not_found' });
   });
 
+  // ---- 清零与下线：交给世界服务（它先作废进行中的使用再清库）；世界服务没在跑或没开发布引擎时，这里直接清库 ----
+  const lifecycle = async (l: E.LaunchRow, action: 'reset' | 'remove', keepHistory = false) => {
+    if (bus) {
+      try {
+        const out = await request(SUBJ.cmdLifecycle, { launch_id: l.id, action, keep_history: keepHistory }, 300_000);
+        if (!('error' in out)) return out;
+        if (!/runner/.test(String(out.error))) throw new Error(String(out.error));
+      } catch (e) { if (!/no responders|503|runner/i.test(String((e as Error).message))) throw e; }
+    }
+    return action === 'reset' ? E.resetLaunch(l) : E.removeLaunch(l, { keepHistory });
+  };
+  app.post('/api/v1/launches/:id/reset', async (q, r) => {
+    if (!requireAdmin(q, r)) return;
+    const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
+    try { const cleared = await lifecycle(l, 'reset'); const fresh = await E.getLaunch(l.id); return { ...(fresh ? await view(fresh) : {}), cleared }; }
+    catch (e) { return r.code(500).send({ error: String((e as Error).message) }); }
+  });
+  app.delete('/api/v1/launches/:id', async (q, r) => {
+    if (!requireAdmin(q, r)) return;
+    const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
+    const keep = (q.query as { history?: string }).history !== 'delete';
+    try { return { removed: true, ...(await lifecycle(l, 'remove', keep)) }; }
+    catch (e) { return r.code(500).send({ error: String((e as Error).message) }); }
+  });
+
   app.post('/api/v1/launches/:id/invite', async (q, r) => {
     if (!requireAdmin(q, r)) return;
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });

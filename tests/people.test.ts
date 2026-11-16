@@ -51,6 +51,21 @@ describe('记忆树（ewave）', () => {
     expect(t.list(999).filter((m) => m.kind === 'core')).toHaveLength(n);
     expect(t.list(999).some((m) => m.content === '琐事 0')).toBe(false);
   });
+  it('产品被清零或删除：它的分支、听来的口碑、那几次使用留下的一般感受都忘掉，别的产品和自我不受影响', () => {
+    const t = MemoryTree.create('p1');
+    t.seedCore([{ content: '我是我', embedding: vecOf(400) }], 1);
+    t.add(BRANCH.app('appA'), '导出很好用', vecOf(30), meta({ app_id: 'appA', session_id: 's1' }));
+    t.add(BRANCH.people, '老王说 appA 不错', vecOf(31), meta({ kind: 'hearsay', app_id: 'appA' }));
+    t.add(BRANCH.self, '用完 appA 觉得 AI 也没那么可怕', vecOf(32), meta({ kind: 'belief', session_id: 's1' }));
+    t.add(BRANCH.app('appB'), '另一个应用的事', vecOf(33), meta({ app_id: 'appB', session_id: 's9' }));
+    t.add(BRANCH.self, '我不轻易付费', vecOf(34), meta({ kind: 'belief' }));
+    expect(t.forgetApp('appA', new Set(['s1']))).toBe(3);
+    expect(t.hasBranch(BRANCH.app('appA'))).toBe(false); expect(t.dirty).toBe(true);
+    expect(t.list(99).map((m) => m.content).sort()).toEqual(['另一个应用的事', '我不轻易付费', '我是我'].sort());
+    expect(t.tree.verify()).toEqual([]);
+    const back = MemoryTree.from('p1', JSON.parse(JSON.stringify(t.tree.toJSON())), 1);
+    expect(back.forgetApp('appA')).toBe(0); expect(back.dirty).toBe(false);
+  });
 });
 
 describe('态度：海不被一朵浪改变', () => {

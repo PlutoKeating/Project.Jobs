@@ -61,6 +61,7 @@ JobsWorld 是 Jobs 里的那座城：乔布斯镇（Jobs Town）。约两百位�
 | `jw.launches.get` | 请求 / 应答 | 此刻的产品与人数（游戏里 `/jw launches`） |
 | `jw.cmd.clock` / `jw.cmd.event` / `jw.cmd.replay` | 命令 | 暂停与调速、制造事件、在原地点回放一次使用 |
 | `jw.cmd.publish` / `jw.cmd.promote` / `jw.cmd.invite` | 命令 | 发布产品、调宣发（强度、暂停、继续、结束；可以写产品名）、把手机递给几个人 |
+| `jw.cmd.lifecycle` | 请求/应答 | `{ launch_id, action: 'reset' \| 'remove', keep_history? }`：清零或下线一个产品。世界服务先丢掉排队的使用、让进行中的使用在当前这一步做完后作废并等它们停下，再清库（`resetLaunch` / `removeLaunch`）。接口在世界服务没在跑时直接清库 |
 
 ## 4. 数据
 

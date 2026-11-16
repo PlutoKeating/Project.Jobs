@@ -4,6 +4,7 @@ import { logger, Rng, type PersonaSpec, langOf } from '@pux/core';
 import { and, desc, eq, exposures, getDb, gt, intentions, posts, sessions } from '@pux/db';
 import { dayIndex, liveContextFor, type LiveContext } from '@pux/jobsworld';
 import { evaluateSessionPost, runSessionInline } from '../control/study.ts';
+import { SessionRunner } from '../runtime/session-runner.ts';
 import { synthesizeIssues } from '../evaluation/issues.ts';
 import { addIntention, audienceMatch, decide, exposureChance, notices, recordExposure, whatTheySee, type Channel, type Seen } from './exposure.ts';
 import { listLaunches, storeListing, type LaunchRow } from './launch.ts';
@@ -19,7 +20,9 @@ export class LaunchEngine {
   private rel = new Map<string, Rel>();            // `${launch}|${persona}`
   private deciding = new Set<string>();            // 正在做决定的人（一次只想一件事）
   private queue: { sessionId: string; launchId: string; studyId: string }[] = [];
-  private running = new Set<string>();
+  private running = new Map<string, string>();     // sessionId → studyId
+  private cancelled = new Set<string>();           // 正在被清零或下线的产品的 studyId
+  private epoch = new Map<string, number>();       // studyId → 第几次清零：清零之前开始的决定与使用，结束时作废
   private sinceSynth = new Map<string, number>();
   private synthBusy = new Set<string>();
   private loaded = false;
@@ -40,7 +43,7 @@ export class LaunchEngine {
   /** 世界往前走了 minutes 分钟：算一遍谁遇到了什么 */
   async tick(o: { abs: number; date: string; minutes: number; citizens: Citizen[] }): Promise<void> {
     await this.load();
-    const live = await listLaunches({ liveOnly: true });
+    const live = (await listLaunches({ liveOnly: true })).filter((l) => !this.cancelled.has(l.study_id));
     if (live.length) {
       const db = getDb();
       const open = await db.select().from(intentions).where(eq(intentions.done, false));
@@ -91,8 +94,10 @@ export class LaunchEngine {
     const db = getDb();
     const ctx = await liveContextFor(c.id);
     if (!ctx || !ctx.available) return;
-    const k = `${l.id}|${c.id}`; const r = this.rel.get(k)!;
+    const k = `${l.id}|${c.id}`; const r = this.rel.get(k) ?? { seen: 1, rejected: false, opened: false };
+    const ep = this.epoch.get(l.study_id) ?? 0;
     const d = await decide(c.spec, ctx, l, seen, { appId: l.app_id, simDay: dayIndex(o.date), used: r.opened });
+    if (this.stale(l.study_id, ep)) return;          // 想的时候产品被清零或下线了
     const expId = await recordExposure({ launch_id: l.id, persona_id: c.id, channel, world_min: o.abs, place_id: c.place_id, reaction: d.reaction === 'open_now' ? 'curious_later' : d.reaction, thought: d.thought, source_persona_id: source });
     if (d.thought && d.reaction !== 'ignored') this.opts.say?.(c.id, d.thought, d.reaction === 'not_for_me' ? 'confused' : d.reaction === 'open_now' ? 'happy' : 'neutral');
     if (d.reaction === 'not_for_me') r.rejected = true;
@@ -103,27 +108,50 @@ export class LaunchEngine {
     if (d.reaction === 'open_now') {
       r.opened = true;
       const sid = await startUsage(l, c.spec, { channel, want: d.want, found: seen.text, ctx, exposureId: expId, source });
+      if (this.cancelled.has(l.study_id)) return;
       this.queue.push({ sessionId: sid, launchId: l.id, studyId: l.study_id });
       this.opts.log?.(`▶ ${c.spec.identity.name} 决定打开「${l.name}」（${channel}）：${d.thought}`);
       this.pump();
     }
   }
 
+  /**
+   * 产品被清零或下线：排队的使用丢掉，进行中的使用在当前这一步做完后作废，等它们都停下来（最多 timeoutMs），
+   * 并忘掉内存里「谁见过它、谁拒绝过它」。之后由调用方清库。清库之后调用 release() 让同一个 study 重新可用（清零）
+   */
+  async cancel(launchIds: string[], studyIds: string[], timeoutMs = 90_000): Promise<void> {
+    await this.load();
+    for (const s of studyIds) { this.cancelled.add(s); this.epoch.set(s, (this.epoch.get(s) ?? 0) + 1); }
+    this.queue = this.queue.filter((q) => !studyIds.includes(q.studyId));
+    for (const [sid, st] of this.running) if (studyIds.includes(st)) SessionRunner.get(sid)?.cancel();
+    for (const k of [...this.rel.keys()]) if (launchIds.some((l) => k.startsWith(`${l}|`))) this.rel.delete(k);
+    for (const s of studyIds) { this.sinceSynth.delete(s); }
+    const deadline = Date.now() + timeoutMs;
+    while ([...this.running.values()].some((st) => studyIds.includes(st)) || studyIds.some((s) => this.synthBusy.has(s))) {
+      if (Date.now() > deadline) { logger.warn({ studyIds }, '等进行中的使用停下来超时，照常清理'); break; }
+      await new Promise((r) => setTimeout(r, 500));
+    }
+  }
+  private stale(studyId: string, ep: number) { return this.cancelled.has(studyId) || (this.epoch.get(studyId) ?? 0) !== ep; }
+  release(studyIds: string[]) { for (const s of studyIds) this.cancelled.delete(s); }
+
   /** 把手机递给一批人之后，把这些使用排进队列 */
-  enqueue(sessionIds: string[], l: LaunchRow) { for (const id of sessionIds) this.queue.push({ sessionId: id, launchId: l.id, studyId: l.study_id }); this.pump(); }
+  enqueue(sessionIds: string[], l: LaunchRow) { if (this.cancelled.has(l.study_id)) return; for (const id of sessionIds) this.queue.push({ sessionId: id, launchId: l.id, studyId: l.study_id }); this.pump(); }
 
   private pump() {
     const max = this.opts.concurrency ?? 3;
     while (this.running.size < max && this.queue.length) {
-      const job = this.queue.shift()!; this.running.add(job.sessionId);
+      const job = this.queue.shift()!; this.running.set(job.sessionId, job.studyId);
       void this.runOne(job).catch((e) => logger.warn({ err: String((e as Error).message).slice(0, 200) }, '使用运行失败')).finally(() => { this.running.delete(job.sessionId); this.pump(); });
     }
   }
 
   private async runOne(job: { sessionId: string; launchId: string; studyId: string }) {
     const log = this.opts.log ?? (() => {});
+    const ep = this.epoch.get(job.studyId) ?? 0;
     const outcome = await runSessionInline(job.sessionId, () => {});
     log(`■ ${job.sessionId} 结局：${outcome}`);
+    if (this.stale(job.studyId, ep)) return;         // 产品被清零或下线：不评估、不留口碑
     await evaluateSessionPost(job.sessionId).catch((e) => logger.warn({ err: String(e).slice(0, 200) }, '评估失败'));
     const a = await afterUse(job.sessionId).catch((e) => { logger.warn({ err: String(e).slice(0, 200) }, '用完之后的处理失败'); return undefined; });
     if (a && (a.review || a.post || a.told)) log(`  ↳ ${a.review ? '写了评论 ' : ''}${a.post ? '发了动态 ' : ''}${a.told ? `跟${a.told}说了` : ''}`);

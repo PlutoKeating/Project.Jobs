@@ -50,6 +50,7 @@ flowchart LR
 | `engine.ts` | `LaunchEngine.tick`：先处理之前留下的念头（熟人提过、想以后看看、用过想再用），再算新的曝光；决定与使用都有并发上限；每累计几次使用后重新合成问题 |
 | `usage.ts` | `startUsage`（把这个人此时此地的处境定下来，建一次使用）、`inviteToLaunch`（把手机递给人，标记为受邀）、`afterUse`（把用完后的打算落成评论、动态、口碑和回访念头） |
 | `identity.ts` | 城里发的邮箱、手机号、惯用的用户名（就是邮箱 @ 前面那一段）与密码、钱包；`deliverMail` 把验证邮件与短信送到对应的人（Message-ID 去重，记下到达时他正在进行的那次使用，规则提取验证码与链接作仪器）；`unseenMail` 给使用过程的新信通知（邮件只有发件人和标题）；`payFromWallet` |
+| `lifecycle.ts` | 产品的清零与下线（按产品算：同名产品发布过的每一版）。`resetLaunch`：删掉使用过程与它们的证据、问题、评审、曝光、念头、评论、动态、一页结论、版本点、使用期间收到的信，居民记忆树里它的分支与相关记忆（`forgetApp`）、对它的信任与指向它的信念证据；产品本身（地址、介绍、商店截图、宣发设置）不动，状态回到 `live`、发布时刻与花费归零，等于此刻重新发布。`removeLaunch`：从城里拿掉（删掉 `launches` 行、念头、一页结论、版本点，作废没用完的使用）；`keepHistory = false` 时连同上面的全部经历与产品记录一起删掉（内部校准批次还在用这个产品时保留产品记录）。模型调用记录（`llm_traces`）是真实花费，都不删；对 AI 产品整体的信任已经被改动的部分不回退。清库之前，世界服务先让进行中的使用在当前这一步做完后作废（`LaunchEngine.cancel`，作废的使用不整理记忆、不评估、不留口碑） |
 | `report.ts` | `gatherMoments`（每个人的关键时刻：第一眼、卡住、离开、办成、用完后说的话、评论与动态；路过没点开的人的想法）→ `launchReport`（用「归纳」模型组写成一页，每条必须引用痕迹；输入有上百条痕迹，单次调用的超时放宽到 8 分钟，素材变了时先给上一版、后台重写）；`experiencedIssues`、`engineeringAppendix` |
 
 规则决定「遇没遇到、注没注意」，模型只在决定点出场：要不要点开、使用时的每一步、用完之后怎么说。数据：`launches`、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports`（迁移 `0007`）。每次发布内部对应一个 `studies` 行，作为使用过程、证据与花费的容器（`trigger = 'launch'`）。

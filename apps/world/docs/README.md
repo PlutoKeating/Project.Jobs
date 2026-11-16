@@ -11,7 +11,7 @@
 - **回放**：`jw.cmd.replay { session_id, speed }`，每 2.5 秒/倍速推进一步。
 - **世界事件**：`jw.cmd.event { place_id, kind, minutes }` 写入 `world_events` 表。地点里的人会做出反应、压力上升；正在该地点使用产品的人会真的受到影响（断网、被打断、分心，见 `EVENT_EFFECT`）。
 - **发布引擎**：每 10 秒把这段时间走过的世界分钟交给 `LaunchEngine.tick`（`packages/engine/src/launch/`）：已发布的产品出现在谁面前 → 注意到的人自己决定 → 点开的人排队使用（浏览器会话在本进程内并发运行）→ 用完留下评论与口碑。还没有接入可用的模型时这一步暂停（世界照常运转），接入并保存后几秒内自动开始。每一轮把各产品的漏斗人数发布到 `jw.launches`。有人注意到产品时，他头上冒出当时的想法（`say`）。
-- **请求/应答**：`jw.town`（布局）、`jw.detail`（人物详情，含关系网）、`jw.ask`（使用结束后的追问）、`jw.launches.get`（此刻的产品与人数）、`jw.cmd.publish`（发布）、`jw.cmd.promote`（调宣发，`launch_id` 可写产品名）、`jw.cmd.invite`（把手机递给几个人）。
+- **请求/应答**：`jw.town`（布局）、`jw.detail`（人物详情，含关系网）、`jw.ask`（使用结束后的追问）、`jw.launches.get`（此刻的产品与人数）、`jw.cmd.publish`（发布）、`jw.cmd.promote`（调宣发，`launch_id` 可写产品名）、`jw.cmd.invite`（把手机递给几个人）、`jw.cmd.lifecycle`（清零或下线一个产品：先 `LaunchEngine.cancel` 丢掉排队的使用、让进行中的使用在当前这一步做完后作废并等它们停下，再清库，之后 `release`）。
 - **快照**：每秒发布 `jw.snapshot`（每个人带 `needs`、`wallet`、`phone`、`driven_by`），每 5 秒写入 KV `jobsworld.snapshot`。
 
 它也是模型配置的一个运行实例：每次请求前核对配置版本，并把自己用的是第几版报给「模型」页（见 `docs/MODELS.md`）。

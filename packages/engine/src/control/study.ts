@@ -106,7 +106,7 @@ async function waitForHuman(taskId: string, takeover: string, progress: Progress
   while (Date.now() < deadline) {
     const t = (await getDb().select().from(humanTasks).where(eq(humanTasks.id, taskId)))[0];
     if (t?.status === 'resolved') return true;
-    if (t?.status === 'cancelled') return false;
+    if (!t || t.status === 'cancelled') return false;           // 任务被取消或删掉（产品被清零、下线）
     await new Promise((r) => setTimeout(r, 3000));
   }
   await resolveHumanTask(taskId, 'timeout');

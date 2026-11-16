@@ -74,6 +74,20 @@ export class MemoryTree {
     return drop.length;
   }
 
+  /**
+   * 忘掉一个产品：它的分支（app:<id>）整枝删掉，其他分支里与它有关的记忆（口碑、那几次使用留下的对 AI 的一般感受）逐条删掉。
+   * 产品被清零或下线并删除经历时用。返回删掉的记忆条数
+   */
+  forgetApp(appId: string, sessionIds: ReadonlySet<string> = new Set()): number {
+    const hit = (n: Node<string>) => n.meta.app_id === appId || (typeof n.meta.session_id === 'string' && sessionIds.has(n.meta.session_id));
+    const drop = this.leaves().filter((n) => this.branchKeyOf(n) !== BRANCH.core && (this.branchKeyOf(n) === BRANCH.app(appId) || hit(n)));
+    for (const n of drop) this.tree.remove(n.id);
+    const b = this.tree.projectRoots().find((x) => x.meta.key === BRANCH.app(appId));
+    if (b) this.tree.remove(b.id, { strategy: 'cascade' });
+    if (drop.length || b) this.dirty = true;
+    return drop.length;
+  }
+
   /** core 分支：身份、价值观、底线。写入后锁为只读——一次经历改不动它 */
   seedCore(items: { content: string; embedding: readonly number[] }[], now: number) {
     if (this.hasBranch(BRANCH.core)) return;

@@ -26,6 +26,8 @@
 | `POST /launches/:id/versions`（管理员） | 标记新版本（「我改好了，线上已经是新版本」）：`{ note? }`，返回 `{ n, note, at }`。之后开始的使用算新版本；产品地址不变时不用重新发布 |
 | `GET /launches/:id/engineering` | `version`：最新的版本点和它之后开始的使用次数 `{ n, note, at, sessions, finished }`（还没标过新版本时为 `null`）；`experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤；标过新版本时还有 `sessions_since_version`：这个问题在最新版本之后开始的使用里出现了几次。问题清单每累计几次使用重新归并一次，最新的使用可能还没算进去）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议）；`mail`：验证邮件的仪器读数（没有邮件时为 `null`）`{ mails, sessions, opened, median_delay_s, max_delay_s, switches, forgot, mistyped }`：收到几封、点开几封、从居民填好邮箱到信到达的中位与最慢秒数、在产品和邮箱之间切了几次、几次切回来记不清验证码、几次输入的码与邮件里的不一致 |
 | `POST /launches/:id/promotion`（管理员） | 调宣发：`intensity`、`audience`、`status`、`ad_text`、`tagline`，只改传了的字段 |
+| `POST /launches/:id/reset`（管理员） | 清零：城里关于这个产品（同名产品发布过的每一版）的一切经历归零——使用过程、曝光、念头、评论、动态、一页结论、版本点、问题、使用期间收到的信，以及居民记忆里关于它的部分与对它的信任；产品本身（地址、介绍、商店截图、宣发设置）不动，状态回到 `live`，发布时刻与花费归零，等于此刻重新发布。正在进行的使用被作废。返回同 `GET /launches` 的一行，另有 `cleared`：`{ sessions, exposures, reviews, posts, memories, people }`（删掉的条数；`people` 是忘掉它的居民数）。模型调用记录不删 |
+| `DELETE /launches/:id[?history=delete]`（管理员） | 下线：从城里拿掉这个产品（发布过的每一版），商店、广告、念头里都不再有它，`GET /launches` 里也没有了；正在进行的使用被作废。默认保留经历（用过的人的使用、评论、动态与记忆都留着，人物页还能看到，同名产品再次发布时居民认得它）；`history=delete` 时连同上面清零会删的全部经历和产品记录一起删掉。返回 `{ removed: true, kept, sessions, exposures, reviews, posts, memories, people }` |
 | `POST /launches/:id/invite`（管理员） | 把手机递给人：`n`（1–20，默认 3）、`segment`、`locale`、`persona_ids`、`want`（希望他们做的一件事）。返回 `{ invited, session_ids }` |
 | `GET /store` | 城里的人看到的应用商店：每个上架产品的介绍、截图、评分与评论 |
 | `GET /feed[?launch_id=]` | 城里的公开动态 |

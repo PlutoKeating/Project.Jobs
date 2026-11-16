@@ -31,9 +31,13 @@
 
 ## 对外
 
-`withTree(personaId, fn)`、`loadTree`、`listMemories`、`memoryCounts`、`MemoryTree`（`add / seedCore / recall / list / stats / enforceCap`）、`BRANCH`、`compact`。
+`withTree(personaId, fn)`、`loadTree`、`listMemories`、`memoryCounts`、`MemoryTree`（`add / seedCore / recall / list / stats / enforceCap / forgetApp`）、`BRANCH`、`compact`。
 
 态度更新规则（对某个产品的态度有界可变；全局信念要多次独立经历才动）在 `@pux/engine` 的 `human/memory.ts`（`updateAttitudes`）。
+
+## 忘掉一个产品（`MemoryTree.forgetApp`）
+
+产品被清零、或下线并删除经历时，每个人的树上：`app:<appId>` 分支整枝删掉；其他分支里 `meta.app_id` 是它（例如 `people` 里听来的口碑）或 `meta.session_id` 属于它那几次使用（例如那次使用后写进 `self` 的对 AI 的一般感受）的记忆逐条删掉。`core` 分支不动。没有可删的时候不标脏，不写库。
 
 ## 向量从哪来
 

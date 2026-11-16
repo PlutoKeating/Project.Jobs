@@ -58,6 +58,7 @@ export class SessionRunner {
   private llmErrors = 0;
   private pendingSimSeconds = 0;
   private lastWaitS = 0;
+  cancelled = false;
   private obsLog: { url: string; text: string }[] = [];
   private interruptionNote?: string;
   private loopNote?: string;
@@ -394,6 +395,8 @@ export class SessionRunner {
   async finish(): Promise<{ outcome: string; end_reason: string }> {
     const db = getDb();
     const end = this.ended ?? { outcome: 'sim_error', end_reason: 'not ended' };
+    // 产品被清零或下线：这次使用连同它的记录一起作废，不整理记忆、不写结局
+    if (this.cancelled) { await this.browser.close().catch(() => {}); SessionRunner.registry.delete(this.sess.id); return end; }
     const ev = await this.browser.close().catch(() => ({} as { video_ev?: string; har_ev?: string; rrweb_ev?: string }));
     const st = await db.select().from(steps).where(eq(steps.session_id, this.sess.id)).orderBy(steps.idx);
     const obsRows = await db.select({ state_id: observations.state_id, url: observations.url }).from(observations).where(eq(observations.session_id, this.sess.id)).orderBy(observations.step_idx);
@@ -415,6 +418,8 @@ export class SessionRunner {
   }
 
   async abort(reason: string) { this.ended ??= { outcome: 'sim_error', end_reason: reason }; return this.finish(); }
+  /** 作废这次使用（产品被清零或下线）：当前这一步做完就停，结束时什么也不留下 */
+  cancel() { this.cancelled = true; this.ended ??= { outcome: 'cancelled', end_reason: 'launch reset or removed' }; }
 }
 
 /** 人工接管完成后恢复 */

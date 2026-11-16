@@ -4,7 +4,7 @@ import { closeDb, getDb, worldEvents, type NeedsRow } from '@pux/db';
 import {
   absMinute, actKindOf, agendaAt, agendaFor, allResidents, appearanceFor, completeAgenda, computeLayout, connectBus, decode, EVENT_EFFECT, kvPutJson, lastFinishedSession, latestPersonas,
   loadTown, needOverride, needsAt, OUTDOOR, personaMemoryList, personaSessions, phoneAffinity, placeForKind, residentOf, saveAgenda, saveNeeds, saveWorldClock, SUBJ, tickNeeds, tiesOf, toClock, toMin,
-  type InviteCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type PublishCmd, type ResidentRow,
+  type InviteCmd, type LifecycleCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type PublishCmd, type ResidentRow,
   type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type SessionLive, type Snapshot, type WorldEvent,
 } from '@pux/jobsworld';
 import { modelsReady, setInstanceKind } from '@pux/llm';
@@ -337,6 +337,20 @@ sub(SUBJ.cmdInvite, async (d) => {
   const ids = await Engine.inviteToLaunch(l, pool.map((r) => ({ id: r.id, spec: r.spec })), { want: c.want });
   engine.enqueue(ids, l);
   return { invited: ids.length, session_ids: ids };
+});
+sub(SUBJ.cmdLifecycle, async (d) => {
+  if (!Engine || !engine) throw new Error('runner 未启用');
+  const c = d as LifecycleCmd; const l = await Engine.getLaunch(c.launch_id); if (!l) throw new Error('没有这个发布');
+  // 先让这个产品在城里停下来：排队的使用丢掉，进行中的在这一步做完后作废；等它们停下来再清库
+  const scope = await Engine.launchScope(l);
+  await engine.cancel(scope.launchIds, scope.studyIds);
+  try {
+    const out = c.action === 'reset' ? await Engine.resetLaunch(l) : await Engine.removeLaunch(l, { keepHistory: !!c.keep_history });
+    const now = await launchesNow();
+    bus.publish(SUBJ.launches, { launches: now, ts: Date.now() } satisfies LaunchesMsg);
+    void kvPutJson(bus.kv, 'launches', { launches: now, ts: Date.now() });
+    return out;
+  } finally { engine.release(scope.studyIds); }
 });
 
 setInterval(() => void launchTick(), 10_000);
