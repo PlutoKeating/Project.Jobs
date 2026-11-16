@@ -54,7 +54,7 @@ export function PublishDialog() {
         {mailReady.data && !mailReady.data.real && (
           <p className="mt-4 flex items-start gap-1.5 text-xs text-warning">
             <MailWarning size={13} className="mt-px shrink-0" />
-            <span>{t('mail_fake_warn')}{me.data?.admin && <> · <Link to="/settings" onClick={() => setOpen(false)} className="underline underline-offset-2 hover:text-fg">{t('mail_fake_fix')}</Link></>}</span>
+            <span>{t('mail_fake_warn')}{me.data?.admin && <> · <Link to="/settings" search={{ tab: 'mail' }} onClick={() => setOpen(false)} className="underline underline-offset-2 hover:text-fg">{t('mail_fake_fix')}</Link></>}</span>
           </p>
         )}
         <div className="mt-6 flex items-center justify-end gap-2">

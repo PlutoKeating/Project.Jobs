@@ -24,7 +24,7 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 
 打开 `http://<这台机器的地址>:7777/`，用**管理员口令**进去。
 
-1. 第一次会被带到「模型」页：选一家供应商 → 粘贴 Key → 勾选模型 → 保存。上方「每一步 / 归纳 / 定位」三项都有了目标就行了。见 [`MODELS.md`](MODELS.md)。
+1. 第一次会被带到「设置 › 模型」：选一家供应商 → 粘贴 Key → 勾选模型 → 保存。上方「每一步 / 归纳 / 定位」三项都有了目标就行了。见 [`MODELS.md`](MODELS.md)。
 2. 回到「城」，点右上角「发布」：粘贴产品的网址、名字、一句话。没有现成的产品时，对话框左下角的「示例」里有十个带着真实小毛病的示例产品。
 3. 居民会按自己的日子遇到它。想马上得到反馈，在产品页右栏「把手机递给几个人」。
 
@@ -76,7 +76,7 @@ jobsworld update --check                                 # 只看本机版本和
 
 ### 用这台机器的 gcloud 登录接入 Vertex
 
-如果这台机器上已经 `gcloud auth login` 过，Vertex 不用粘贴任何凭证：「模型」页 Vertex 连接的凭证下面有「使用这台机器的 gcloud 登录」按钮，点一下、保存就行。Jobs 保存的只是「用 gcloud 的登录」这一句话（`{"gcloud": "auto"}`），每次换访问令牌前直接读 gcloud 自己的配置目录：当前账号与默认项目（`gcloud config set project`）、以及 `gcloud auth login` 存下的凭证。所以组织策略要求每天重新登录时，每天只需要在这台机器上 `gcloud auth login`，不用回到「模型」页；换账号、换默认项目也一样直接生效。
+如果这台机器上已经 `gcloud auth login` 过，Vertex 不用粘贴任何凭证：「设置 › 模型」里 Vertex 连接的凭证下面有「使用这台机器的 gcloud 登录」按钮，点一下、保存就行。Jobs 保存的只是「用 gcloud 的登录」这一句话（`{"gcloud": "auto"}`），每次换访问令牌前直接读 gcloud 自己的配置目录：当前账号与默认项目（`gcloud config set project`）、以及 `gcloud auth login` 存下的凭证。所以组织策略要求每天重新登录时，每天只需要在这台机器上 `gcloud auth login`，不用回到「模型」页；换账号、换默认项目也一样直接生效。
 
 装好的 Jobs 跑在容器里，所以安装脚本会把这台机器的 gcloud 配置目录只读挂进去：`~/.jobs/.env` 里的 `JOBS_GCLOUD_DIR`（默认 `~/.config/gcloud`，设了 `CLOUDSDK_CONFIG` 时用它），编排把它挂到容器里的 `/root/.config/gcloud`。这个目录还不存在时会先建一个空的（属于你自己），以后再装 gcloud、再登录，容器里直接看得到。挂整个目录而不是单个文件，是因为 gcloud 写文件时会整份替换，单个文件的挂载会一直停在旧内容上。容器只读这个目录，只有你在「模型」页加了 gcloud 登录这把凭证时才会用到。
 
@@ -120,7 +120,7 @@ codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex
 | Docker 卷 `jobs_s3data` | 截图、录像等证据 |
 | Docker 卷 `jobs_jobsdata` | 运行时文件 |
 
-**`JOBS_SECRET_KEY` 要留好**：它用来加密你在「模型」里填的凭证和飞书的应用凭证。丢了它，这些凭证就解不开，需要重新填。
+**`JOBS_SECRET_KEY` 要留好**：它用来加密你在「设置 › 模型」里填的凭证和飞书的应用凭证。丢了它，这些凭证就解不开，需要重新填。
 
 备份：数据库用 `jobsworld backup`（导出到 `~/.jobs/backups/`）；截图录像等证据：`docker run --rm -v jobs_s3data:/d -v "$PWD":/o alpine tar czf /o/jobs-s3.tgz -C /d .`。连同 `~/.jobs/.env` 一起存好。
 
@@ -143,7 +143,7 @@ Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等
 两点要知道：
 
 - 流量是明文 HTTP。要放到公网上，请在前面加一层带 TLS 的反向代理（Caddy、Nginx、Cloudflare Tunnel），并把 `JOBS_BIND` 改成 `127.0.0.1`。
-- 放到反向代理后面之后，在网页右上角齿轮「设置」里填好对外的地址（例如 `https://jobs.example.com`，不带路径），保存后几秒内生效；也可以写进 `.env` 的 `JOBS_PUBLIC_URL` 再 `jobsworld up`（网页上填的优先）。coding agent 的链接就是 `<它>/mcp`；OAuth 要求 https，所以这里填 http 的公网地址时远程 MCP 不会启用。也可以在安装那一行前面加 `JOBS_PUBLIC_URL=https://…`，会写回 `.env`。目前只支持挂在域名根路径下（不支持 `https://example.com/jobs` 这样的子路径）。
+- 放到反向代理后面之后，在网页右上角齿轮「设置 › 公网链接」里填好对外的地址（例如 `https://jobs.example.com`，不带路径），保存后几秒内生效；也可以写进 `.env` 的 `JOBS_PUBLIC_URL` 再 `jobsworld up`（网页上填的优先）。coding agent 的链接就是 `<它>/mcp`；OAuth 要求 https，所以这里填 http 的公网地址时远程 MCP 不会启用。也可以在安装那一行前面加 `JOBS_PUBLIC_URL=https://…`，会写回 `.env`。目前只支持挂在域名根路径下（不支持 `https://example.com/jobs` 这样的子路径）。
 
   Caddy（自动申请证书），`/etc/caddy/Caddyfile`：
 

@@ -14,6 +14,6 @@
 - **请求/应答**：`jw.town`（布局）、`jw.detail`（人物详情，含关系网）、`jw.ask`（使用结束后的追问）、`jw.launches.get`（此刻的产品与人数）、`jw.cmd.publish`（发布）、`jw.cmd.promote`（调宣发，`launch_id` 可写产品名）、`jw.cmd.invite`（把手机递给几个人）、`jw.cmd.lifecycle`（清零或下线一个产品：先 `LaunchEngine.cancel` 丢掉排队的使用、让进行中的使用在当前这一步做完后作废并等它们停下，再清库，之后 `release`）。
 - **快照**：每秒发布 `jw.snapshot`（每个人带 `needs`、`wallet`、`phone`、`driven_by`），每 5 秒写入 KV `jobsworld.snapshot`。
 
-它也是模型配置的一个运行实例：每次请求前核对配置版本，并把自己用的是第几版报给「模型」页（见 `docs/MODELS.md`）。
+它也是模型配置的一个运行实例：每次请求前核对配置版本，并把自己用的是第几版报给「设置 › 模型」（见 `docs/MODELS.md`）。
 
 环境变量：`NATS_URL`（默认 `nats://127.0.0.1:54222`）、`JW_MAX_VISIBLE`（默认 60）、`JW_AGENDA_LLM`、`JW_RUNNER`（`0` = 不驱动发布引擎，只展示世界）、`JW_CONCURRENCY`（同时进行的使用数，默认 3）。

@@ -19,7 +19,7 @@
 - **唯一权威数据源**：Postgres（结构化数据）+ MinIO（截图、录像等大文件，按内容哈希寻址、只追加）。
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
 - **居民邮箱**：真实产品发的验证邮件经 Cloudflare 进来。邮件域名就是公网链接的主机名，它的 MX 由 Cloudflare Email Routing 接收；每个居民一条收信规则（开通后在后台预先建到上限，其余的人开始用产品时再建），交给 Cloudflare 上的转发 Worker；Worker 只把原始邮件加签名后 POST 回 `<公网链接>/inbound/email`。收信、解析、存储、界面都在 Jobs 里（`packages/engine/src/mail/`，见 §6）。维护者只在网页「设置」里填公网链接、贴一枚 Cloudflare API Token。
-- **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
+- **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「设置 › 模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
 上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列全部打进一个镜像，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」与「一键升级」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobsworld _control`（systemd 监视单元触发）执行；升级的进度与结果再写回同一个目录（`control/`）。版本号只有根 `package.json` 一个来源（`@pux/core` 的 `jobsVersion()`）；接口每小时读一次 GitHub 上最新的 Release（管理员打开网页时结果超过 15 分钟就当场重查），网页据此提示管理员升级（`apps/api/src/update.ts`）。升级流程（`deploy/jobs` 的 `update`，安装脚本重复运行时同理）：拉取镜像 → 取出新的编排文件与命令 → 备份数据库到 `~/.jobs/backups` → 重建容器（入口脚本迁移数据库）→ 更新装过的游戏服。
 

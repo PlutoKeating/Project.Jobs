@@ -286,7 +286,8 @@ function Block({ title, aside, children }: { title: ReactNode; aside?: ReactNode
   return <section className="mt-10"><div className="mb-3 flex items-baseline justify-between gap-3"><h2 className="text-lg font-semibold">{title}</h2>{aside}</div>{children}</section>;
 }
 
-export function ModelsPage() {
+/** 设置 › 模型：一页草稿、一次保存 */
+export function ModelsPanel() {
   const { t } = useT(); const L = useLabel(); const qc = useQueryClient();
   const q = useQuery({ queryKey: ['models'], queryFn: () => get<MState>('/models'), refetchInterval: 5000, retry: false });
   const [base, setBase] = useState<{ version: number; config: MConfig } | null>(null);
@@ -332,10 +333,10 @@ export function ModelsPage() {
 
   return (
     <div>
-      <header className="sticky top-[var(--ds-header-height)] z-20 -mx-4 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+      <header className="sticky top-[var(--ds-header-height)] z-20 -mx-4 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <div className="min-w-0">
-            <h1 className="text-2xl font-semibold">{t('m_title')}</h1>
+            <h2 className="text-lg font-semibold">{t('m_title')}</h2>
             <p className="tabular mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-muted" role="status">
               {conflict ? <span className="text-danger">{t('m_conflict', { n: s.version })}</span> : dirty ? <span className="inline-flex items-center gap-1.5 text-warning"><span className="h-1.5 w-1.5 rounded-full bg-warning" />{t('m_dirty')}</span> : <span>{t('m_version', { n: base.version })}</span>}
               {!dirty && s.instances.map((i) => (i.version === s.version

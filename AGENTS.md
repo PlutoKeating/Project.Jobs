@@ -42,7 +42,7 @@
 
 注：本项目的运行形态（2026-11-15 重塑后）：
 
-- **从源码开发**：依赖服务（Postgres+pgvector、MinIO、NATS）用根目录的 `docker-compose.yml` 运行；两个游戏服（TShock、tModLoader，`profiles: [game]`，镜像见 `infra/game/*/Dockerfile`）同样在 Docker Compose 里按需启动；世界服务、接口、网页、单端口网关（`apps/world`、`apps/api`、`apps/web`、`apps/gateway`）与示例产品在宿主机用 pnpm 运行。模型不再经独立的网关容器：由应用内的 `packages/llm` 路由，在网页的「模型」页配置。
+- **从源码开发**：依赖服务（Postgres+pgvector、MinIO、NATS）用根目录的 `docker-compose.yml` 运行；两个游戏服（TShock、tModLoader，`profiles: [game]`，镜像见 `infra/game/*/Dockerfile`）同样在 Docker Compose 里按需启动；世界服务、接口、网页、单端口网关（`apps/world`、`apps/api`、`apps/web`、`apps/gateway`）与示例产品在宿主机用 pnpm 运行。模型不再经独立的网关容器：由应用内的 `packages/llm` 路由，在网页的「设置 › 模型」里配置。
 - **装好的 Jobs**：我们自己的代码打成一个镜像（根目录 `Dockerfile`），配合 `deploy/compose*.yml` 引用的标准镜像运行，由 `deploy/install.sh` 安装。
 
 因此上述 Docker 相关阅读要求保留：涉及依赖服务或游戏服时须阅读根目录 `docker-compose.yml` 与 `.dockerignore`；涉及安装与打包时须阅读 `Dockerfile`、`Dockerfile.dockerignore`、`deploy/` 与 `docs/INSTALL.md`。

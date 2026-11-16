@@ -36,7 +36,7 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 You need a machine with Docker, x86_64 or arm64. The script prints an address and two passcodes; then:
 
 1. Open the address and sign in with the admin passcode.
-2. On the **Models** page, pick a provider, paste a key, tick the models, save.
+2. In **Settings › Models**, pick a provider, paste a key, tick the models, save.
 3. Back in the town, press **Publish** and paste a URL, a name and one line. A dev server on `127.0.0.1` works.
 
 No product at hand? The same dialog offers sample products with real little flaws.

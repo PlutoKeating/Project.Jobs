@@ -16,7 +16,7 @@
 | recipe | 今天吃啥 | 菜谱 + AI 推荐 + 拍照识别 | 3 |
 | kids | 小熊识字 | 儿童识字（儿童安全策略的被测对象） | 4 |
 
-示例里的 AI 功能（助手的对话与转写、资讯的总结、菜谱的推荐与识图）经 Jobs 自己的 OpenAI 兼容入口调用已接入的模型（`src/llm.ts`：`JOBS_API` 下的 `/api/v1/llm/step/v1`，带管理员口令），所以要先在「模型」里接入模型并启动接口服务。
+示例里的 AI 功能（助手的对话与转写、资讯的总结、菜谱的推荐与识图）经 Jobs 自己的 OpenAI 兼容入口调用已接入的模型（`src/llm.ts`：`JOBS_API` 下的 `/api/v1/llm/step/v1`，带管理员口令），所以要先在「设置 › 模型」里接入模型并启动接口服务。
 
 缺陷清单在各示例定义的 `defects` 里（类别、严重度、位置、关键词），通过 `GET /__pux/manifest.json` 暴露，由 `pnpm jobs init` 或 `pnpm jobs dev demo register` 写入 `app_versions.seeded_defects`，只在校准时用（见 `docs/CALIBRATION.md`）。`/__pux/*`（清单、重置）是给工具用的，居民不会访问。
 
