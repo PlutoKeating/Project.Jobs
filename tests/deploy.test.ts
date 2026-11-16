@@ -83,7 +83,7 @@ describe('编排', () => {
   it('我们自己的代码只在 jobs 这一个镜像里；数据库、对象存储、事件总线是标准镜像；游戏服默认不启动', () => {
     const images = [...base.matchAll(/^\s+image:\s*(.+)$/gm)].map((m) => m[1].trim());
     expect(images.filter((i) => i.includes('JOBS_IMAGE'))).toHaveLength(1);
-    expect(images).toEqual(expect.arrayContaining(['pgvector/pgvector:pg17', 'elestio/minio:latest', 'nats:2.12-alpine']));
+    expect(images).toEqual(expect.arrayContaining(['pgvector/pgvector:pg17', 'pgsty/minio:RELEASE.2026-08-04T00-00-00Z', 'nats:2.12-alpine']));
     expect(base.match(/profiles: \[game\]/g)).toHaveLength(2);
   });
   it('依赖服务只监听本机回环地址；对外只有网关一个端口', () => {

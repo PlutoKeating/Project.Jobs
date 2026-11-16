@@ -22,8 +22,9 @@ services:
       retries: 20
 
   minio:
-    # 官方 minio/minio 镜像已停止在 Docker Hub 发布，这里使用 elestio 重新打包的 MinIO 二进制
-    image: elestio/minio:latest
+    # 官方 minio/minio 镜像已从 Docker Hub 撤下；pgsty/minio 是继续发布的社区构建，amd64/arm64 都是对应架构的二进制
+    # （elestio/minio 的 arm64 镜像里装的是 x86-64 二进制，在 ARM 机器上 exec format error）。固定版本，不跟 latest
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     restart: unless-stopped
     entrypoint: ["minio"]
     command: ["server", "/data", "--console-address", ":9001"]

@@ -137,7 +137,7 @@ codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex
 | 镜像 | 内容 |
 |---|---|
 | `ghcr.io/plutokeating/jobs` | 我们自己的全部代码：世界服务、接口、网页、单端口网关、命令行，以及它驱动的 Chromium、ffmpeg、字体。由仓库根的 `Dockerfile` 构建。pnpm（含它的原生二进制）在构建时就装进镜像（`COREPACK_HOME=/corepack`），运行时禁止 corepack 联网：容器启动不需要访问 npm |
-| `pgvector/pgvector`、`elestio/minio`、`nats` | 数据库、对象存储、事件总线：各自的标准镜像，原样引用 |
+| `pgvector/pgvector`、`pgsty/minio`、`nats` | 数据库、对象存储、事件总线：各自的标准镜像，原样引用 |
 | `ghcr.io/plutokeating/jobs-tshock`、`jobs-tml` | 可选的两个 Terraria 游戏服（第三方服务端 + 我们的插件 / 模组），按需拉取。由 `infra/game/*/Dockerfile` 构建；TShock 按构建架构下载对应的发布包（`linux-x64` / `linux-arm64`） |
 
 我们的三个镜像都同时发布 `linux/amd64` 与 `linux/arm64`（同一个标签下的多架构清单，拉取时 Docker 自动选本机的架构）；引用的三个标准镜像本身也都有这两种架构。`v0.2.0` 及更早的版本只有 `linux/amd64`，arm64 机器从 `v0.2.1` 开始能装。
