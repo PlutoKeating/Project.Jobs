@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { ArrowUpCircle, Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun } from 'lucide-react';
-import { ApiError, get, post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
+import { ArrowUpCircle, Bot, Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun, X } from 'lucide-react';
+import { ApiError, del, get, post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
 import { copyText } from '../lib/clipboard.ts';
-import { setLang, useT } from '../lib/i18n.ts';
+import { setLang, useLang, useT } from '../lib/i18n.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
 import { CityCanvas } from './city/CityCanvas.tsx';
 import { PublishDialog, openPublish } from './Publish.tsx';
@@ -170,6 +170,62 @@ function FeishuLink() {
   );
 }
 
+interface AgentsState { mcp_url: string; enabled: boolean; public_url_set: boolean; grants: { id: string; client: string | null; role: 'admin' | 'viewer'; authorized_at: string; last_used_at: string | null }[] }
+
+/** 接入 coding agent：一个链接（远程 MCP，OAuth 授权时输入口令），各家 agent 的一行命令，已授权的 agent（可撤销） */
+function AgentLink() {
+  const { t } = useT(); const lang = useLang();
+  const [open, setOpen] = useState(false); const [copied, setCopied] = useState<string | null>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const q = useQuery({ queryKey: ['agents'], queryFn: () => get<AgentsState>('/agents'), enabled: open, refetchInterval: open ? 10_000 : false });
+  useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
+  const copy = (key: string, text: string) => { void copyText(text).then((ok) => { if (!ok) return; setCopied(key); setTimeout(() => setCopied(null), 1600); }); };
+  const d = q.data;
+  const cmds = d ? [
+    { k: 'claude', label: 'Claude Code', text: `claude mcp add --transport http jobs ${d.mcp_url}` },
+    { k: 'codex', label: 'Codex', text: `codex mcp add jobs --url ${d.mcp_url}` },
+    { k: 'json', label: 'Cursor · JSON', text: JSON.stringify({ mcpServers: { jobs: { url: d.mcp_url } } }) },
+  ] : [];
+  const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
+  return (
+    <div ref={box} className="relative hidden sm:block">
+      <Button variant="ghost" size="sm" className="w-9" aria-expanded={open} aria-label={t('agents')} title={t('agents')} onClick={() => setOpen(!open)}><Bot size={15} /></Button>
+      {open && (
+        <div role="dialog" aria-label={t('agents')} className="animate-reveal absolute right-0 top-9 z-40 w-96 rounded-lg border border-border-strong bg-bg-elevated p-4 shadow-md">
+          <h2 className="text-sm font-semibold">{t('agents')}</h2>
+          {!d ? <div className="mt-3 h-9 animate-pulse rounded-md bg-surface-hover" /> : (
+            <>
+              <button type="button" onClick={() => copy('url', d.mcp_url)} className="mt-3 block w-full truncate rounded-md border border-border px-3 py-2 text-left font-mono text-sm text-fg-display transition-colors hover:border-fg-subtle">{copied === 'url' ? t('copied') : d.mcp_url}</button>
+              {!d.enabled ? <p role="alert" className="mt-2 text-xs text-danger">{t('ag_disabled')}</p> : !d.public_url_set && <p className="mt-2 text-xs text-warning">{t('ag_local_only')}</p>}
+              <ul className="mt-3 space-y-2">
+                {cmds.map((c) => (
+                  <li key={c.k}>
+                    <p className="text-xs text-fg-muted">{c.label}</p>
+                    <button type="button" onClick={() => copy(c.k, c.text)} className="mt-1 block w-full break-all rounded-md bg-code-bg px-3 py-2 text-left font-mono text-[11px] leading-relaxed text-code-fg">{copied === c.k ? t('copied') : c.text}</button>
+                  </li>
+                ))}
+              </ul>
+              {d.grants.length > 0 && (
+                <>
+                  <h3 className="mt-4 text-xs font-medium text-fg-muted">{t('ag_granted')}</h3>
+                  <ul className="mt-1.5 max-h-48 divide-y divide-border overflow-y-auto">
+                    {d.grants.map((g) => (
+                      <li key={g.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
+                        <span className="min-w-0"><span className="block truncate text-fg">{g.client ?? 'coding agent'}<span className="ml-2 text-xs text-fg-muted">{t(g.role === 'admin' ? 'ag_admin' : 'ag_viewer')}</span></span><span className="tabular block text-xs text-fg-subtle">{t('ag_last_used', { t: when(g.last_used_at ?? g.authorized_at) })}</span></span>
+                        <Button variant="ghost" size="sm" className="w-7 shrink-0" aria-label={t('ag_revoke')} title={t('ag_revoke')} onClick={async () => { await del(`/agents/${g.id}`); void q.refetch(); }}><X size={14} /></Button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Login() {
   const { t } = useT();
   const [code, setCode] = useState(''); const [err, setErr] = useState(false); const [busy, setBusy] = useState(false);
@@ -240,6 +296,7 @@ export function Shell() {
             {me.data?.admin && <UpdateNotice />}
             <Clock />
             {me.data && <JoinGame port={me.data.game_port} admin={me.data.admin} />}
+            {me.data?.admin && <AgentLink />}
             {me.data?.admin && <FeishuLink />}
             <Button variant="ghost" size="sm" onClick={() => setLang(lang === 'zh' ? 'en' : 'zh')} aria-label="language" className="w-8 tabular sm:w-9">{lang === 'zh' ? 'EN' : '中'}</Button>
             <Button variant="ghost" size="sm" onClick={toggle} aria-label="theme" className="w-8 sm:w-9">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</Button>

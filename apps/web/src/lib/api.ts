@@ -14,6 +14,7 @@ async function req<T>(path: string, init?: RequestInit & { json?: unknown }): Pr
   return r.json() as Promise<T>;
 }
 export const get = <T,>(p: string) => req<T>(`/api/v1${p}`);
+export const del = <T,>(p: string) => req<T>(`/api/v1${p}`, { method: 'DELETE' });
 export const post = <T,>(p: string, json?: unknown, headers?: Record<string, string>) => req<T>(`/api/v1${p}`, { method: 'POST', json: json ?? {}, headers });
 
 export const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 15_000, refetchOnWindowFocus: false, retry: (n, e) => !(e instanceof ApiError && e.status < 500) && n < 2 } } });
