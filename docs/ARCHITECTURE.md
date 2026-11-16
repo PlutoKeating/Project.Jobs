@@ -20,7 +20,7 @@
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
 - **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
-上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列全部打进一个镜像，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」与「一键升级」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobsworld _control`（systemd 监视单元触发）执行；升级的进度与结果再写回同一个目录（`control/`）。版本号只有根 `package.json` 一个来源（`@pux/core` 的 `jobsVersion()`）；接口每 6 小时读一次 GitHub 上最新的 Release，网页据此提示管理员升级（`apps/api/src/update.ts`）。升级流程（`deploy/jobs` 的 `update`，安装脚本重复运行时同理）：拉取镜像 → 取出新的编排文件与命令 → 备份数据库到 `~/.jobs/backups` → 重建容器（入口脚本迁移数据库）→ 更新装过的游戏服。
+上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列全部打进一个镜像，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」与「一键升级」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobsworld _control`（systemd 监视单元触发）执行；升级的进度与结果再写回同一个目录（`control/`）。版本号只有根 `package.json` 一个来源（`@pux/core` 的 `jobsVersion()`）；接口每小时读一次 GitHub 上最新的 Release（管理员打开网页时结果超过 15 分钟就当场重查），网页据此提示管理员升级（`apps/api/src/update.ts`）。升级流程（`deploy/jobs` 的 `update`，安装脚本重复运行时同理）：拉取镜像 → 取出新的编排文件与命令 → 备份数据库到 `~/.jobs/backups` → 重建容器（入口脚本迁移数据库）→ 更新装过的游戏服。
 
 ## 2. 发布主线（`packages/engine/src/launch/`）
 

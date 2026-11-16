@@ -58,7 +58,7 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash  # 重新运行安装�
 
 都会依次：拉取新镜像 → 从新镜像里取出编排文件和 `jobsworld` 命令本身 → 把数据库导出到 `~/.jobs/backups/`（`pg_dump` 自定义格式，文件名带时间和升级前的版本，只留最近 5 份；备份失败就不升级）→ 重建容器（新版本启动时自动迁移数据库）→ 装过的游戏服也拉新镜像，正在运行的换上新镜像 → 等服务就绪并报告版本。口令、密钥和数据都不变。
 
-- **检查新版本**：服务每 6 小时匿名读一次 GitHub 上本项目最新的正式 Release（不带任何本机信息；预发布不算）。关闭：在 `~/.jobs/.env` 里加 `JOBS_UPDATE_CHECK=0`，运行 `jobsworld up`。`JOBS_UPDATE_URL` 可以换成返回同样格式（`tag_name`、`html_url`、`published_at`）的其他地址，比如访问不了 GitHub 时的镜像。
+- **检查新版本**：服务每小时匿名读一次 GitHub 上本项目最新的正式 Release，管理员打开网页时上次结果超过 15 分钟也会当场重查（不带任何本机信息；预发布不算）。关闭：在 `~/.jobs/.env` 里加 `JOBS_UPDATE_CHECK=0`，运行 `jobsworld up`。`JOBS_UPDATE_URL` 可以换成返回同样格式（`tag_name`、`html_url`、`published_at`）的其他地址，比如访问不了 GitHub 时的镜像。
 - **一键升级怎么做到的**：和开关游戏服一样，容器不接触 Docker，只往 `~/.jobs/control/requests/` 放一个名为 `update` 的请求，由宿主机上的监视单元调用 `jobsworld _control` 执行 `jobsworld update`；进度与结果写回 `control/update-status`，输出写在 `control/update.log`（失败时网页上显示最后 20 行）。从 0.1.0 升上来的安装，第一次要用命令或重新运行安装的那一行；之后网页就能一键升级。
 - **锁定版本**：`.env` 里把 `JOBS_IMAGE` 写成 `ghcr.io/plutokeating/jobs:0.1.0` 这样的版本号标签，升级时就一直用它。网页上仍会提示有新版本，但「立即升级」只会重新拉取你锁定的那个版本；要换版本，改这一行再运行 `jobsworld update`。
 - **回退**：数据库迁移只往前走，所以回退要连数据一起：

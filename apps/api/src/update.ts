@@ -1,5 +1,5 @@
 // 版本与升级：当前版本、GitHub 上最新发布的版本、一键升级。
-// 检查新版本只是匿名读一次公开的 GitHub Releases 接口（不带任何本机信息），每 6 小时一次；JOBS_UPDATE_CHECK=0 关闭，
+// 检查新版本只是匿名读一次公开的 GitHub Releases 接口（不带任何本机信息）：后台每小时一次，管理员打开网页时上次检查已超过 15 分钟就当场再查一次；JOBS_UPDATE_CHECK=0 关闭，
 // JOBS_UPDATE_URL 换成别的地址（返回同样格式的 JSON：tag_name、html_url、published_at）。
 // 一键升级与游戏服开关同一个做法：容器里的服务只往 control/requests 放一个只含动作名的文件，由宿主机上的 jobsworld _control 执行 jobsworld update
 // （拉取新镜像 → 备份数据库 → 重建容器）；进度与结果由宿主机写回 control/update-status 与 control/update.log。
@@ -12,7 +12,9 @@ import { requireAdmin, roleOf } from './auth.ts';
 const RELEASES = 'https://github.com/PlutoKeating/Project.Jobs/releases';
 const LATEST_URL = process.env.JOBS_UPDATE_URL || 'https://api.github.com/repos/PlutoKeating/Project.Jobs/releases/latest';
 const CHECK = process.env.JOBS_UPDATE_CHECK !== '0';
-const EVERY_MS = 6 * 3600_000;
+const EVERY_MS = 3600_000;
+/** 管理员看版本时，结果超过这么久就当场重查（GitHub 匿名接口每个 IP 每小时 60 次，这样最多每小时 4 次） */
+const FRESH_MS = 15 * 60_000;
 
 interface Latest { version: string; url: string; published_at: string | null }
 const state: { latest: Latest | null; checked_at: string | null; error: string | null } = { latest: null, checked_at: null, error: null };
@@ -63,6 +65,8 @@ export function updateRoutes(app: FastifyInstance) {
   app.get('/api/v1/version', async (q) => {
     const admin = roleOf(q).admin; const version = jobsVersion();
     probeHost();
+    // 刚发布的新版本不用等下一轮后台检查：管理员打开网页时，结果旧了就当场重查（最多等 10 秒）
+    if (CHECK && admin && (!state.checked_at || Date.now() - Date.parse(state.checked_at) > FRESH_MS)) await checkLatest();
     const latest = state.latest;
     const out: Record<string, unknown> = {
       version, check: CHECK, latest, checked_at: state.checked_at, error: state.error,
