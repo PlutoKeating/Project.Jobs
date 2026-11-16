@@ -333,7 +333,7 @@ export function ModelsPanel() {
 
   return (
     <div>
-      <header className="sticky top-[var(--ds-header-height)] z-20 -mx-4 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+      <header className="sticky top-[var(--ds-header-height)] z-20 -mx-4 border-b border-border bg-bg/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0 lg:pt-0">
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold">{t('m_title')}</h2>

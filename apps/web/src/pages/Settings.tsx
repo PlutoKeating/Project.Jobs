@@ -1,6 +1,6 @@
 // 设置（仅管理员）：所有「配置」性质的功能都在这里，按分类分成二级标签：
-// 模型、公网链接、居民邮箱、接入 coding agent、飞书、游戏服、版本与升级。
-import { useEffect, useState, type ReactNode } from 'react';
+// 模型、公网链接、居民邮箱、接入 coding agent、飞书、游戏服、版本与升级。宽屏左边是分类、右边是配置；窄屏分类在上方。
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearch } from '@tanstack/react-router';
 import { AlertTriangle, ArrowUpCircle, Bot, Check, CircleDashed, Copy, ExternalLink, Gamepad2, Globe, Mail, MessageCircle, Power, RotateCw, SlidersHorizontal } from 'lucide-react';
@@ -149,6 +149,9 @@ export function SettingsPage() {
   const up = useUpdate(!!me?.admin);
   const needModels = me?.models_ready === false;
   const hasUpdate = !!up.d?.update_available || up.running || up.failed;
+  // 窄屏上分类横向排开：当前那一项不在视野里时把它滑进来
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => { navRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }, [tab]);
   const tabs: { id: SettingsTab; icon: ReactNode; label: string; dot?: boolean }[] = [
     { id: 'models', icon: <SlidersHorizontal size={14} />, label: t('nav.models'), dot: needModels },
     { id: 'public', icon: <Globe size={14} />, label: t('s_public') },
@@ -162,22 +165,28 @@ export function SettingsPage() {
   return (
     <article>
       <PageHead title={t('nav.settings')} />
-      <nav role="tablist" aria-label={t('nav.settings')} className="-mx-4 flex overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:mx-0 sm:px-0">
-        {tabs.map((x) => (
-          <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} onClick={() => go(x.id)}
-            className={`relative flex h-10 shrink-0 items-center gap-1.5 px-3 text-sm transition-colors first:pl-0 ${tab === x.id ? 'text-fg-display after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-accent first:after:left-0' : 'text-fg-muted hover:text-fg'}`}>
-            <span className={tab === x.id ? 'text-fg-display' : 'text-fg-subtle'}>{x.icon}</span>{x.label}
-            {x.dot && <span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />}
-          </button>
-        ))}
-      </nav>
-      <div role="tabpanel" className={tab === 'models' ? 'mt-0' : 'max-w-3xl [&>section:first-child]:mt-8'}>
-        {tab === 'models' && <ModelsPanel />}
-        {(tab === 'public' || tab === 'mail') && <SiteSettings which={tab} onPublic={() => go('public')} />}
-        {tab === 'agents' && <AgentsPanel onPublic={() => go('public')} />}
-        {tab === 'feishu' && <FeishuPanel />}
-        {tab === 'game' && <GamePanel />}
-        {tab === 'version' && <VersionPanel />}
+      {/* 宽屏：左边竖排的分类、右边是这一类的配置；窄屏：分类收到上方，横向滑动 */}
+      <div className="lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-12 xl:gap-16">
+        <nav ref={navRef} role="tablist" aria-label={t('nav.settings')}
+          className="-mx-4 flex overflow-x-auto border-b border-border px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 lg:sticky lg:top-[calc(var(--ds-header-height)+2rem)] lg:flex-col lg:gap-0.5 lg:overflow-visible lg:border-b-0">
+          {tabs.map((x) => (
+            <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} onClick={() => go(x.id)}
+              className={`relative flex h-10 shrink-0 items-center gap-1.5 px-3 text-sm transition-colors first:pl-0 lg:h-9 lg:w-full lg:gap-2.5 lg:rounded-md lg:px-3 lg:first:pl-3 ${tab === x.id
+                ? 'text-fg-display after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-accent first:after:left-0 lg:bg-surface-hover lg:after:hidden lg:before:absolute lg:before:inset-y-2 lg:before:left-0 lg:before:w-0.5 lg:before:rounded-full lg:before:bg-accent'
+                : 'text-fg-muted hover:text-fg lg:hover:bg-surface-hover'}`}>
+              <span className={tab === x.id ? 'text-fg-display' : 'text-fg-subtle'}>{x.icon}</span>{x.label}
+              {x.dot && <span className="h-1.5 w-1.5 rounded-full bg-accent live-dot lg:ml-auto" />}
+            </button>
+          ))}
+        </nav>
+        <div role="tabpanel" className="min-w-0 max-w-[56rem] [&>section:first-child]:mt-8 lg:[&>section:first-child]:mt-0">
+          {tab === 'models' && <ModelsPanel />}
+          {(tab === 'public' || tab === 'mail') && <SiteSettings which={tab} onPublic={() => go('public')} />}
+          {tab === 'agents' && <AgentsPanel onPublic={() => go('public')} />}
+          {tab === 'feishu' && <FeishuPanel />}
+          {tab === 'game' && <GamePanel />}
+          {tab === 'version' && <VersionPanel />}
+        </div>
       </div>
     </article>
   );
