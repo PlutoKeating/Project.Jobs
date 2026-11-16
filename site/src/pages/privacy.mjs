@@ -62,7 +62,7 @@ export const privacy = {
         heading: '5. 居民与被测的产品',
         paragraphs: [
           '居民是虚构的：名字、生平和看法由模型写成，不对应任何真实的人；他们的邮箱与手机号是城里发的，不是真实的联系方式。',
-          '居民看到什么，Jobs 就把什么截下来存在你的机器上，并发给你接入的模型供应商。请把它指向测试环境：不要让它使用会显示真实用户个人信息的系统。接收验证码的两个收件箱接口不需要登录，只能往居民的收件箱里投递消息，读不到任何东西。',
+          '居民看到什么，Jobs 就把什么截下来存在你的机器上，并发给你接入的模型供应商。请把它指向测试环境：不要让它使用会显示真实用户个人信息的系统。接收验证码的两个收件箱接口不需要登录，只能往居民的收件箱里投递消息，读不到任何东西。在「设置」里开通居民邮箱后，发给居民的真实邮件经你自己的 Cloudflare 账号转发到你的机器，原件和正文都存在你的机器上；Jobs 只收信，不发信。',
         ],
       },
       {
@@ -137,7 +137,7 @@ export const privacy = {
         heading: '5. Residents and the product under test',
         paragraphs: [
           'The residents are fictional: their names, life stories and opinions are written by a model and correspond to no actual person; their email addresses and phone numbers are issued by the town and are not real contact details.',
-          'Whatever a resident sees, Jobs captures and stores on your machine and sends to the model provider you connected. Point it at a test environment, and do not let it use a system that displays the personal information of real users. The two inbox endpoints that receive verification codes need no sign-in; they can only deliver messages into a resident’s inbox and cannot read anything.',
+          'Whatever a resident sees, Jobs captures and stores on your machine and sends to the model provider you connected. Point it at a test environment, and do not let it use a system that displays the personal information of real users. The two inbox endpoints that receive verification codes need no sign-in; they can only deliver messages into a resident’s inbox and cannot read anything. Once you turn on resident mail in Settings, real mail sent to residents is forwarded through your own Cloudflare account to your machine, where the original and its text are stored; Jobs only receives mail and never sends any.',
         ],
       },
       {
