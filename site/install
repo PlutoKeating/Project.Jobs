@@ -5,14 +5,11 @@
 # 它做的事：确认有 Docker（Linux 上没有就装）→ 拉取镜像 → 在 ~/.jobs 写好编排文件和带随机口令的 .env
 #           （连同这台机器的 gcloud 配置目录，只读挂进容器，「模型」页一键使用 gcloud 登录）→ 启动
 #           → 装好 jobsworld 命令。服务随 Docker 开机自启、异常自动重启。
-#           重复运行就是升级：先比较本机正在运行的版本和要装的版本（用 latest 时是 GitHub 上最新的发布），
-#           已经是最新就什么都不动；确实有新版本时，已有的 .env 和数据原样保留，换上新镜像之前先把数据库备份到 ~/.jobs/backups。
-#           强制重新拉取并重装：curl -fsSL https://jobs.plutokeating.beer/install | JOBS_FORCE=1 bash（或 bash -s -- --force）
+#           重复运行就是升级：已有的 .env 和数据原样保留，换上新镜像之前先把数据库备份到 ~/.jobs/backups。
 # 可用的环境变量：JOBS_HOME（安装目录，默认 ~/.jobs）、JOBS_PORT（默认 7777）、JOBS_BIND（默认 0.0.0.0，只想本机访问设为 127.0.0.1）、
 #                 JOBS_IMAGE（镜像；已经装过时默认沿用 .env 里的，显式给出时会写回 .env）、
 #                 JOBS_PUBLIC_URL（反向代理之后对外的 https 地址，coding agent 用 <它>/mcp 接入；显式给出时会写回 .env）、JOBS_SKIP_PULL=1（镜像已在本机）、
-#                 JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）、JOBS_SKIP_BACKUP=1（升级前不备份数据库）、
-#                 JOBS_FORCE=1（已是最新版本也重新拉取并重装）、JOBS_UPDATE_URL（查最新发布的地址，默认 GitHub）
+#                 JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）、JOBS_SKIP_BACKUP=1（升级前不备份数据库）
 set -euo pipefail
 # 整个脚本包在一对花括号里：bash 要先读完到收尾的 } 才开始执行。用 curl … | bash 运行时，脚本本身就是标准输入，
 # 如果边读边执行，中途任何读标准输入的命令（例如 docker compose exec）都会把还没执行的部分吃掉，脚本就会悄悄提前结束。
@@ -48,61 +45,7 @@ else die "Docker 没在运行，或者当前用户没有权限使用它。启动
 "${DOCKER[@]}" compose version >/dev/null 2>&1 || die "需要 Docker Compose v2（docker compose）。请升级 Docker。"
 [ "$OS" = "Linux" ] && { $SUDO systemctl enable docker >/dev/null 2>&1 || true; }
 
-# ---- 2. 已经装好时：先比较本机的版本和要装的版本，确实有新版本（或者要求强制、改了配置）才往下走 ----
-# 与 jobsworld update 用同一套规则（这几个函数与 deploy/jobs 里的一致）
-image() { echo "$IMAGE"; }
-image_version() {  # 本机已有的某个镜像里装的是哪一版（不联网；本机没有这个镜像时为空）
-  "${DOCKER[@]}" image inspect "$1" >/dev/null 2>&1 || return 0
-  "${DOCKER[@]}" run --rm --entrypoint node "$1" -p "require('/app/package.json').version" 2>/dev/null || true
-}
-latest_release() {  # GitHub 上最新的正式发布（镜像都推上去之后才建，和网页上的升级提示同一个来源）；查不到时为空
-  curl -fsSL -m 10 -H 'accept: application/vnd.github+json' -H 'user-agent: jobs-update-check' "${JOBS_UPDATE_URL:-https://api.github.com/repos/PlutoKeating/Project.Jobs/releases/latest}" 2>/dev/null \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"[vV]\{0,1\}\([^"]*\)".*/\1/p' | head -1 || true
-}
-target_version() {  # 要升级到的版本，输出「版本|来源」；不知道时版本为空
-  local img tag
-  img="$(image)"
-  if [ -n "${JOBS_SKIP_PULL:-}" ]; then echo "$(image_version "$img")|本机的镜像 $img"; return 0; fi
-  case "$img" in *@sha256:*) echo "|按摘要固定的镜像 $img"; return 0;; esac
-  tag="${img##*/}"; case "$tag" in *:*) tag="${tag##*:}";; *) tag=latest;; esac
-  if [ "$tag" = latest ]; then
-    case "$img" in ghcr.io/plutokeating/jobs:latest|ghcr.io/plutokeating/jobs) echo "$(latest_release)|GitHub 上最新的发布"; return 0;; esac
-  elif printf '%s' "$tag" | grep -Eq '^[vV]?[0-9]+\.[0-9]+\.[0-9]+'; then echo "${tag#[vV]}|.env 里锁定的版本"; return 0; fi
-  echo "|自己指定的镜像 $img"
-}
-ver_gt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | tail -1)" = "$1" ]; }
-# 要不要真的升级：返回 0 = 要；1 = 不用（原因已经打印）。src 是来源（GitHub 上最新的发布时，本机更新就不降级），hint 是强制的写法
-need_update() {
-  local cur="$1" target="$2" src="$3" hint="${4:-jobsworld update --force}"
-  if [ -z "$cur" ]; then echo "看不到本机正在运行的版本（服务没在运行），照常拉取并重建。"; return 0; fi
-  if [ -z "$target" ]; then echo "查不到要升级到的版本（$src；或者访问不了 GitHub）。本机是 $cur，没有改动。确定要重新拉取并重建：$hint"; return 1; fi
-  if [ "$cur" = "$target" ]; then echo "已经是最新版本 $cur（$src），没有改动。要强制重新拉取并重建：$hint"; return 1; fi
-  if [ "$src" = "GitHub 上最新的发布" ] && ver_gt "$cur" "$target"; then echo "本机的 $cur 比 GitHub 上最新的发布 $target 还新，没有改动。"; return 1; fi
-  echo "本机 $cur → $target（$src）。"; return 0
-}
-
-FORCE="${JOBS_FORCE:-}"
-for a in "$@"; do case "$a" in -f|--force) FORCE=1 ;; esac; done
-if [ -f "$JOBS_HOME/.installed" ] && [ -f "$ENV_FILE" ] && [ -x "$JOBS_HOME/jobs" ]; then
-  CHANGED=""
-  if [ -n "${JOBS_IMAGE:-}" ] && [ "$(envv JOBS_IMAGE)" != "$JOBS_IMAGE" ]; then CHANGED="镜像"; fi
-  if [ -n "${JOBS_PUBLIC_URL:-}" ] && [ "$(envv JOBS_PUBLIC_URL)" != "$JOBS_PUBLIC_URL" ]; then CHANGED="${CHANGED:+$CHANGED、}对外地址"; fi
-  P0="$(envv JOBS_PORT)"; P0="${P0:-7777}"
-  CUR="$(curl -fsS -m 3 "http://127.0.0.1:$P0/healthz" 2>/dev/null | sed -n 's/.*"version":"\([^"]*\)".*/\1/p' || true)"
-  say "检查版本 …"
-  if [ -n "$FORCE" ]; then echo "强制重新拉取并重装（本机 ${CUR:-未知}）。"
-  elif [ -n "$CHANGED" ]; then echo "配置有改动（$CHANGED），照常重装。"
-  else
-    T="$(target_version)"
-    if ! need_update "$CUR" "${T%%|*}" "${T#*|}" "curl -fsSL https://jobs.plutokeating.beer/install | JOBS_FORCE=1 bash"; then
-      echo "  打开：        http://127.0.0.1:$P0/"
-      echo "  口令：        jobsworld passcode"
-      exit 0
-    fi
-  fi
-fi
-
-# ---- 3. 镜像与文件 ----
+# ---- 2. 镜像与文件 ----
 if [ -z "${JOBS_SKIP_PULL:-}" ]; then say "拉取镜像 $IMAGE …"; "${DOCKER[@]}" pull "$IMAGE"; fi
 "${DOCKER[@]}" image inspect "$IMAGE" >/dev/null 2>&1 || die "本机没有镜像 $IMAGE。"
 mkdir -p "$JOBS_HOME/control/requests"
@@ -111,7 +54,7 @@ for f in compose.yml compose.host.yml compose.bridge.yml jobs; do
 done
 chmod +x "$JOBS_HOME/jobs"
 
-# ---- 4. 配置（只在第一次生成；口令都是随机的）----
+# ---- 3. 配置（只在第一次生成；口令都是随机的）----
 if [ ! -f "$ENV_FILE" ]; then
   # Linux 用宿主机网络（本机 127.0.0.1 上的开发服务器直接可达）；其他系统用端口映射
   if [ "$OS" = "Linux" ]; then MODE="compose.yml:compose.host.yml"; else MODE="compose.yml:compose.bridge.yml"; fi
@@ -164,7 +107,7 @@ JOBS_HOME="$JOBS_HOME" "$JOBS_HOME/jobs" _ensure-gcloud || true
 FIRST=""; [ -f "$JOBS_HOME/.installed" ] || FIRST=1
 PORT="$(envv JOBS_PORT)"; PORT="${PORT:-7777}"
 
-# ---- 5. 启动（已经在运行时，换上新镜像之前先备份数据库）----
+# ---- 4. 启动（已经在运行时，换上新镜像之前先备份数据库）----
 if [ -z "$FIRST" ] && [ -z "${JOBS_SKIP_BACKUP:-}" ]; then
   JOBS_HOME="$JOBS_HOME" "$JOBS_HOME/jobs" backup || die "升级前备份数据库失败，没有继续（数据没有动）。确定不要备份：在这一行前面加 JOBS_SKIP_BACKUP=1"
 fi
@@ -179,7 +122,7 @@ done
 # 游戏服在 profile 里，上面的 up 不会碰它们：装过的拉新镜像，正在运行的换上新镜像
 if [ -z "$FIRST" ] && [ -z "${JOBS_SKIP_PULL:-}" ]; then JOBS_HOME="$JOBS_HOME" "$JOBS_HOME/jobs" _refresh-games || echo "游戏服没有更新成功（不影响 Jobs 本身）：jobsworld game on tshock|tml 重试"; fi
 
-# ---- 6. jobsworld 命令 ----
+# ---- 5. jobsworld 命令 ----
 # 命令叫 jobsworld。同时留一个 jobs 的别名（同一个东西）：它能被直接执行（比如写在 MCP 配置里），
 # 但在终端里直接敲 jobs 会被 shell 的内建命令截走，所以文档和提示一律写 jobsworld。
 LAUNCH="$JOBS_HOME/jobs"
@@ -192,7 +135,7 @@ if [ -w /usr/local/bin ]; then ln -sf "$LAUNCH" /usr/local/bin/jobsworld && ln -
 elif [ -n "$SUDO" ] && $SUDO -n true 2>/dev/null; then $SUDO ln -sf "$LAUNCH" /usr/local/bin/jobsworld && $SUDO ln -sf "$LAUNCH" /usr/local/bin/jobs && BIN=/usr/local/bin
 else mkdir -p "$HOME/.local/bin" && ln -sf "$LAUNCH" "$HOME/.local/bin/jobsworld" && ln -sf "$LAUNCH" "$HOME/.local/bin/jobs" && BIN="$HOME/.local/bin"; fi
 
-# ---- 7. 让网页能一键开启游戏服（Linux + systemd；容器只能提出请求，真正执行的是宿主机上的 jobsworld 命令）----
+# ---- 6. 让网页能一键开启游戏服（Linux + systemd；容器只能提出请求，真正执行的是宿主机上的 jobsworld 命令）----
 if [ "$OS" = "Linux" ] && command -v systemctl >/dev/null 2>&1 && [ -d /run/systemd/system ] && { [ "$(id -u)" -eq 0 ] || { [ -n "$SUDO" ] && $SUDO -n true 2>/dev/null; }; }; then
   U="$(id -un)"
   $SUDO tee /etc/systemd/system/jobs-control.service >/dev/null <<UNIT
@@ -215,7 +158,7 @@ UNIT
   $SUDO systemctl daemon-reload && $SUDO systemctl enable --now jobs-control.path >/dev/null 2>&1 && touch "$JOBS_HOME/control/watcher" && echo "update" > "$JOBS_HOME/control/host-features"
 fi
 
-# ---- 8. 等它起来 ----
+# ---- 7. 等它起来 ----
 printf '等待服务就绪'
 ok=""
 for _ in $(seq 1 120); do
