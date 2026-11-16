@@ -34,7 +34,7 @@ export const home = {
     ],
     also: {
       heading: '也在终端和 coding agent 里',
-      body: '写完代码就发布，取回结论和带复现步骤的问题清单，接着改。同一座城还能用 Terraria 走进去，或者接到飞书里。',
+      body: '写完代码就发布，取回结论和带复现步骤的问题清单，接着改；想从一张白纸重来就清零，不用了就下线。同一座城还能用 Terraria 走进去，或者接到飞书里。',
       comment1: '# 发布、看状况、要结论',
       productName: '闪念笔记',
       productTagline: '想到什么，马上记下',
@@ -44,7 +44,7 @@ export const home = {
     factsBody: '网页、命令行、coding agent、飞书、Terraria 是同一套能力的五个入口。往外走的只有两处：你的产品，和你接入的模型供应商。',
     facts: [
       { heading: '数据不出你的机器', body: '居民、记忆、截图和结论都存在你机器上的 Docker 卷里，不经过我们的服务器。' },
-      { heading: '模型由你接入', body: '在网页里选供应商、粘贴 Key、勾选模型。花了多少，页头一直显示。' },
+      { heading: '模型由你接入', body: '在网页的「设置」里选供应商、粘贴 Key、勾选模型。花了多少，页头一直显示。' },
       { heading: '开源', body: `以 AGPL-3.0 发布，[源码在 GitHub](${GITHUB_REPO})。` },
     ],
     closing: '一行命令，一座城。',
@@ -77,7 +77,7 @@ export const home = {
     ],
     also: {
       heading: 'In your terminal and your coding agent too',
-      body: 'Launch as soon as the code is written, pull back the conclusion and a list of issues with steps to reproduce, and keep going. You can also walk into the same town in Terraria, or connect it to Feishu.',
+      body: 'Launch as soon as the code is written, pull back the conclusion and a list of issues with steps to reproduce, and keep going; reset it to start from a clean slate, or take it offline when you are done. You can also walk into the same town in Terraria, or connect it to Feishu.',
       comment1: '# launch, check on it, get the conclusion',
       productName: 'Quick Notes',
       productTagline: 'Write it down the moment you think of it',
@@ -87,7 +87,7 @@ export const home = {
     factsBody: 'The web page, the command line, coding agents, Feishu and Terraria are five ways into the same capabilities. Only two things reach outside: your product, and the model providers you connect.',
     facts: [
       { heading: 'Your data stays put', body: 'Residents, memories, screenshots and conclusions live in Docker volumes on your machine and never pass through our servers.' },
-      { heading: 'You bring the models', body: 'Pick a provider in the web page, paste a key, tick the models. What you have spent stays in the page header.' },
+      { heading: 'You bring the models', body: 'Pick a provider in the web page\'s Settings, paste a key, tick the models. What you have spent stays in the page header.' },
       { heading: 'Open source', body: `Released under AGPL-3.0, with the [source on GitHub](${GITHUB_REPO}).` },
     ],
     closing: 'One line. One town.',

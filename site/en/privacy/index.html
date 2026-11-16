@@ -27,7 +27,7 @@
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="preload" href="/fonts/InterVariable.woff2?v=693b77d4f3" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/css/tokens.css?v=19e131065f">
-  <link rel="stylesheet" href="/css/site.css?v=81fc3e419d">
+  <link rel="stylesheet" href="/css/site.css?v=e657ccdccf">
   <script>(function(){var d=document.documentElement;d.className+=" js";try{var t=localStorage.getItem("jobs.theme");if(t==="light"||t==="dark")d.setAttribute("data-theme",t)}catch(e){}})();</script>
   <script src="/js/site.js?v=22e43aa6d7" defer></script>
 </head>
@@ -64,7 +64,7 @@
     <header class="article-head">
       <h1>Privacy Policy</h1>
       <p class="article-lead">This page explains what this website, the install script and an installed Jobs touch and what they do not. It is written against the actual code and is updated when the behaviour changes.</p>
-      <p class="article-meta">Last updated 2026-11-15 · Version 1.3</p>
+      <p class="article-meta">Last updated 2026-11-17 · Version 1.4</p>
     </header>
     <div class="prose">
       <section aria-labelledby="s1">
@@ -101,7 +101,7 @@
         <ul>
           <li>The model providers you connect: every step a resident takes calls a model. What is sent includes the resident’s profile and situation, the screenshot at that moment (that is, whatever your product was showing), and the product name and one line you entered. How the provider handles this is governed by its own terms and privacy policy.</li>
           <li>The URL you launch: residents visit it with a browser on this machine, so the product’s server sees requests from this machine and the fictional email addresses and phone numbers residents sign up with.</li>
-          <li>models.dev: when an administrator refreshes the catalog on the Models page, a public model catalog is fetched with no identity attached; otherwise the copy shipped with the software is used.</li>
+          <li>models.dev: when an administrator refreshes the catalog in Settings › Models, a public model catalog is fetched with no identity attached; otherwise the copy shipped with the software is used.</li>
           <li>Google Fonts: the installed web page requests a Chinese typeface from Google, so the browser of whoever opens the page connects to Google.</li>
           <li>Feishu (optional): only after you connect it by scanning the code. What you say to the bot, what it replies and what it pushes to you pass through Feishu.</li>
           <li>GitHub’s container registry and Docker Hub: only when you upgrade, or the first time you switch a game server on, to pull images.</li>
@@ -115,7 +115,7 @@
       </section>
       <section aria-labelledby="s6">
         <h2 id="s6">6. Retention and deletion</h2>
-        <p>The data stays on your machine until you delete it. <code>jobsworld uninstall --purge</code> stops the services and deletes every data volume; after that, remove the <code>~/.jobs</code> directory. The two browser preferences are cleared from the site data in your browser.</p>
+        <p>The data stays on your machine until you delete it. To delete what one product left behind, choose Take offline on its page with Delete what happened too (or <code>jobsworld remove &lt;product&gt; --wipe</code>): its uses, screenshot records, reviews, posts and residents' memories of it are deleted. <code>jobsworld uninstall --purge</code> stops the services and deletes every data volume; after that, remove the <code>~/.jobs</code> directory. The two browser preferences are cleared from the site data in your browser.</p>
       </section>
       <section aria-labelledby="s7">
         <h2 id="s7">7. Minors</h2>

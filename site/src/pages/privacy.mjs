@@ -51,7 +51,7 @@ export const privacy = {
         bullets: [
           '你接入的模型供应商：居民的每一步都要调用模型，发过去的内容包括居民的人物设定与处境、当时的屏幕截图（也就是你的产品在那一刻显示的内容）、你填写的产品名字与一句话。供应商如何处理这些内容，以它的条款与隐私政策为准。',
           '你发布的网址：居民用这台机器上的浏览器访问它，产品的服务器会看到来自这台机器的请求，以及居民注册时填写的虚构邮箱与手机号。',
-          'models.dev：管理员在「模型」页刷新目录时，读取一份公开的模型目录，请求不带身份；平时用的是随软件自带的那份。',
+          'models.dev：管理员在「设置 › 模型」里刷新目录时，读取一份公开的模型目录，请求不带身份；平时用的是随软件自带的那份。',
           'Google Fonts：装好的网页会向 Google 请求中文字体，打开网页的人的浏览器因此会连到 Google。',
           '飞书（可选）：只有在你扫码接入之后。你发给机器人的话、它回你的内容和主动推送经过飞书。',
           'GitHub 的容器仓库与 Docker Hub：只在你升级，或第一次打开某个游戏服时拉取镜像。',
@@ -68,7 +68,7 @@ export const privacy = {
       {
         heading: '6. 保存多久与如何删除',
         paragraphs: [
-          '数据一直留在你的机器上，直到你删除。`jobsworld uninstall --purge` 会停止服务并删除全部数据卷；之后删掉 `~/.jobs` 目录即可。浏览器里的两项偏好在浏览器的站点数据里清除。',
+          '数据一直留在你的机器上，直到你删除。只删一个产品留下的数据：在产品页点「下线」并选「连同经历一起删除」（或 `jobsworld remove <产品> --wipe`），它的使用过程、截图记录、评论、动态和居民对它的记忆都会删掉。`jobsworld uninstall --purge` 会停止服务并删除全部数据卷；之后删掉 `~/.jobs` 目录即可。浏览器里的两项偏好在浏览器的站点数据里清除。',
         ],
       },
       {
@@ -126,7 +126,7 @@ export const privacy = {
         bullets: [
           'The model providers you connect: every step a resident takes calls a model. What is sent includes the resident’s profile and situation, the screenshot at that moment (that is, whatever your product was showing), and the product name and one line you entered. How the provider handles this is governed by its own terms and privacy policy.',
           'The URL you launch: residents visit it with a browser on this machine, so the product’s server sees requests from this machine and the fictional email addresses and phone numbers residents sign up with.',
-          'models.dev: when an administrator refreshes the catalog on the Models page, a public model catalog is fetched with no identity attached; otherwise the copy shipped with the software is used.',
+          'models.dev: when an administrator refreshes the catalog in Settings › Models, a public model catalog is fetched with no identity attached; otherwise the copy shipped with the software is used.',
           'Google Fonts: the installed web page requests a Chinese typeface from Google, so the browser of whoever opens the page connects to Google.',
           'Feishu (optional): only after you connect it by scanning the code. What you say to the bot, what it replies and what it pushes to you pass through Feishu.',
           'GitHub’s container registry and Docker Hub: only when you upgrade, or the first time you switch a game server on, to pull images.',
@@ -143,7 +143,7 @@ export const privacy = {
       {
         heading: '6. Retention and deletion',
         paragraphs: [
-          'The data stays on your machine until you delete it. `jobsworld uninstall --purge` stops the services and deletes every data volume; after that, remove the `~/.jobs` directory. The two browser preferences are cleared from the site data in your browser.',
+          'The data stays on your machine until you delete it. To delete what one product left behind, choose Take offline on its page with Delete what happened too (or `jobsworld remove <product> --wipe`): its uses, screenshot records, reviews, posts and residents\' memories of it are deleted. `jobsworld uninstall --purge` stops the services and deletes every data volume; after that, remove the `~/.jobs` directory. The two browser preferences are cleared from the site data in your browser.',
         ],
       },
       {
