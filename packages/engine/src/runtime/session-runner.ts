@@ -1,7 +1,7 @@
 // Simulation Runtime：World Simulator → Persona Mind ↔ Operator → UAP(+Policy Gate) → 真实产品（§4、§5）
 import { existsSync } from 'node:fs';
 import { cityCoords, dataPath, deviceFor, loadConfig, logger, makeError, newId, Rng, shortHash, langOf, type ActionRequest, type ActionResult, type Criterion, type DynamicState, type PersonaSpec, type StudyInput, type WorldTemplate, type Mode } from '@pux/core';
-import { and, appVersions, apps, eq, getDb, goals, humanTasks, observations, sessions, steps, studies, taskDefs, worldTemplates } from '@pux/db';
+import { and, appVersions, apps, eq, getDb, goals, humanTasks, isNotNull, mailbox, observations, sessions, steps, studies, taskDefs, worldTemplates } from '@pux/db';
 import { BrowserSession, policyFor, putEvidence } from '@pux/executor';
 import { LlmError } from '@pux/llm';
 import { feelings, updateState } from '../human/state.ts';
@@ -14,6 +14,9 @@ import { saveNeeds, tiesOf, toMin as toMinutes } from '@pux/jobsworld';
 import { accountHint } from '../exploration/goals.ts';
 import { amountIn, identityHint, payFromWallet, unseenMail } from '../launch/identity.ts';
 import { taskCompleted } from '../product/intelligence.ts';
+import { mailDomain } from '../mail/settings.ts';
+import { ensureMailRoute } from '../mail/routes.ts';
+import { installWebmail } from '../mail/webmail.ts';
 import { normalizeKey, runMind, type MindOut } from './roles.ts';
 
 export type StepOutcome = { done: false; needsHuman?: { reason: string; takeover: string; task_id: string } } | { done: true; outcome: string; end_reason: string };
@@ -81,6 +84,8 @@ export class SessionRunner {
   private refreshes = 0;
   private foundVia?: string; private visit = 1; private fromLaunch = false;
   private inboxNotes: string[] = [];
+  /** 这个设备上的邮箱 App 地址；inMail = 屏幕上现在是邮箱 */
+  private mailUrl = ''; private inMail = false; private mailSince = 0;
 
   static async start(sessionId: string, opts: { headed?: boolean } = {}): Promise<SessionRunner> {
     const r = new SessionRunner(); await r.init(sessionId, opts); SessionRunner.registry.set(sessionId, r); return r;
@@ -132,6 +137,9 @@ export class SessionRunner {
     // 同一个网页产品，在路上用手机开，在办公桌前用电脑开：设备跟着人此时此地的处境走
     this.mobile = app.form === 'h5' || deviceFor({ device: this.worldTpl.device, scenario_class: this.worldTpl.scenario_class, init: { ...this.worldTpl.init, place: this.world.state.place, motion: this.world.state.motion, channels: this.world.state.channels } }) === 'phone';
     this.browser = await BrowserSession.launch({ sessionId, studyId: st.id, personaId: this.persona.id, executor: 'midscene', headed: opts.headed ?? this.study.config.headed, mobile: this.mobile, locale: this.persona.locale, policy: policyFor(this.persona), rng: this.rng, deviceStateFile: dataPath('runtime', 'devices', st.id, `${this.persona.id}.json`), geolocation: this.persona.psychology.privacy_sensitivity >= 0.75 ? null : (([lat, lng]) => ({ latitude: lat + this.rng.normal(0, 0.02), longitude: lng + this.rng.normal(0, 0.02) }))(cityCoords(this.persona.identity.region)) });
+    // 城里给的邮箱：确保他的地址在 Cloudflare 上能收信，并在这个设备上装好邮箱 App
+    await ensureMailRoute(this.persona.id).catch((e) => logger.warn({ err: String((e as Error).message).slice(0, 160) }, '开通收信失败'));
+    this.mailUrl = await installWebmail(this.browser.ctx, { personaId: this.persona.id, domain: await mailDomain(), zh: this.lang === 'zh', mobile: this.mobile }).catch(() => '');
     await this.browser.page.goto(this.startUrl, { waitUntil: 'domcontentloaded', timeout: 30000 }).catch((e) => logger.warn({ e: String(e) }, '起始页打开失败'));
     const net = this.world.takeNetworkChange(); if (net !== undefined) await this.browser.setNetwork(net);
     await db.update(sessions).set({ status: 'running', started_at: new Date() }).where(eq(sessions.id, sessionId));
@@ -170,7 +178,11 @@ export class SessionRunner {
     for (const cue of this.world.takeMemoryCues()) { const m = await recall(this.persona.id, this.appId, cue, this.simDay, 2, this.memScope).catch(() => []); this.memories.push(cue, ...m.map((x) => x.content)); }
     // 虚拟身份：产品发来的邮件和短信，他真的收得到
     const mails = await unseenMail(this.persona.id).catch(() => []);
-    this.inboxNotes = mails.map((m) => (zh ? `你的${m.kind === 'sms' ? '手机收到一条短信' : '邮箱收到一封邮件'}${m.sender ? `（${m.sender}）` : ''}：${[m.subject, m.body].filter(Boolean).join(' — ').slice(0, 300)}` : `You got ${m.kind === 'sms' ? 'a text message' : 'an email'}${m.sender ? ` (${m.sender})` : ''}: ${[m.subject, m.body].filter(Boolean).join(' — ').slice(0, 300)}`));
+    // 短信的推送显示全文；邮件的推送只有发件人和标题，正文要自己切到邮箱去看
+    const who = (x: string | null) => (x ?? '').replace(/<[^>]*>/g, '').replace(/"/g, '').trim();
+    this.inboxNotes = mails.map((m) => m.kind === 'sms'
+      ? (zh ? `你的手机收到一条短信${m.sender ? `（${m.sender}）` : ''}：${m.body.slice(0, 300)}` : `You got a text message${m.sender ? ` (${m.sender})` : ''}: ${m.body.slice(0, 300)}`)
+      : (zh ? `${this.mobile ? '手机响了一下，屏幕上方弹出新邮件提醒' : '邮箱弹出新邮件提醒'}：${who(m.sender)}${m.subject ? `「${m.subject.slice(0, 80)}」` : ''}` : `${this.mobile ? 'Your phone buzzes with a new-mail notification' : 'A new-mail notification pops up'}: ${who(m.sender)}${m.subject ? ` "${m.subject.slice(0, 80)}"` : ''}`));
     const wsId = await this.world.persist(this.sess.id, idx, events);
     for (const e of events) await putEvidence('world_event', { ...tags, persona_id: this.persona.id }, { inline: e });
     const stop = this.world.hardStop();
@@ -197,7 +209,7 @@ export class SessionRunner {
     const modeHint = this.modeHint();
     let mind: MindOut;
     try {
-      mind = await runMind({ persona: this.persona, lang: this.lang, device: this.mobile ? 'phone' : 'computer', situation: this.world.situation, worldNow: this.world.describeForPersona(), lifeGoal: this.goalText, modeHint, feelings: feelings(this.state, this.lang), memories: this.memories.slice(-8), priorKnowledge: this.sess.revisit_day > 0 || this.visit > 1 ? 'used_before' : this.persona.prior_knowledge, foundVia: this.foundVia, appName: this.appName, history: this.hist, image: perc.image, zoom: perc.zoom, events: [...events.filter((e) => e.perceived).map((e) => e.perceived_text ?? e.text), ...this.inboxNotes, ...obs.notifications.map((n) => (zh ? `屏幕上方弹出通知：${n}` : `a notification popped up: ${n}`))], interruptionNote: this.interruptionNote, loopNote: this.loopNote, pageUrlHint: obs.url.replace(/^https?:\/\//, '').replace(/[?#].*$/, '').slice(0, 60), step: idx, maxSteps }, tags);
+      mind = await runMind({ persona: this.persona, lang: this.lang, device: this.mobile ? 'phone' : 'computer', situation: this.world.situation, worldNow: this.world.describeForPersona(), lifeGoal: this.goalText, modeHint, feelings: feelings(this.state, this.lang), memories: this.memories.slice(-8), priorKnowledge: this.sess.revisit_day > 0 || this.visit > 1 ? 'used_before' : this.persona.prior_knowledge, foundVia: this.foundVia, appName: this.appName, history: this.hist, image: perc.image, zoom: perc.zoom, events: [...events.filter((e) => e.perceived).map((e) => e.perceived_text ?? e.text), ...this.inboxNotes, ...obs.notifications.map((n) => (zh ? `屏幕上方弹出通知：${n}` : `a notification popped up: ${n}`))], interruptionNote: this.interruptionNote, loopNote: this.loopNote, pageUrlHint: obs.url.replace(/^https?:\/\//, '').replace(/[?#].*$/, '').slice(0, 60), step: idx, maxSteps, inMail: this.inMail }, tags);
       this.llmErrors = 0;
     } catch (e) {
       this.llmErrors++;
@@ -274,6 +286,7 @@ export class SessionRunner {
           return soft('look_closer', true, zh ? '你凑近仔细看了看那一块' : 'you looked closely at that part', undefined, 5 + 4 * (1 - this.persona.capability.body.vision));
         } catch (e) { return soft('look_closer', false, zh ? '在屏幕上没找到你想细看的那个东西' : "you couldn't find the thing you wanted to look at", makeError('EXEC_TARGET_NOT_FOUND', String((e as Error).message).slice(0, 160))); }
       }
+      if (mind.action === 'check_mail' || mind.action === 'back_to_app') return this.switchApp(mind.action === 'check_mail' ? 'mail' : 'main', soft);
       if (mind.action === 'refresh') {
         // 普通人最多刷一次：刷过没用就不会再刷（禁止技术自救式的反复重试）
         if (this.refreshes >= 1) return soft('reload', false, zh ? '你已经刷新过一次了，还是老样子' : 'you already refreshed once and nothing changed', makeError('SIM_INVALID_INTENT', 'repeat refresh suppressed'), 2);
@@ -296,6 +309,41 @@ export class SessionRunner {
     this.pendingSimSeconds = this.readingSeconds(perc.read_chars) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? (req.args?.paste ? 2 : typed / motor.typing_cps) : 0) + (req.verb === 'speak' ? typed / 4 : 0);
     const target = req.target?.text || res.resolved_target?.resolved?.a11y_name || req.target?.value || '';
     return this.guards(obs.state_id, `${req.verb}:${target}:${String(req.args?.text ?? '').slice(0, 10)}`, !!obs.is_new_state);
+  }
+
+  /** 在产品和邮箱之间切换。切过去、找到地方都要花时间（手机、单手、不熟练更慢）；
+   *  从邮箱切回来时，工作记忆小、压力大、在邮箱里待得久的人可能记不清刚才看到的验证码，只能再切回去看 */
+  private async switchApp(to: 'mail' | 'main', soft: (verb: string, ok: boolean, outcome: string, err?: ReturnType<typeof makeError>, simSeconds?: number) => Promise<StepOutcome>): Promise<StepOutcome> {
+    const zh = this.lang === 'zh';
+    if (!this.mailUrl) return soft('switch_app', false, zh ? '这台设备上找不到邮箱' : "there's no mail app on this device", makeError('SIM_INVALID_INTENT', 'no mail app'), 2);
+    if ((to === 'mail') === this.inMail) return soft('switch_app', false, to === 'mail' ? (zh ? '你已经在邮箱里了' : 'you are already in your email') : (zh ? '你已经在这个应用里了' : 'you are already in the app'), makeError('SIM_INVALID_INTENT', 'already there'), 1);
+    const one = this.world.constraints().hard.one_handed;
+    const secs = (this.mobile ? this.rng.int(4, 9) : this.rng.int(2, 5)) * (one ? 1.5 : 1) + 6 * (1 - this.persona.capability.digital_literacy);
+    await this.browser.showTab(to, to === 'mail' ? this.mailUrl : undefined);
+    let forgot = false;
+    if (to === 'main') {
+      const awayS = (this.world.state.sim_minute - this.mailSince) * 60;
+      const codes = await this.codesSeen();
+      const wm = this.persona.capability.cognition.working_memory;
+      const pForget = Math.min(0.6, 0.04 + (1 - wm) * 0.35 + this.state.stress * 0.15 + (awayS > 90 ? 0.1 : 0) + (one ? 0.05 : 0));
+      if (codes.length && this.rng.bool(pForget)) {
+        forgot = true;
+        const blur = (t: string) => codes.reduce((x, c) => x.split(c).join(zh ? '（记不清了）' : '(can’t recall)'), t);
+        this.hist = this.hist.map((h) => ({ ...h, intent: blur(h.intent), monologue: blur(h.monologue) }));
+        this.memories = this.memories.map(blur);
+        this.interruptionNote = zh ? '切回来以后，刚才在邮件里看到的验证码你一下子记不清了。' : 'Back in the app, you suddenly can’t quite recall the code you just saw in the email.';
+      }
+    } else this.mailSince = this.world.state.sim_minute;
+    this.inMail = to === 'mail';
+    const out = await soft('switch_app', true, to === 'mail' ? (zh ? '你切到了邮箱' : 'you switched to your email') : (zh ? `你切回了「${this.appName}」` : `you switched back to "${this.appName}"`), undefined, secs);
+    await getDb().update(steps).set({ action_request: { verb: 'switch_app', to, forgot, sim_seconds: Math.round(secs) } as never }).where(and(eq(steps.session_id, this.sess.id), eq(steps.idx, this.stepIdx - 1)));
+    return out;
+  }
+
+  /** 这次使用里他在邮箱里点开过的信中的验证码（仪器提取的，只用来判断「记不记得住」） */
+  private async codesSeen(): Promise<string[]> {
+    const rows = await getDb().select({ x: mailbox.extracted }).from(mailbox).where(and(eq(mailbox.persona_id, this.persona.id), isNotNull(mailbox.opened_at), eq(mailbox.session_id, this.sess.id)));
+    return [...new Set(rows.flatMap((r) => r.x?.codes ?? []))];
   }
 
   /** 防噪声护栏：循环检测、新颖度预算（§8.2） */
@@ -327,7 +375,7 @@ export class SessionRunner {
   }
 
   private buildRequest(mind: MindOut, motor: ReturnType<typeof motorProfile>, idx: number, viewportH: number): ActionRequest {
-    const map = { tap: 'click', type: 'type', scroll: 'scroll', go_back: 'back', press_key: 'key', long_press: 'long_press', hover: this.mobile ? 'click' : 'hover', drag: 'drag', speak: 'speak', show_camera: 'show_camera', refresh: 'reload', none: 'click', look_closer: 'click' } as const;
+    const map = { tap: 'click', type: 'type', scroll: 'scroll', go_back: 'back', press_key: 'key', long_press: 'long_press', hover: this.mobile ? 'click' : 'hover', drag: 'drag', speak: 'speak', show_camera: 'show_camera', refresh: 'reload', none: 'click', look_closer: 'click', check_mail: 'click', back_to_app: 'click' } as const;
     const verb = map[mind.action];
     const described = !!(mind.target_text.trim() || mind.target_look.trim());
     const mustTarget = ['click', 'long_press', 'hover', 'drag'].includes(verb);

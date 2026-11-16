@@ -36,6 +36,7 @@ program.command('init').description('一键初始化：数据库迁移 + 导入�
   const p = await E.importPersonas(); console.log(`✅ Persona：新增 ${p.imported}，未变化 ${p.unchanged}${p.errors.length ? `，错误 ${p.errors.length}\n${p.errors.join('\n')}` : ''}`);
   const w = await E.importWorldTemplates(); console.log(`✅ 世界模板：${w.join(', ')}`);
   const rs = await E.importResidents(); const ex = await E.settleExisting(); console.log(`✅ 居民：随包导入 ${rs.imported} 人，入住 ${rs.settled + ex.added} 人`);
+  const ma = await E.assignMailAddresses(); console.log(`✅ 居民邮箱：@${ma.domain}${ma.changed ? `，更新 ${ma.changed} 个地址` : ''}`);
   if (o.demos) { const d = await E.registerDemos(); console.log(`✅ Demo：${d.map((x) => x.app).join(', ')}（先运行 pnpm demos 启动）`); }
 }));
 

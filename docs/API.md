@@ -2,7 +2,7 @@
 
 ## 1. REST API（`apps/api`，默认 `http://127.0.0.1:5320`，对外经网关 `:7777`）
 
-下面的路径都省略了前缀 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）；没设置管理员口令时，能进来的人都是管理员。设置 `JW_PASSCODE`（访客口令）后，除 `/me`、`/auth/*`、`/inbox/*` 外都需要登录（否则 401）。身份有三种带法：网页登录后的 HttpOnly Cookie；命令行、本机 MCP、示例产品与脚本用 `Authorization: Bearer <口令>`；远程 MCP 授权发出的访问令牌（`Bearer jwa_…`，身份是授权时输入的那个口令对应的身份，见 §2）。装好的 Jobs 两个口令都在安装时随机生成。
+下面的路径都省略了前缀 `/api/v1`。带「管理员」标记的接口在设置了 `JW_ADMIN_PASSCODE` 时需要管理员身份（否则 403）；没设置管理员口令时，能进来的人都是管理员。设置 `JW_PASSCODE`（访客口令）后，除 `/me`、`/auth/*`、`/inbox/*` 外都需要登录（否则 401）；`/inbound/*` 不在 `/api/v1` 下，不需要登录（靠签名）。身份有三种带法：网页登录后的 HttpOnly Cookie；命令行、本机 MCP、示例产品与脚本用 `Authorization: Bearer <口令>`；远程 MCP 授权发出的访问令牌（`Bearer jwa_…`，身份是授权时输入的那个口令对应的身份，见 §2）。装好的 Jobs 两个口令都在安装时随机生成。
 
 不在 `/api/v1` 下的：`GET /healthz`（`{ ok, version, nats }`，免登录）；`/reports/…`（内部校准批次的离线报告，需登录）；远程 MCP 与它的 OAuth 路径（`/mcp`、`/authorize`、`/token`、`/register`、`/revoke`、`/oauth/login`、`/.well-known/oauth-*`，见 §2）；其余 GET 返回网页。
 
@@ -24,7 +24,7 @@
 | `GET /launches/:id/report?lang=zh\|en[&force=1]` | 一页结论：`verdict`（`works` / `mixed` / `not_yet` / `too_early`）、`headline`、`summary`、`hurts`、`delights`、`who_stays`、`who_leaves`、`why_not_opened`、`next`、`funnel`、`people_used`。每一条是 `{ text, moments[], passersby[] }`：`moments` 带当事人、原话、`session_id`、`step_idx`、`screenshot_ev`。有人用完、有了新评论或路过的人明显变多时重新归纳，否则读缓存（人数始终是最新的）。重新归纳要几分钟：有上一版时先返回上一版并带 `refreshing: true`，新的在后台写（同一产品同一语言只写一份；失败后 10 分钟内不自动重试，照常给上一版）；从没写过或 `force=1` 时等它写完 |
 | `GET /launches/:id/versions` | 版本点：`[{ n, note, at }]`，发布那一刻是第 1 版 |
 | `POST /launches/:id/versions`（管理员） | 标记新版本（「我改好了，线上已经是新版本」）：`{ note? }`，返回 `{ n, note, at }`。之后开始的使用算新版本；产品地址不变时不用重新发布 |
-| `GET /launches/:id/engineering` | `version`：最新的版本点和它之后开始的使用次数 `{ n, note, at, sessions, finished }`（还没标过新版本时为 `null`）；`experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤；标过新版本时还有 `sessions_since_version`：这个问题在最新版本之后开始的使用里出现了几次。问题清单每累计几次使用重新归并一次，最新的使用可能还没算进去）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议） |
+| `GET /launches/:id/engineering` | `version`：最新的版本点和它之后开始的使用次数 `{ n, note, at, sessions, finished }`（还没标过新版本时为 `null`）；`experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤；标过新版本时还有 `sessions_since_version`：这个问题在最新版本之后开始的使用里出现了几次。问题清单每累计几次使用重新归并一次，最新的使用可能还没算进去）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议）；`mail`：验证邮件的仪器读数（没有邮件时为 `null`）`{ mails, sessions, opened, median_delay_s, max_delay_s, switches, forgot, mistyped }`：收到几封、点开几封、从居民填好邮箱到信到达的中位与最慢秒数、在产品和邮箱之间切了几次、几次切回来记不清验证码、几次输入的码与邮件里的不一致 |
 | `POST /launches/:id/promotion`（管理员） | 调宣发：`intensity`、`audience`、`status`、`ad_text`、`tagline`，只改传了的字段 |
 | `POST /launches/:id/invite`（管理员） | 把手机递给人：`n`（1–20，默认 3）、`segment`、`locale`、`persona_ids`、`want`（希望他们做的一件事）。返回 `{ invited, session_ids }` |
 | `GET /store` | 城里的人看到的应用商店：每个上架产品的介绍、截图、评分与评论 |
@@ -34,15 +34,30 @@
 
 `audience`（投给谁，空 = 所有人）：`locales`（`zh-CN` / `en-US`）、`age_min`、`age_max`、`segments`、`tags`。不在投放范围内的人也可能看到，只是少得多。
 
-### 虚拟身份的收件箱（免登录）
+### 居民邮箱与设置
 
-每位居民有城里发的邮箱（`…@jobsworld.test`）和手机号。把被测产品测试环境的发信、发短信地址指到这里，对应的人会在使用过程中真的收到：
+每位居民有城里发的邮箱和手机号。邮箱的用户名像真人自己起的（`chenbq168`、`emilyjohnson`，只有小写字母和数字）；域名在没开通真实邮箱时是 `jobsworld.test`，在「设置」里开通后是公网链接的主机名（Cloudflare 不接受时是 `mail.<主机名>`），真实产品发的验证邮件会进到对应居民的收件箱。
+
+收信的路：产品的邮件服务器 → 那个主机名的 MX（Cloudflare Email Routing，每个居民一条收信规则，按需建）→ Cloudflare 上的转发 Worker（`jobsworld-mail`，只转发不存）→ `POST /inbound/email`（这台 Jobs，验签、解析、存证据、放进收件箱）。
 
 | 方法 路径 | 说明 |
 |---|---|
-| `POST /inbox/email` `{ to, from?, subject?, body }` | 投递一封邮件 |
-| `POST /inbox/sms` `{ to, from?, body }` | 投递一条短信 |
-| `GET /personas/:id/inbox` | 这个人收到的邮件与短信（需登录） |
+| `POST /inbound/email`（不带 `/api/v1` 前缀，免登录） | 转发 Worker 调用。正文是原始邮件（`message/rfc822`，≤ 10 MB）；请求头 `x-jobs-timestamp`、`x-jobs-to`（信封收件人）、`x-jobs-from`、`x-jobs-signature` = HMAC-SHA256(签名密钥, `${timestamp}.${to}.` + 原始邮件) 的十六进制。时间戳与现在相差超过 10 分钟、签名不对 → 401（Worker 退信）；还没开通 → 503（Worker 抛错，对方稍后重投）。同一封信（Message-ID 相同）重复投递只收一次 |
+| `GET /inbound/ping`（不带前缀，免登录） | `{ jobs: true }`。开通时从这台机器访问公网链接上的它，确认链接能回到自己 |
+| `GET /settings[?live=1]`（管理员） | `public_url`（网页上填的）、`public_url_env`（`JOBS_PUBLIC_URL`）、`public_url_effective`（实际用的：网页上填的 > 环境变量 > 本机地址）、`mail`：`status`（`off` / `deploying` / `ready` / `error`）、`domain`、`real`（居民能不能收真实邮件）、`token_hint`、`zone`、`note`、`error`、`routes`（`used` / `cap`）、`unowned`（没有对应居民的信）、`check`（测试信）、`permissions`（令牌需要的权限）；`live=1` 时顺便问 Cloudflare 现在的收信状态（`cloudflare`） |
+| `PUT /settings` `{ public_url }`（管理员） | 保存公网链接（补全 https、去掉结尾斜杠；空串 = 清除，回到环境变量）。几秒内接口与世界服务都按新地址；远程 MCP 在下一个请求时按新地址重建授权元数据 |
+| `POST /settings/mail` `{ token? }`（管理员） | 一键开通（或重新部署）居民邮箱：确认公网链接从外网能回到这台 Jobs → 验证令牌 → 找到主机名所在的区 → 上传转发 Worker → 在主机名上开启 Email Routing（Cloudflare 自动加 MX、SPF、DKIM）→ 居民地址换成这个域名。`token` 不给时用上次保存的。令牌需要：Zone › Zone › Read、Zone › Zone Settings › Edit、Zone › Email Routing Rules › Edit、Account › Workers Scripts › Edit。令牌与签名密钥加密存库 |
+| `DELETE /settings/mail`（管理员） | 关闭：删掉自己建的收信规则与 Worker，居民地址回到 `jobsworld.test`（Cloudflare 上的 MX 记录留着） |
+| `POST /settings/mail/check` / `DELETE /settings/mail/check`（管理员） | 测试信：建一个 `check…@<域名>` 的临时地址，维护者从自己的邮箱给它发一封，`GET /settings` 的 `check.received_at` 有值就说明整条路通了 / 结束并删掉临时地址 |
+| `GET /settings/mail/unowned`（管理员） | 发到没有对应居民的地址的信（最近 50 封） |
+| `GET /mail/status` | `{ real, domain }`：发布对话框据此提醒「居民还收不到真实邮件」 |
+| `GET /personas/:id/inbox` | 这个人收到的邮件与短信（最近 50 封）：`sender`、`subject`、`body`（纯文本）、`has_html`、`opened_at`（他在邮箱里点开的时间）、`session_id`（到达时他正在进行的那次使用）、`real`（真实邮件）、`codes`（仪器提取的验证码） |
+| `GET /sessions/:id/mail` | 一次使用期间到达的信 |
+| `GET /mail/:id` | 一封信的全文：另有 `html`、`links`（仪器提取的链接）、`raw_ev`（原始邮件的证据 id，`GET /evidence/:id` 下载 `.eml`） |
+| `POST /inbox/email` `{ to, from?, subject?, body }`（免登录） | 不经 Cloudflare、直接投递一封邮件（给自己搭的测试环境用） |
+| `POST /inbox/sms` `{ to, from?, body }`（免登录） | 投递一条短信 |
+
+居民在使用过程里怎么收信：新邮件像手机推送一样只告诉他发件人和标题；要看正文得自己切到邮箱（人物动作 `check_mail` / `back_to_app`）。验证码和链接由仪器提取，只用于工程附录，从不交给居民。
 
 ### 人物
 
@@ -116,18 +131,19 @@
 | `publish_product` | 管理员 | 发布：`name`、`tagline`、`url`（Jobs 服务能打开的真实地址），可选 `landing_url`、`description`、`ad_text`、`intensity`、`form` |
 | `list_products` | 访客 | 已发布的产品和漏斗人数 |
 | `product_status` | 访客 | 一个产品此刻的状况：漏斗、谁在用（带 `persona_id`）、路过的人怎么想 |
-| `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
+| `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录（含验证邮件的仪器读数）。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
 | `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`），返回 `session_ids` |
 | `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，最多 `max_minutes`（默认 5，最多 15）分钟；客户端带了 `progressToken` 时推送进度 |
 | `mark_new_version` | 管理员 | 标记新版本（`note`），见 `POST /launches/:id/versions` |
 | `set_promotion` | 管理员 | 宣发强度、暂停 / 恢复 / 结束、广告文案 |
 | `ask_person` | 访客 | 向用过产品的居民追问（`persona_id`、`question`） |
+| `person_inbox` | 访客 | 一位居民收到的邮件和短信（`persona_id`）：验证邮件有没有到、什么时候到、他点没点开；居民邮箱还没开通时会说明 |
 
 访客身份连接时，管理员工具不出现在工具列表里。
 
 ### 远程 MCP（Streamable HTTP + OAuth 2.1）
 
-coding agent 只要一个链接：`<JOBS_PUBLIC_URL>/mcp`。
+coding agent 只要一个链接：`<公网链接>/mcp`（公网链接在网页的「设置」里填，其次是 `JOBS_PUBLIC_URL`）。
 
 ```bash
 claude mcp add --transport http jobs https://jobs.example.com/mcp     # Claude Code
@@ -142,7 +158,7 @@ codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex�
 
 | 路径 | 说明 |
 |---|---|
-| `GET /.well-known/oauth-protected-resource/mcp` | RFC 9728 资源元数据：`resource` = `<JOBS_PUBLIC_URL>/mcp`，授权服务 = `<JOBS_PUBLIC_URL>` |
+| `GET /.well-known/oauth-protected-resource/mcp` | RFC 9728 资源元数据：`resource` = `<公网链接>/mcp`，授权服务 = `<公网链接>` |
 | `GET /.well-known/oauth-authorization-server` | RFC 8414 授权服务元数据 |
 | `POST /register` | RFC 7591 动态注册（公开客户端，`token_endpoint_auth_method: none`） |
 | `GET /authorize` | 授权页（输入口令；没有设置任何口令时只有「授权 / 拒绝」） |
@@ -151,12 +167,12 @@ codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex�
 | `POST /revoke` | 撤销令牌（整次授权一起撤销） |
 
 - **令牌**：访问令牌 1 小时，刷新令牌 30 天，每次刷新都换一对新的；用过的刷新令牌再次出现时，整次授权作废（可能被人拿走了）。数据库只存哈希（`oauth_tokens`）。任何一个口令换了，之前发出的令牌全部失效。访问令牌也能直接调 REST（身份同上）。
-- **对外地址**：`JOBS_PUBLIC_URL`（https；放在反向代理后面，见 [`INSTALL.md`](INSTALL.md)「对外访问」）。不设置时是 `http://127.0.0.1:<JW_PORT>`，只有同一台机器上的 agent 能用；设置成非本机的 http 地址时远程 MCP 不启用（这些路径返回 503），因为 OAuth 要求 https。
+- **对外地址**：网页「设置」里填的公网链接，没填时用 `JOBS_PUBLIC_URL`（https；放在反向代理后面，见 [`INSTALL.md`](INSTALL.md)「对外访问」）。网页上改了之后，下一个请求就按新地址重建授权元数据（之前授权的 agent 需要重新授权）。都不设置时是 `http://127.0.0.1:<JW_PORT>`，只有同一台机器上的 agent 能用；设置成非本机的 http 地址时远程 MCP 不启用（这些路径返回 503），因为 OAuth 要求 https。
 - **产品地址**：Jobs 在云端时，城里的人是在那台机器上打开你的产品的，`localhost`、内网地址都打不开。JobsWorld 用来体验真实产品：先部署到公网（预览环境也可以）再发布。
 
 | 管理接口（管理员） | 说明 |
 |---|---|
-| `GET /agents` | `{ mcp_url, enabled, public_url_set, grants }`：远程 MCP 的链接、是否启用、是否设置了 `JOBS_PUBLIC_URL`，以及已授权的 agent（每次授权一行：`id`、`client`、`role`、`authorized_at`、`last_used_at`） |
+| `GET /agents` | `{ mcp_url, enabled, public_url_set, grants }`：远程 MCP 的链接、是否启用、是否设置了公网链接（网页上或 `JOBS_PUBLIC_URL`），以及已授权的 agent（每次授权一行：`id`、`client`、`role`、`authorized_at`、`last_used_at`） |
 | `DELETE /agents/:id` | 撤销一次授权（它的访问令牌与刷新令牌立即失效） |
 
 ### 本机 MCP（stdio）

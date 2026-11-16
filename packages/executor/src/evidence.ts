@@ -3,11 +3,11 @@ import { evidence, evidenceLinks, getDb } from '@pux/db';
 import { blobs } from '@pux/storage';
 
 export type EvidenceKind = 'screenshot' | 'perceived_screenshot' | 'a11y' | 'dom' | 'video' | 'har' | 'console' | 'action' | 'monologue' | 'world_event'
-  | 'judge_rationale' | 'replay_result' | 'rrweb' | 'axe' | 'crawl' | 'interview' | 'ai_turn' | 'network';
+  | 'judge_rationale' | 'replay_result' | 'rrweb' | 'axe' | 'crawl' | 'interview' | 'ai_turn' | 'network' | 'email';
 
 export interface EvidenceCtx { study_id?: string; session_id?: string; step_idx?: number; persona_id?: string }
 
-const EXT: Record<string, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'application/json': '.json', 'text/plain': '.txt', 'text/html': '.html', 'audio/wav': '.wav' };
+const EXT: Record<string, string> = { 'image/jpeg': '.jpg', 'image/png': '.png', 'video/mp4': '.mp4', 'application/json': '.json', 'text/plain': '.txt', 'text/html': '.html', 'audio/wav': '.wav', 'message/rfc822': '.eml' };
 
 /** Evidence Engine：统一登记证据（只追加、不修改；内容哈希去重存储） */
 export async function putEvidence(kind: EvidenceKind, ctx: EvidenceCtx, payload: { data?: Buffer | string; mime?: string; inline?: unknown }): Promise<string> {

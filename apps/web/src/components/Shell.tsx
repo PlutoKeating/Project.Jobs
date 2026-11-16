@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { ArrowUpCircle, Bot, Gamepad2, LogOut, MessageCircle, Moon, Pause, SlidersHorizontal, Sun, X } from 'lucide-react';
+import { ArrowUpCircle, Bot, Gamepad2, LogOut, MessageCircle, Moon, Pause, Settings as SettingsIcon, SlidersHorizontal, Sun, X } from 'lucide-react';
 import { ApiError, del, get, post, useMe, useOverview, useTown, queryClient } from '../lib/api.ts';
 import { copyText } from '../lib/clipboard.ts';
 import { setLang, useLang, useT } from '../lib/i18n.ts';
@@ -302,7 +302,8 @@ export function Shell() {
             <Button variant="ghost" size="sm" onClick={toggle} aria-label="theme" className="w-8 sm:w-9">{theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}</Button>
             {me.data?.auth_required && <Button variant="ghost" size="sm" aria-label={t('logout')} onClick={async () => { await post('/auth/logout'); await queryClient.invalidateQueries(); }}><LogOut size={15} /></Button>}
             {me.data?.admin && <Link to="/models" aria-label={t('nav.models')} title={t('nav.models')} className="relative inline-flex h-7 w-9 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg data-[status=active]:text-fg-display"><SlidersHorizontal size={15} />{needModels && <span className="absolute right-1.5 top-1 h-1.5 w-1.5 rounded-full bg-accent live-dot" />}</Link>}
-            {me.data?.admin && !path.startsWith('/models') && <Button variant="primary" size="sm" className="ml-1.5 h-8 px-3.5 text-sm" onClick={openPublish}>{t('publish')}</Button>}
+            {me.data?.admin && <Link to="/settings" aria-label={t('nav.settings')} title={t('nav.settings')} className="inline-flex h-7 w-9 items-center justify-center rounded-md text-fg-muted transition-colors hover:bg-surface-hover hover:text-fg data-[status=active]:text-fg-display"><SettingsIcon size={15} /></Link>}
+            {me.data?.admin && !path.startsWith('/models') && !path.startsWith('/settings') && <Button variant="primary" size="sm" className="ml-1.5 h-8 px-3.5 text-sm" onClick={openPublish}>{t('publish')}</Button>}
           </div>
         </div>
       </header>

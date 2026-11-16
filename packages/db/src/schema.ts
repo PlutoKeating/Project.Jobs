@@ -702,10 +702,25 @@ export const mailbox = pgTable('mailbox', {
   address: text('address').notNull(),                    // 收件地址或手机号
   sender: text('sender'),
   subject: text('subject'),
-  body: text('body').notNull(),
-  seen: boolean('seen').notNull().default(false),
+  body: text('body').notNull(),                          // 纯文本正文（HTML 邮件取其文字）
+  html: text('html'),                                    // 真实邮件的 HTML 正文（网页邮箱和「人」页在沙箱里渲染）
+  message_id: text('message_id'),                        // 邮件头的 Message-ID（重复投递去重）
+  raw_ev: text('raw_ev'),                                // 原始邮件（MIME）在证据库里的 id
+  extracted: jsonb('extracted').$type<{ codes: string[]; links: string[] }>(), // 规则提取的验证码与链接：只作仪器，不给居民
+  session_id: text('session_id'),                        // 到达时这个人正在进行的那次使用
+  opened_at: ts('opened_at'),                            // 他在邮箱里第一次点开这封信的时间
+  seen: boolean('seen').notNull().default(false),        // 已经以通知的形式告诉过他
   created_at: createdAt(),
-}, (t) => [index('mailbox_persona').on(t.persona_id), index('mailbox_address').on(t.address)]);
+}, (t) => [index('mailbox_persona').on(t.persona_id), index('mailbox_address').on(t.address), index('mailbox_session').on(t.session_id)]);
+
+/** 按需建在 Cloudflare 上的收信路由规则：一个地址一条（子域不能用通配规则，每个域最多 200 条） */
+export const mailRoutes = pgTable('mail_routes', {
+  address: text('address').primaryKey(),
+  persona_id: text('persona_id').notNull(),
+  rule_id: text('rule_id').notNull(),                    // Cloudflare 上那条规则的 id
+  last_used_at: ts('last_used_at').default(sql`now()`).notNull(),
+  created_at: createdAt(),
+}, (t) => [index('mail_routes_persona').on(t.persona_id)]);
 
 /** 一页人话的结论（按发布缓存；basis 变了就重算） */
 export const launchReports = pgTable('launch_reports', {

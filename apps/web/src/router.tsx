@@ -8,6 +8,7 @@ import { LaunchPage } from './pages/Launch.tsx';
 import { ModelsPage } from './pages/Models.tsx';
 import { SessionPage } from './pages/Session.tsx';
 import { HumanPage } from './pages/Human.tsx';
+import { SettingsPage } from './pages/Settings.tsx';
 
 const root = createRootRoute({ component: Shell });
 const P = () => root;
@@ -20,9 +21,10 @@ const launch = createRoute({ getParentRoute: P, path: '/products/$id', component
 const models = createRoute({ getParentRoute: P, path: '/models', component: ModelsPage });
 const session = createRoute({ getParentRoute: P, path: '/sessions/$id', component: SessionPage });
 const human = createRoute({ getParentRoute: P, path: '/human', component: HumanPage });
+const settings = createRoute({ getParentRoute: P, path: '/settings', component: SettingsPage });
 
 export const router = createRouter({
-  routeTree: root.addChildren([world, products, launch, people, person, session, human, models]),
+  routeTree: root.addChildren([world, products, launch, people, person, session, human, models, settings]),
   defaultPreload: 'intent',
   scrollRestoration: true,
 });

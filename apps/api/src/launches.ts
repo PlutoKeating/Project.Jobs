@@ -67,7 +67,7 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
 
   app.get('/api/v1/launches/:id/engineering', async (q, r) => {
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
-    return { version: await versionView(l), experienced: await E.experiencedIssues(l), appendix: await E.engineeringAppendix(l) };
+    return { version: await versionView(l), experienced: await E.experiencedIssues(l), appendix: await E.engineeringAppendix(l), mail: await E.mailInstrument(l).catch(() => null) };
   });
 
   // ---- 版本点：开发者改好之后标一下，之后的使用算新版本 ----
@@ -115,5 +115,4 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
     if (!b.to || !(b.body ?? b.text)) return r.code(400).send({ error: 'to and body are required' });
     return E.deliverMail({ kind: 'sms', address: b.to, sender: b.from, body: String(b.body ?? b.text) });
   });
-  app.get('/api/v1/personas/:id/inbox', async (q) => (await getDb().select().from(mailbox).where(eq(mailbox.persona_id, (q.params as P).id)).orderBy(desc(mailbox.created_at)).limit(40)).map((m) => ({ id: m.id, kind: m.kind, sender: m.sender, subject: m.subject, body: m.body, seen: m.seen, at: m.created_at })));
 }

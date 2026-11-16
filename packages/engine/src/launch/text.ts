@@ -4,7 +4,7 @@ export interface LaunchView { id: string; name: string; tagline: string; url: st
 export interface Cited { text: string; moments: { persona: string; who: string; quote: string; session_id: string; step_idx: number }[]; passersby: { persona: string; who: string; thought: string }[] }
 export interface ReportView { verdict: string; headline: string; summary: string; hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string; funnel: FunnelView; people_used: number }
 export interface VersionView { n: number; note: string | null; at: string; sessions: number; finished: number }
-export interface EngineeringView { version?: VersionView | null; experienced: { id: string; severity: string; title: string; description: string; where: string | null; people: number; sessions?: number; sessions_since_version?: number | null; reproduced: boolean | null; steps: string[] }[]; appendix: { id: string; severity: string; category: string; title: string; description: string; recommendation: string | null; where: string | null }[] }
+export interface EngineeringView { version?: VersionView | null; experienced: { id: string; severity: string; title: string; description: string; where: string | null; people: number; sessions?: number; sessions_since_version?: number | null; reproduced: boolean | null; steps: string[] }[]; appendix: { id: string; severity: string; category: string; title: string; description: string; recommendation: string | null; where: string | null }[]; mail?: { mails: number; sessions: number; opened: number; median_delay_s: number | null; max_delay_s: number | null; switches: number; forgot: number; mistyped: number } | null }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
 export const funnelLine = (f: FunnelView) => `看到 ${f.reached} 人 → 注意到 ${f.noticed} → 有兴趣 ${f.interested} → 打开过 ${f.opened} → 回来再用 ${f.came_back}${f.using_now ? `（此刻 ${f.using_now} 人在用）` : ''}${f.rating ? ` · 评分 ${f.rating}（${f.reviews} 条）` : ''}`;
@@ -25,6 +25,8 @@ export function reportText(l: LaunchView, r: ReportView, eng?: EngineeringView):
     if (v) lines.push(`\n── 第 ${v.n} 版（${v.at.slice(0, 16).replace('T', ' ')} 起${v.note ? `：${v.note}` : ''}）──\n新版本里开始了 ${v.sessions} 次使用，${v.finished} 次已结束。问题清单每累计几次使用重新归并一次，最新的使用可能还没算进去。`);
     const sinceV = (i: EngineeringView['experienced'][number]) => (v && i.sessions_since_version != null ? (i.sessions_since_version ? `；第 ${v.n} 版里仍出现 ${i.sessions_since_version} 次` : v.finished ? `；第 ${v.n} 版里没再出现` : '') : '');
     if (eng.experienced.length) lines.push('\n── 虚拟人亲身遇到的问题（可据此修改）──', ...eng.experienced.map((i) => `[${i.severity}] ${i.title}${i.where ? `  @${i.where}` : ''}（${i.people} 人遇到${i.reproduced ? '，已复现' : ''}${sinceV(i)}）\n    ${i.description}${i.steps.length ? `\n    复现：${i.steps.join(' → ')}` : ''}`));
+    const m = eng.mail;
+    if (m) lines.push(`\n── 验证邮件（仪器读数）──\n${m.sessions} 次使用里收到 ${m.mails} 封邮件，点开 ${m.opened} 封${m.median_delay_s != null ? `；从填好邮箱到信到达，中位 ${m.median_delay_s} 秒，最慢 ${m.max_delay_s} 秒` : ''}。在产品和邮箱之间切换 ${m.switches} 次${m.forgot ? `，其中 ${m.forgot} 次切回来时记不清验证码` : ''}${m.mistyped ? `；${m.mistyped} 次输入的码与邮件里的不一致` : ''}。`);
     if (eng.appendix.length) lines.push('\n── 工程附录（用户看不到的技术信号与专家检查）──', ...eng.appendix.map((i) => `[${i.severity}] ${i.title}${i.where ? `  @${i.where}` : ''}${i.recommendation ? `\n    建议：${i.recommendation}` : ''}`));
   }
   return lines.filter((x) => x !== '').join('\n');

@@ -9,6 +9,7 @@
     - 目标（`TargetRef.by = 'visual'`）：`text` 是人物照抄的、写在目标上的字，`value` 是人物对目标样子和位置的描述。先「借 DOM 换算落点」：照抄的字在视口内恰好对应唯一一个没被遮挡的可交互元素时直接取其位置（`matchVisibleText`）；否则由 Midscene `aiLocate` 看截图定位。Midscene 自己发模型请求：它被指到本进程里的 OpenAI 兼容入口（`@pux/llm` 的 `startLocalEndpoint`），由已保存的模型配置里勾选了「定位」的模型来回答；没有这样的模型时这一步报错。不会替人滚动到目标。
     - 结果状态按「人看到了什么」定：动作前后截图有肉眼可见的变化（`visualDelta`）或换了页面 → `success`，否则 `no_effect`。HTTP 5xx、JS 错误、「发了请求但屏幕没变」等错误码是工程信号，只挂在结果上。
     - `selector` / `a11y` / `text` / `coords` / `ref` 目标只用于干净重放（`executor: 'playwright'`，不调用模型）与弹窗按钮。
+  - 几个应用（标签页）：`showTab(key, url?)` 切到另一个应用，没开过就新开并打开 `url`（例如城里给的邮箱 App），原来那个在后台（页面可见性 hidden），录像跟着切过去；`tab` 是当前应用（`main` 是被测产品）。
   - 打断：`switchAway` / `returnBack`（visibilityState 覆盖 + 生命周期冻结）、`closeTab` / `reopenLast`；`setNetwork`（CDP 限速）；`setGeolocation`；`takeoverUrl`（浏览器的远程调试画面，供人介入时接手，例如过验证码）。
 - `humanize.ts`：人类化的手（纯函数）。鼠标轨迹（贝塞尔曲线、缓入缓出、偶尔冲过头再修正，时长按 Fitts 定律）；落点（精度、单手、目标大小决定离散程度；点偏过的人下一次更小心；触屏有手指容差）；打字节奏（按人物速度，邻键错字 + 回删）；滚轮分格；触屏滑动轨迹。真实耗时被压缩，模拟时钟按人物速度另行结算。
 - `visual.ts`：两张截图之间肉眼可见的变化量；把原生弹窗画进截图。

@@ -1,7 +1,7 @@
 // 一页人话：这个产品在城里过得怎么样。每句结论都指回当时那个人、那一步、那句话（点开就是画面）。
 // 数字是这座城里实际发生的人数（模拟），不是对真实市场的预测。技术信号与专家检查在工程附录里，不出现在这一页。
 import { logger, z, type PersonaSpec, langOf } from '@pux/core';
-import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
+import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, mailbox, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { launchFunnel, launchVersionList, type Funnel, type LaunchRow } from './launch.ts';
 
@@ -161,6 +161,35 @@ export async function engineeringAppendix(l: LaunchRow) {
   const order: Record<string, number> = { P0: 0, P1: 1, P2: 2, P3: 3 };
   return rows.sort((a, b) => (order[a.severity] ?? 9) - (order[b.severity] ?? 9)).map((i) => ({ id: i.id, severity: i.severity, category: i.category, title: i.title, title_en: i.title_en, description: (i.description ?? '').split('\n\n')[0], recommendation: i.recommendation, where: i.url_pattern, sessions: (i.session_ids ?? []).length }));
 }
+
+/** 验证邮件这一段的仪器读数（居民看不到）：信从他提交到到达用了多久、点没点开、有没有记不住或抄错验证码 */
+export async function mailInstrument(l: LaunchRow): Promise<MailInstrument | null> {
+  const db = getDb();
+  const ss = await db.select({ id: sessions.id, persona_id: sessions.persona_id }).from(sessions).where(eq(sessions.study_id, l.study_id));
+  if (!ss.length) return null;
+  const ids = ss.map((s) => s.id);
+  const mails = await db.select().from(mailbox).where(and(inArray(mailbox.session_id, ids), eq(mailbox.kind, 'email')));
+  if (!mails.length) return null;
+  const st = await db.select({ session_id: steps.session_id, idx: steps.idx, req: steps.action_request, at: steps.created_at }).from(steps).where(inArray(steps.session_id, [...new Set(mails.map((m) => m.session_id!))]));
+  const delays: number[] = []; let forgot = 0; let mistyped = 0; let switches = 0;
+  for (const sid of new Set(mails.map((m) => m.session_id!))) {
+    const mine = mails.filter((m) => m.session_id === sid); const addr = mine[0].address.split('@')[0];
+    const ss2 = st.filter((x) => x.session_id === sid).sort((a, b) => a.idx - b.idx);
+    const typedAddr = ss2.find((x) => String((x.req as { args?: { text?: string } } | null)?.args?.text ?? '').toLowerCase().includes(addr));
+    const first = mine.sort((a, b) => a.created_at.getTime() - b.created_at.getTime())[0];
+    if (typedAddr && first.created_at > typedAddr.at) delays.push(Math.round((first.created_at.getTime() - typedAddr.at.getTime()) / 1000));
+    const codes = new Set(mine.flatMap((m) => m.extracted?.codes ?? []));
+    for (const x of ss2) {
+      const r = x.req as { verb?: string; forgot?: boolean; args?: { text?: string } } | null;
+      if (r?.verb === 'switch_app') { switches++; if (r.forgot) forgot++; }
+      const t = String(r?.args?.text ?? '').trim();
+      if (r?.verb === 'type' && codes.size && /^[0-9A-Za-z]{4,8}$/.test(t) && /\d/.test(t) && !codes.has(t) && !codes.has(t.toUpperCase())) mistyped++;
+    }
+  }
+  delays.sort((a, b) => a - b);
+  return { mails: mails.length, sessions: new Set(mails.map((m) => m.session_id)).size, opened: mails.filter((m) => m.opened_at).length, median_delay_s: delays.length ? delays[Math.floor(delays.length / 2)] : null, max_delay_s: delays.at(-1) ?? null, switches, forgot, mistyped };
+}
+export interface MailInstrument { mails: number; sessions: number; opened: number; median_delay_s: number | null; max_delay_s: number | null; switches: number; forgot: number; mistyped: number }
 
 /** 虚拟人亲历的问题（结构化，给 coding agent 用：含复现步骤） */
 export async function experiencedIssues(l: LaunchRow) {

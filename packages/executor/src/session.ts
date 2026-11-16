@@ -119,6 +119,10 @@ export class BrowserSession implements Executor {
   private seenStates = new Set<string>();
   private frameDir: string;
   private frames: { file: string; t: number }[] = [];
+  private frameIdx = 0;
+  /** 同一个设备上开着的几个「应用」（标签页）：main 是被测产品，其余如 mail 是城里给的邮箱 */
+  private tabs = new Map<string, Page>();
+  tab = 'main';
   private rrEvents: unknown[] = [];
   private pointer: Pt = { x: 200, y: 200 };
   /** 上一次点偏的目标与连续次数：点偏过的人下一次会瞄得更准 */
@@ -226,9 +230,8 @@ export class BrowserSession implements Executor {
     try {
       mkdirSync(this.frameDir, { recursive: true });
       const cdp = await this.cdpSession();
-      let i = 0;
       cdp.on('Page.screencastFrame', (f: { data: string; sessionId: number }) => {
-        const file = join(this.frameDir, `f${String(i++).padStart(6, '0')}.jpg`);
+        const file = join(this.frameDir, `f${String(this.frameIdx++).padStart(6, '0')}.jpg`);
         try { writeFileSync(file, Buffer.from(f.data, 'base64')); this.frames.push({ file, t: Date.now() }); } catch { /* ignore */ }
         cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {});
       });
@@ -662,6 +665,28 @@ export class BrowserSession implements Executor {
   // ------------------------------------------------------------------ 打断与环境注入（由 World Simulator 触发）
   async switchAway() { this.hiddenSince = Date.now(); await this.page.evaluate('window.__pux && window.__pux.setHidden(true)').catch(() => {}); await (await this.cdpSession().catch(() => undefined))?.send('Page.setWebLifecycleState', { state: 'frozen' }).catch(() => {}); }
   async returnBack() { await (await this.cdpSession().catch(() => undefined))?.send('Page.setWebLifecycleState', { state: 'active' }).catch(() => {}); await this.page.evaluate('window.__pux && window.__pux.setHidden(false)').catch(() => {}); this.hiddenSince = undefined; }
+  /** 切到另一个应用（标签页）：没开过就新开并打开 url；原来那个在后台（页面可见性变成 hidden），录像跟着切过去 */
+  async showTab(key: string, url?: string): Promise<void> {
+    if (key === this.tab && !this.page.isClosed()) return;
+    this.tabs.set(this.tab, this.page);
+    await this.page.evaluate('window.__pux && window.__pux.setHidden(true)').catch(() => {});
+    await this.cdp?.send('Page.stopScreencast').catch(() => {});
+    let p = this.tabs.get(key);
+    if (!p || p.isClosed()) {
+      p = await this.ctx.newPage(); this.attachPage(p); this.tabs.set(key, p);
+      if (url) await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch((e) => logger.debug({ e: String(e) }, '应用打开失败'));
+    } else if (url && key !== 'main' && !p.url().startsWith(new URL(url).origin)) {
+      // 应用里点了外面的链接之后再回来：回到应用首页
+      await p.goto(url, { waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    } else if (url && key !== 'main') {
+      await p.reload({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => {});
+    }
+    await p.bringToFront().catch(() => {});
+    this.page = p; this.tab = key;
+    await p.evaluate('window.__pux && window.__pux.setHidden(false)').catch(() => {});
+    if (this.opts.record?.video !== false) await this.startScreencast();
+  }
+
   async closeTab() { const url = this.page.url(); await this.page.close().catch(() => {}); this.page = await this.ctx.newPage(); this.attachPage(this.page); this.lastUrl = url; }
   async reopenLast() { if (this.lastUrl) await this.page.goto(this.lastUrl, { waitUntil: 'domcontentloaded' }).catch(() => {}); }
 

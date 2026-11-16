@@ -11,6 +11,7 @@ import { login, logout, requireAdmin, roleOf, authEnabled } from './auth.ts';
 import { avatarFor } from './avatars.ts';
 import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
+import { mailRoutes } from './mail.ts';
 import { modelRoutes, modelsReady } from './models.ts';
 import { gameRoutes } from './game.ts';
 import { updateRoutes } from './update.ts';
@@ -21,6 +22,7 @@ const layout = computeLayout();
 
 export function routes(app: FastifyInstance, bus: Bus | undefined) {
   launchRoutes(app, bus);
+  mailRoutes(app);
   modelRoutes(app);
   gameRoutes(app);
   updateRoutes(app);
@@ -83,7 +85,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
       spec: p.spec, agenda: await loadAgenda(id, date), memories: await personaMemoryList(id, 120), sessions: await personaSessions(id, 80), launch_of: Object.fromEntries((await getDb().select({ id: launches.id, app_id: launches.app_id }).from(launches)).map((l) => [l.app_id, l.id])), trust: await personaTrust(id),
       live: snap?.personas.find((x) => x.id === id) ?? null, clock: snap?.clock ?? null,
       // 世界里的人：家庭、工作地点、钱包、关系网，以及此时此地的处境（合并世界：这就是他使用产品时的上下文）
-      resident: await residentOf(id).then((x) => (x ? { household_id: x.household_id, role: x.role, work_group: x.work_group, workplace_id: x.workplace_id, income_month: x.income_month, currency: x.currency, wallet: x.wallet, life_event: x.life_event } : null)),
+      resident: await residentOf(id).then((x) => (x ? { household_id: x.household_id, role: x.role, work_group: x.work_group, workplace_id: x.workplace_id, income_month: x.income_month, currency: x.currency, wallet: x.wallet, life_event: x.life_event, email: x.email, phone: x.phone } : null)),
       ties: (await tiesOf(id)).slice(0, 24),
       here: await liveContextFor(id).then((c) => (c ? { clock: c.clock, name: c.name, scenario: c.scenario, place_id: c.place_id, device: c.ctx.device, posture: c.ctx.posture, needs: c.needs, phone_affinity: c.phone_affinity, available: c.available, unavailable_reason: c.unavailable_reason ?? null, time_left_min: c.time_left_min, companions: c.companions.map((t) => ({ id: t.id, name: t.name, kind: t.kind })) } : null)).catch(() => null),
     };

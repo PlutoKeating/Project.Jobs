@@ -1,4 +1,4 @@
-// 远程 MCP：coding agent 只要一个链接 <JOBS_PUBLIC_URL>/mcp。Streamable HTTP（无状态：每个请求一个 McpServer），OAuth 2.1 授权。
+// 远程 MCP：coding agent 只要一个链接 <公网链接>/mcp（公网链接在设置页填，其次是 JOBS_PUBLIC_URL）。Streamable HTTP（无状态：每个请求一个 McpServer），OAuth 2.1 授权。
 // 协议实现都用 MCP SDK（mcpAuthRouter、requireBearerAuth、StreamableHTTPServerTransport），它们是 Express 中间件：
 // 这里建一个小的 Express 应用，挂在 Fastify 的几个路径上（Fastify 不解析这些请求的正文，原样交给 Express）。
 // 工具与本机 stdio 服务是同一份（@pux/engine/launch/tools），执行时在进程内转发到 /api/v1，带着这次授权的令牌，权限检查只在接口那一层。
@@ -11,30 +11,34 @@ import { requireBearerAuth } from '@modelcontextprotocol/sdk/server/auth/middlew
 import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types.js';
 import { jobsVersion, logger } from '@pux/core';
 import { JOBS_TOOLS, MCP_INSTRUCTIONS, type ToolApi } from '@pux/engine/launch/tools';
+import { publicUrl, publicUrlSet } from '@pux/engine/mail/settings';
 import { roleForPasscode, requireAdmin } from './auth.ts';
 import { JobsOAuthProvider, issueCode, listGrants, loginPage, noteFail, revokeGrant, tooMany, unsign } from './oauth.ts';
-
-/** Jobs 对外的地址（反向代理之后的 https 地址）。不设置时是本机地址：只有同一台机器上的 agent 能用 */
-export function publicUrl(): string {
-  const raw = process.env.JOBS_PUBLIC_URL?.trim() || `http://127.0.0.1:${process.env.JW_PORT ?? 7777}`;
-  return raw.replace(/\/+$/, '');
-}
 
 const PATHS = ['/mcp', '/authorize', '/token', '/register', '/revoke', '/oauth/login', '/.well-known/oauth-authorization-server', '/.well-known/oauth-authorization-server/mcp', '/.well-known/oauth-protected-resource', '/.well-known/oauth-protected-resource/mcp'];
 
 export async function mcpRoutes(app: FastifyInstance) {
-  const base = publicUrl();
-  const mcpUrl = new URL(`${base}/mcp`);
-  let ex: express.Express | null = null; let why = '';
-  try { ex = buildExpress(app, base, mcpUrl); }
-  catch (e) { why = String((e as Error).message); logger.warn({ err: why, JOBS_PUBLIC_URL: base }, '远程 MCP 未启用：JOBS_PUBLIC_URL 需要是 https 地址（本机地址除外）'); }
+  // 对外地址来自设置页（其次是 JOBS_PUBLIC_URL）；网页上改了之后，下一个请求就按新地址重建授权元数据
+  let cur: { base: string; mcpUrl: URL; ex: express.Express | null; why: string } | undefined;
+  const ensure = async () => {
+    const base = await publicUrl();
+    if (cur?.base === base) return cur;
+    const mcpUrl = new URL(`${base}/mcp`);
+    let ex: express.Express | null = null; let why = '';
+    try { ex = buildExpress(app, base, mcpUrl); }
+    catch (e) { why = String((e as Error).message); logger.warn({ err: why, public_url: base }, '远程 MCP 未启用：公网链接需要是 https 地址（本机地址除外）'); }
+    cur = { base, mcpUrl, ex, why };
+    return cur;
+  };
+  await ensure();
 
   await app.register(async (sub) => {
     // 这些路径的正文交给 Express 自己读
     sub.removeAllContentTypeParsers();
     sub.addContentTypeParser('*', (_req, _payload, done) => done(null));
-    for (const p of PATHS) sub.all(p, (q, r) => {
-      if (!ex) return r.code(503).send({ error: 'remote_mcp_disabled', hint: 'JOBS_PUBLIC_URL must be an https URL (or a loopback address)', detail: why });
+    for (const p of PATHS) sub.all(p, async (q, r) => {
+      const { ex, why } = await ensure();
+      if (!ex) return r.code(503).send({ error: 'remote_mcp_disabled', hint: 'the public URL must be https (or a loopback address)', detail: why });
       r.hijack(); ex(q.raw as never, r.raw as never);
     });
   });
@@ -42,7 +46,8 @@ export async function mcpRoutes(app: FastifyInstance) {
   // ---- 网页上的「接入 coding agent」：链接、各家 agent 的接入命令、已授权的 agent（可撤销）----
   app.get('/api/v1/agents', async (q, r) => {
     if (!requireAdmin(q, r)) return;
-    return { mcp_url: mcpUrl.href, enabled: !!ex, public_url_set: !!process.env.JOBS_PUBLIC_URL?.trim(), grants: await listGrants() };
+    const c = await ensure();
+    return { mcp_url: c.mcpUrl.href, enabled: !!c.ex, public_url_set: await publicUrlSet(), grants: await listGrants() };
   });
   app.delete('/api/v1/agents/:id', async (q, r) => {
     if (!requireAdmin(q, r)) return;

@@ -7,7 +7,8 @@
 | `town.ts` | 城镇布局：`config/jobsworld/town.yaml` → 图元、地点（16 个）、落脚点、住宅单元（5 栋共 120 套） |
 | `agenda.ts` | 日程：`config/jobsworld/agenda.yaml` 按角色给出一天的地点序列，每段标注活动类别（`k`）；按居民的职业大类选角色和工作地点；周末改用周末日程；模型只在需要时补全意图（`completeAgenda`，角色 `world_sim`，属于「每一步」模型组） |
 | `life.ts` | 人作为有需求的生物：`tickNeeds`（饿、精力、孤单、压力、心情按正在做的事变化）、`needOverride`（饿极了去吃、手头紧买便宜的、困了早睡、闷了找人聊）、`phoneAffinity`（手机在不在手边）、`placeContext`（此时此地手眼耳嘴的占用、设备、网络）、`EVENT_EFFECT`（城里的事件落到人身上） |
-| `residents.ts` | 居民：家庭与住处（`households`）、工作地点与钱包（`residents`）、关系网（`relations`）；`settleResidents`、`tiesOf`、`workplaceFor` |
+| `residents.ts` | 居民：家庭与住处（`households`）、工作地点与钱包（`residents`）、关系网（`relations`）；`settleResidents`（邮件域名由调用方给出，默认 `jobsworld.test`）、`tiesOf`、`workplaceFor` |
+| `mailhandle.ts` | 邮箱用户名：`mailHandle` 按地区的起名习惯生成像真人的用户名（中文：拼音姓名或姓加名字首字母、昵称、英文名加姓，后面是出生年、生日或吉利数；英语区：名加姓、首字母加姓、爱好词，后面是两位数或出生年），只有小写字母和数字、6–20 位，同一个人每次一样，撞名时换写法；`isLegacyHandle` 认出旧的编号式用户名。比例依据 Perito 等（arXiv:1101.5578）与王鼎等（USENIX Security 2019）的统计，是估计值 |
 | `context.ts` | **合并世界**：`liveContextFor(personaId)` 把时钟、日程、需求、身边的人、城里正在发生的事算成一份处境，并写成引擎能直接运行的世界模板；`worldClock`、`agendaFor`、`needsAt` |
 | `protocol.ts` | NATS 主题与消息（Node 与 C# 游戏端共用字段名）：时钟、快照、使用中的一步、气泡、已发布产品的人数，以及发布 / 调宣发 / 递手机 / 时钟 / 事件 / 回放这些命令 |
 | `appearance.ts` / `bus.ts` / `queries.ts` | Terraria 外观映射、消息总线、只读查询 |

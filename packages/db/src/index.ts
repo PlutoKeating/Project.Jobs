@@ -9,7 +9,7 @@ import * as schema from './schema.ts';
 
 export * as t from './schema.ts';
 export * from './schema.ts';
-export { sql, eq, and, or, desc, asc, inArray, isNull, isNotNull, gt, lt, gte, lte, ne, count } from 'drizzle-orm';
+export { sql, eq, and, or, desc, asc, inArray, notInArray, isNull, isNotNull, gt, lt, gte, lte, ne, count } from 'drizzle-orm';
 
 export type DB = NodePgDatabase<typeof schema>;
 let pool: pg.Pool | undefined;

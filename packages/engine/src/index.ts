@@ -30,3 +30,4 @@ export * from './launch/usage.ts';
 export * from './launch/identity.ts';
 export * from './launch/engine.ts';
 export * from './launch/report.ts';
+export * from './mail/index.ts';

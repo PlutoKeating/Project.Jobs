@@ -13,15 +13,19 @@
     "@pux/db": "workspace:*",
     "@pux/demos": "workspace:*",
     "@pux/executor": "workspace:*",
+    "@pux/jobsworld": "workspace:*",
     "@pux/llm": "workspace:*",
+    "@pux/memory": "workspace:*",
     "@pux/storage": "workspace:*",
     "drizzle-orm": "^0.45.4",
+    "mailparser": "^3.14.3",
     "playwright": "^1.65.0",
     "rrweb-player": "^2.2.2",
     "sharp": "^0.35.5",
     "yaml": "^2.9.1",
-    "zod": "^4.6.7",
-    "@pux/memory": "workspace:*",
-    "@pux/jobsworld": "workspace:*"
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.9.0"
   }
 }

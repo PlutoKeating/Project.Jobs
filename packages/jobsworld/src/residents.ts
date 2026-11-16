@@ -1,5 +1,6 @@
 // 世界里的人：家庭、住处、工作地点、钱包、关系网（residents / households / relations 表）
 import { shortHash, type PersonaSpec } from '@pux/core';
+import { mailHandle } from './mailhandle.ts';
 import { and, eq, getDb, households, inArray, or, personas, relations, residents, sql, type NeedsRow } from '@pux/db';
 import { hashNum, placeForKind, type PlaceKindT, type TownLayout } from './town.ts';
 
@@ -31,14 +32,15 @@ export async function allHouseholds(): Promise<Map<string, HouseholdRow>> {
 export interface SettleInput { persona_id: string; spec: PersonaSpec; household: { id: string; locale: string; type: string; region: string }; role: string; work_group: string; income_month: number; life_event?: string; skeleton?: unknown }
 
 /**
- * 让一批人住进城里：每个家庭分一套房，每个人按职业分配工作地点，发钱包、虚拟手机号和邮箱。
+ * 让一批人住进城里：每个家庭分一套房，每个人按职业分配工作地点，发钱包、虚拟手机号和邮箱（用户名像真人自己起的，见 mailhandle.ts）。
  * 已经住下的人保持不变（跨次运行稳定）。
  */
-export async function settleResidents(layout: TownLayout, people: SettleInput[]): Promise<{ households: number; residents: number }> {
+export async function settleResidents(layout: TownLayout, people: SettleInput[], mailDomain = 'jobsworld.test'): Promise<{ households: number; residents: number }> {
   const db = getDb();
   const hhs = await allHouseholds();
   const taken = new Set([...hhs.values()].map((h) => h.home_unit).filter((u): u is number => u !== null));
   const have = await allResidents();
+  const handles = new Set([...have.values()].map((r) => r.email?.split('@')[0]?.toLowerCase()).filter((x): x is string => !!x));
   let nh = 0; let nr = 0;
   for (const p of people) {
     let hh = hhs.get(p.household.id);
@@ -55,7 +57,7 @@ export async function settleResidents(layout: TownLayout, people: SettleInput[])
     await db.insert(residents).values({
       persona_id: p.persona_id, household_id: hh.id, role: p.role, work_group: p.work_group, workplace_id: workplaceFor(layout, p.work_group, p.persona_id),
       income_month: p.income_month, currency: zh ? 'CNY' : 'USD', wallet: Math.round(p.income_month * (0.25 + (hashNum(p.persona_id) % 100) / 100)),
-      life_event: p.life_event || null, phone: zh ? `199${digits}` : `+1555${digits.slice(0, 7)}`, email: `${p.persona_id.replace(/_/g, '.')}@jobsworld.test`, skeleton: p.skeleton as never,
+      life_event: p.life_event || null, phone: zh ? `199${digits}` : `+1555${digits.slice(0, 7)}`, email: `${mailHandle({ id: p.persona_id, name: p.spec.identity.name, locale: p.spec.locale, age: p.spec.identity.age, gender: p.spec.identity.gender }, handles)}@${mailDomain}`, skeleton: p.skeleton as never,
     }).onConflictDoNothing();
     nr++;
   }

@@ -100,6 +100,17 @@ export const JOBS_TOOLS: JobsTool[] = [
     input: { persona_id: z.string().describe('人物 id（见 product_status、wait_for_people 列出的 persona_id）'), question: z.string() },
     run: async ({ persona_id, question }, { api }) => { const o = await api<{ answer: string | null; busy?: boolean; none?: boolean }>('/world/ask', { body: { persona_id, question } }); return o.busy ? '他正在使用产品，等这次用完再问。' : o.none ? '他还没有用过任何产品。' : String(o.answer); },
   },
+  {
+    name: 'person_inbox', admin: false,
+    description: '看一位居民收到的邮件和短信（最新的在前）：产品发出的验证邮件有没有到、什么时候到、他有没有点开。排查「居民收不到验证码」时用。',
+    input: { persona_id: z.string().describe('人物 id（见 product_status、wait_for_people 列出的 persona_id）') },
+    run: async ({ persona_id }, { api }) => {
+      const [st, rows] = await Promise.all([api<{ real: boolean; domain: string }>('/mail/status'), api<{ kind: string; sender: string | null; subject: string | null; body: string; opened_at: string | null; real: boolean; at: string }[]>(`/personas/${encodeURIComponent(String(persona_id))}/inbox`)]);
+      const head = st.real ? `居民邮箱已开通（@${st.domain}），产品发出的真实邮件会进到这里。` : `居民邮箱还没开通：地址是 @${st.domain} 的假地址，真实产品的邮件到不了。到网页的「设置」里填公网链接并开通。`;
+      if (!rows.length) return `${head}\n他还没有收到任何邮件或短信。`;
+      return `${head}\n${rows.slice(0, 15).map((m) => `· ${new Date(m.at).toLocaleString('zh-CN', { hour12: false })} ${m.kind === 'sms' ? '短信' : '邮件'}${m.sender ? ` 来自 ${m.sender}` : ''}${m.subject ? `「${m.subject}」` : ''}${m.kind === 'email' ? (m.opened_at ? '（他点开看过）' : '（他没点开）') : ''}\n  ${m.body.replace(/\s+/g, ' ').slice(0, 240)}`).join('\n')}`;
+    },
+  },
 ];
 
 export const MCP_INSTRUCTIONS = 'JobsWorld 是一座住着约两百位虚拟居民的城。把真实可访问的产品发布进来（publish_product），城里的人会自己遇到、决定用不用；想马上得到反馈就 invite_people 请几个人试，wait_for_people 等他们用完，product_report 取回结论和带复现步骤的问题清单。改好并上线后 mark_new_version，再请人试一轮，看问题还在不在。人数是这座城里实际发生的（模拟），不是对真实市场的预测。';

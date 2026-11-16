@@ -18,6 +18,7 @@
 
 - **唯一权威数据源**：Postgres（结构化数据）+ MinIO（截图、录像等大文件，按内容哈希寻址、只追加）。
 - **谁在驱动**：世界服务。它推进时钟、日程与需求，并每 10 秒让发布引擎算一遍「这段时间里谁遇到了什么」；使用过程（浏览器会话）在世界服务进程内并发运行（`JW_CONCURRENCY`，默认 3；`JW_RUNNER=0` 关闭）。API 只读写数据库并经 NATS 向世界服务发命令。
+- **居民邮箱**：真实产品发的验证邮件经 Cloudflare 进来。邮件域名就是公网链接的主机名，它的 MX 由 Cloudflare Email Routing 接收；每个要用产品的居民按需建一条收信规则，交给 Cloudflare 上的转发 Worker；Worker 只把原始邮件加签名后 POST 回 `<公网链接>/inbound/email`。收信、解析、存储、界面都在 Jobs 里（`packages/engine/src/mail/`，见 §6）。维护者只在网页「设置」里填公网链接、贴一枚 Cloudflare API Token。
 - **模型**：应用内路由（`packages/llm`）。代码里的调用点只说自己是哪个角色，角色归到五个模型组（每一步、归纳、定位、向量、画图）；用哪家的哪个模型、按什么顺序接替，由管理员在网页的「模型」里配置并保存，几秒内生效。见 [`MODELS.md`](MODELS.md)。
 
 上图是从源码运行时的形态。**装好的 Jobs**（[`INSTALL.md`](INSTALL.md)）把左边一列全部打进一个镜像，由 `deploy/entrypoint.sh` 先迁移数据库、让随包居民入住，再启动世界服务、接口、网关和示例产品；右边仍是各自的标准镜像（`deploy/compose.yml`）。Linux 上 `jobs` 容器用宿主机网络（本机回环地址上的开发服务器原样可达），其他系统用端口映射并把本机地址换成 `host.docker.internal`（`reachableUrl`）。网页上的「一键开启游戏服」与「一键升级」不让容器接触 Docker：容器只写一个请求文件，由宿主机上的 `jobsworld _control`（systemd 监视单元触发）执行；升级的进度与结果再写回同一个目录（`control/`）。版本号只有根 `package.json` 一个来源（`@pux/core` 的 `jobsVersion()`）；接口每小时读一次 GitHub 上最新的 Release（管理员打开网页时结果超过 15 分钟就当场重查），网页据此提示管理员升级（`apps/api/src/update.ts`）。升级流程（`deploy/jobs` 的 `update`，安装脚本重复运行时同理）：拉取镜像 → 取出新的编排文件与命令 → 备份数据库到 `~/.jobs/backups` → 重建容器（入口脚本迁移数据库）→ 更新装过的游戏服。
@@ -48,7 +49,7 @@ flowchart LR
 | `exposure.ts` | `audienceMatch`（投给谁）、`exposureChance`（每个渠道在这段时间里遇到的概率：宣发强度 × 手机在不在手边 × 是否投放对象 × 看腻了没有）、`notices`（注意到的概率）、`whatTheySee`（他在那个渠道里实际看到的样子）、`normFor`（每个渠道的常态）、`decide`（注意到之后由他自己说） |
 | `engine.ts` | `LaunchEngine.tick`：先处理之前留下的念头（熟人提过、想以后看看、用过想再用），再算新的曝光；决定与使用都有并发上限；每累计几次使用后重新合成问题 |
 | `usage.ts` | `startUsage`（把这个人此时此地的处境定下来，建一次使用）、`inviteToLaunch`（把手机递给人，标记为受邀）、`afterUse`（把用完后的打算落成评论、动态、口碑和回访念头） |
-| `identity.ts` | 城里发的邮箱、手机号、惯用的用户名与密码、钱包；`deliverMail` 把验证邮件与短信送到对应的人；`payFromWallet` |
+| `identity.ts` | 城里发的邮箱、手机号、惯用的用户名（就是邮箱 @ 前面那一段）与密码、钱包；`deliverMail` 把验证邮件与短信送到对应的人（Message-ID 去重，记下到达时他正在进行的那次使用，规则提取验证码与链接作仪器）；`unseenMail` 给使用过程的新信通知（邮件只有发件人和标题）；`payFromWallet` |
 | `report.ts` | `gatherMoments`（每个人的关键时刻：第一眼、卡住、离开、办成、用完后说的话、评论与动态；路过没点开的人的想法）→ `launchReport`（用「归纳」模型组写成一页，每条必须引用痕迹；输入有上百条痕迹，单次调用的超时放宽到 8 分钟，素材变了时先给上一版、后台重写）；`experiencedIssues`、`engineeringAppendix` |
 
 规则决定「遇没遇到、注没注意」，模型只在决定点出场：要不要点开、使用时的每一步、用完之后怎么说。数据：`launches`、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports`（迁移 `0007`）。每次发布内部对应一个 `studies` 行，作为使用过程、证据与花费的容器（`trigger = 'launch'`）。
@@ -63,6 +64,7 @@ flowchart LR
 | 人 | `packages/engine/src/human/` | 人物的六层描述（YAML + zod 校验 + 版本哈希）、手的能力（`motorProfile`）、身心状态的规则（`updateState`）、感知滤镜、识字量、记忆（每人一棵 ewave 记忆树，`packages/memory`：身份钉住、对某个产品的态度有界可变、对一类事物的看法要多次独立经历才动）、人口合成 |
 | 世界 | `packages/jobsworld/`、`packages/engine/src/world/` | 城镇、日程、需求、居民与关系网、此时此地的处境（`liveContextFor`）；`WorldSimulator` 在一次使用期间运行这份处境生成的世界模板：模拟时钟、时间线、概率事件、资源（时间、电量、钱、注意力、网络）与约束 |
 | 一次使用 | `packages/engine/src/runtime/` | 每一步：世界推进 → 打断与弱网 → 截图 → 感知滤镜 → 想法（只看图，说出手上的一个动作）→ 预期有没有落空 → 身心状态更新 → 落点 → Policy Gate → 按这个人的手去做 → 护栏 |
+| 居民邮箱 | `packages/engine/src/mail/`、`packages/jobsworld/src/mailhandle.ts`、`apps/api/src/mail.ts`、`apps/web/src/pages/Settings.tsx` | 设置（公网链接、部署状态，存 `world_kv`）、Cloudflare 接口封装、转发 Worker 的源码、一键开通 / 关闭、按需收信规则与回收、收信验签与解析、测试信、网页邮箱（在使用过程的浏览器里拦截 `https://mail.<邮件域名>/` 画出收件箱）、仪器用的验证码与链接提取；像真人的邮箱用户名 |
 | 执行层 | `packages/executor/` | UAP 接口（`packages/core/src/types/uap.ts`）的浏览器实现：一个会话一个独立的 Chromium、看截图定位、人类化的手、六层错误分类、Policy Gate、语音与摄像头注入、录像、rrweb、无障碍扫描 |
 | 证据 | `packages/executor/src/evidence.ts`；`evidence`、`evidence_links`、`repro_paths` 表 | 所有截图、录像、日志按内容哈希登记，并与步骤、问题关联；复现路径可以干净重放 |
 | 事后评估 | `packages/engine/src/evaluation/` | 客观指标、问题候选（分「亲历」与「工程」两路）、评审、被测产品里 AI 回答的质量、事后访谈、干净重放、归因复核、问题合成与去重 |
@@ -94,6 +96,8 @@ sequenceDiagram
 
 详细步骤见 `packages/engine/docs/ARCHITECTURE.md`。
 
+收验证邮件也是这样一步一步来的：新邮件像手机推送一样只给他发件人和标题；他要选「看邮箱」（`check_mail`），浏览器切到另一个标签页里的邮箱 App，看截图、点开信、记住验证码，再选「切回去」（`back_to_app`）输入。点信里的链接会真的在这个浏览器里打开。切换花的时间按设备、单手与否和数字素养结算；切回来时，工作记忆小、压力大、在邮箱里待得久的人可能记不清刚才的验证码（他想法里出现过的码被抹掉），只能再切回去看。
+
 ## 5. 信息隔离
 
 | 谁 | 怎么保证 |
@@ -118,6 +122,7 @@ sequenceDiagram
 | 语音与摄像头 | 语音写进假麦克风：接入了 Vertex 连接时用 Gemini 语音合成，否则用本机的 espeak。摄像头画面来自图片或画图模型 | 语音合成没有通用的兼容接口 |
 | 切到后台 | 覆盖页面的可见性状态并冻结页面生命周期 | 无界面浏览器里切标签页不会改变可见性 |
 | 对象存储 | `pgsty/minio` 镜像（固定发布版本） | 官方 MinIO 镜像已从 Docker Hub 撤下；`elestio/minio` 的 arm64 镜像里是 x86-64 二进制，ARM 机器上起不来 |
+| 居民邮箱 | 收信靠 Cloudflare Email Routing + 一个只转发的 Worker，Worker 用 HMAC 签名把原始邮件 POST 回 Jobs；邮件域名是公网链接的主机名（Cloudflare 不接受时退到 `mail.<主机名>`），每个居民一条收信规则，开始一次使用时按需建，满了先回收从没收到过真实邮件的人，再按最久没用回收；原始邮件进 MinIO（证据 `email`，永久保留），正文进 `mailbox`；居民看信用一个在浏览器里拦截出来的邮箱 App，像看产品一样只看截图 | Tunnel 只转发 HTTP，家宽和多数云主机封了 25 端口，所以不能在容器里直接收 SMTP；Cloudflare 的子域不能用通配规则，每个域最多 200 条规则；切到邮箱、记住验证码的麻烦本身是体验的一部分 |
 | 模型调用记录 | Postgres 的 `llm_traces`：每一次尝试一行（角色、模型组、实际目标、配置版本、凭证脱敏标识、第几次、错误类别、用量、耗时、费用估计） | 单机部署，够用 |
 
 其他机制：
@@ -137,7 +142,8 @@ sequenceDiagram
 
 | 组 | 表 |
 |---|---|
-| 发布 | `launches`、`launch_versions`（开发者标记的版本点，迁移 `0009`）、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`、`launch_reports` |
+| 发布 | `launches`、`launch_versions`（开发者标记的版本点，迁移 `0009`）、`exposures`、`intentions`、`store_reviews`、`posts`、`mailbox`（迁移 `0010` 加了 HTML 正文、Message-ID、原始邮件证据、仪器提取、到达时的使用、点开时间）、`launch_reports` |
+| 居民邮箱 | `mail_routes`（按需建在 Cloudflare 上的收信规则，一个地址一条，迁移 `0010`）；设置与部署状态在 `world_kv` 的 `settings`、`mail`、`mail_check` |
 | 远程 MCP 授权 | `oauth_clients`（动态注册的 agent）、`oauth_tokens`（只存哈希；`grant_id` 是一次授权，`fp` 是授权时口令的指纹）（迁移 `0009`） |
 | 人与城 | `personas`、`persona_memory_trees`、`persona_global_state`、`persona_agendas`、`persona_avatars`、`households`、`residents`、`relations`、`world_events`、`world_kv` |
 | 一次使用 | `sessions`（含 `world_context`）、`steps`、`observations`、`world_states`、`events`、`goals`、`interviews`、`human_tasks` |

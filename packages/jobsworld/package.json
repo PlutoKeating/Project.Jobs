@@ -9,13 +9,14 @@
     "./*": "./src/*.ts"
   },
   "dependencies": {
+    "@nats-io/jetstream": "^3.4.0",
+    "@nats-io/kv": "^3.4.0",
+    "@nats-io/transport-node": "^3.4.0",
     "@pux/core": "workspace:*",
     "@pux/db": "workspace:*",
     "@pux/llm": "workspace:*",
-    "@nats-io/transport-node": "^3.4.0",
-    "@nats-io/jetstream": "^3.4.0",
-    "@nats-io/kv": "^3.4.0",
+    "@pux/memory": "workspace:*",
     "drizzle-orm": "^0.45.4",
-    "@pux/memory": "workspace:*"
+    "pinyin-pro": "^3.29.5"
   }
 }

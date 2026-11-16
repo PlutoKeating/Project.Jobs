@@ -18,7 +18,7 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 
 装完会打印访问地址、版本、管理员口令和访客口令。重复运行这一行是安全的，也就是升级（见下面的「升级」）：已有的 `.env` 和数据原样保留，先备份数据库，再换上新镜像和编排文件；上一次半路失败的话，再运行一次会接着做完。
 
-可用的环境变量（写在这一行前面）：`JOBS_HOME`（安装目录，默认 `~/.jobs`）、`JOBS_PORT`（默认 7777）、`JOBS_BIND`（默认 `0.0.0.0`；只想本机访问设为 `127.0.0.1`）、`JOBS_IMAGE`（已经装过时默认沿用 `.env` 里的；显式给出时会写回 `.env`）、`JOBS_PUBLIC_URL`（反向代理之后对外的 https 地址，coding agent 用 `<它>/mcp` 接入；显式给出时会写回 `.env`）、`JOBS_SKIP_PULL=1`、`JOBS_NO_DOCKER_INSTALL=1`、`JOBS_SKIP_BACKUP=1`（升级前不备份数据库）。
+可用的环境变量（写在这一行前面）：`JOBS_HOME`（安装目录，默认 `~/.jobs`）、`JOBS_PORT`（默认 7777）、`JOBS_BIND`（默认 `0.0.0.0`；只想本机访问设为 `127.0.0.1`）、`JOBS_IMAGE`（已经装过时默认沿用 `.env` 里的；显式给出时会写回 `.env`）、`JOBS_PUBLIC_URL`（反向代理之后对外的 https 地址，coding agent 用 `<它>/mcp` 接入；显式给出时会写回 `.env`；装好后也可以在网页「设置」里填）、`JOBS_SKIP_PULL=1`、`JOBS_NO_DOCKER_INSTALL=1`、`JOBS_SKIP_BACKUP=1`（升级前不备份数据库）。
 
 ## 装好之后
 
@@ -90,7 +90,7 @@ claude mcp add --transport http jobs https://jobs.example.com/mcp     # Claude C
 codex mcp add jobs --url https://jobs.example.com/mcp                   # Codex
 ```
 
-网页右上角的机器人图标里有这台 Jobs 的链接、各家 agent 的写法，以及已经授权的 agent（可以撤销）。没设置 `JOBS_PUBLIC_URL` 时链接是 `http://127.0.0.1:7777/mcp`，只有这台机器上的 agent 能用；让别处的 agent 接入见下面的「对外访问与口令」。同一台机器上也可以用 stdio：`claude mcp add jobs -- jobsworld mcp`。
+网页右上角的机器人图标里有这台 Jobs 的链接、各家 agent 的写法，以及已经授权的 agent（可以撤销）。没设置公网链接（网页「设置」或 `JOBS_PUBLIC_URL`）时链接是 `http://127.0.0.1:7777/mcp`，只有这台机器上的 agent 能用；让别处的 agent 接入见下面的「对外访问与口令」。同一台机器上也可以用 stdio：`claude mcp add jobs -- jobsworld mcp`。
 
 发布的产品地址必须是 Jobs 所在的机器能打开的：Jobs 在云端时，`localhost` 和内网地址都打不开，先把产品部署到公网（预览环境也可以）。
 
@@ -140,7 +140,7 @@ Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等
 两点要知道：
 
 - 流量是明文 HTTP。要放到公网上，请在前面加一层带 TLS 的反向代理（Caddy、Nginx、Cloudflare Tunnel），并把 `JOBS_BIND` 改成 `127.0.0.1`。
-- 放到反向代理后面之后，把对外的地址写进 `.env` 的 `JOBS_PUBLIC_URL`（例如 `https://jobs.example.com`，不带路径），然后 `jobsworld up`。coding agent 的链接就是 `<它>/mcp`；OAuth 要求 https，所以这里填 http 的公网地址时远程 MCP 不会启用。也可以在安装那一行前面加 `JOBS_PUBLIC_URL=https://…`，会写回 `.env`。目前只支持挂在域名根路径下（不支持 `https://example.com/jobs` 这样的子路径）。
+- 放到反向代理后面之后，在网页右上角齿轮「设置」里填好对外的地址（例如 `https://jobs.example.com`，不带路径），保存后几秒内生效；也可以写进 `.env` 的 `JOBS_PUBLIC_URL` 再 `jobsworld up`（网页上填的优先）。coding agent 的链接就是 `<它>/mcp`；OAuth 要求 https，所以这里填 http 的公网地址时远程 MCP 不会启用。也可以在安装那一行前面加 `JOBS_PUBLIC_URL=https://…`，会写回 `.env`。目前只支持挂在域名根路径下（不支持 `https://example.com/jobs` 这样的子路径）。
 
   Caddy（自动申请证书），`/etc/caddy/Caddyfile`：
 
@@ -152,6 +152,21 @@ Linux 上 `jobs` 容器用宿主机网络（`compose.host.yml`），数据库等
 
   Cloudflare Tunnel（不用开端口、不用公网 IP）：`cloudflared tunnel create jobs`，在 Cloudflare 里把 `jobs.example.com` 指到这个隧道，配置里 `service: http://127.0.0.1:7777`，再 `cloudflared tunnel run jobs`。Terraria 游戏服走的是同一个端口的 TCP，HTTP 反向代理转发不了；要从外面进游戏，需要另外放行这个端口。
 - `POST /api/v1/inbox/email` 与 `/inbox/sms` 不需要登录（被测产品的测试环境要往这里投递验证码）。它们只能给居民的收件箱塞消息，读不到任何东西。
+
+## 居民邮箱
+
+很多产品要用邮箱注册或收验证码。居民默认的地址是 `…@jobsworld.test`，真实的信到不了；给他们真实的邮箱只要两样东西：
+
+1. 一个能从外网访问这台 Jobs 的 https 链接，域名托管在 Cloudflare（例如用 Cloudflare Tunnel 把 `jobs.example.com` 指到 `http://127.0.0.1:7777`）。怎么做到由维护者自己决定。
+2. 一枚 Cloudflare API Token（[在这里创建](https://dash.cloudflare.com/profile/api-tokens)，选「创建自定义令牌」），权限：`Zone › Zone › Read`、`Zone › Zone Settings › Edit`、`Zone › Email Routing Rules › Edit`、`Account › Workers Scripts › Edit`，区域资源包含这个域名。
+
+在网页的「设置」里填好公网链接、贴上令牌，点「开通」。Jobs 会确认链接能回到自己、上传一个只转发的 Worker（`jobsworld-mail`）、在 `jobs.example.com` 上开启 Email Routing（Cloudflare 自动加 MX、SPF、DKIM 记录），然后把每位居民的地址换成 `<像真人的用户名>@jobs.example.com`。主机名上已有的记录让 Cloudflare 不接受时，改用 `mail.jobs.example.com`，设置页上会写明。新加的 MX 记录生效通常要几分钟；用「给一个临时地址发测试信」从你自己的邮箱发一封，看到「收到了」就说明整条路通了。
+
+- 收信不需要 25 端口，也不需要公网 IP：信先到 Cloudflare，Worker 再用 https 把原始邮件（带签名）送回 `<公网链接>/inbound/email`。只收不发。
+- 子域不能用通配规则，每个域最多 200 条规则：Jobs 只给开始用产品的居民建规则（默认最多占 190 条，`JOBS_MAIL_RULE_CAP` 可改），满了先回收从没收到过真实邮件的人。被回收的人地址不变，下次用产品时自动重建。
+- 改了公网链接后要点「重新部署」，居民的地址会跟着变，之前用旧地址注册的账号就收不到信了。
+- 「关闭」会删掉 Worker 和收信规则，居民地址回到 `jobsworld.test`；Cloudflare 上的 MX 记录留着，要删在 Cloudflare 里删。
+- 原始邮件存在 MinIO（证据），正文与仪器提取的验证码、链接存在 Postgres，永久保留；网页「人」页有每个人的收件箱。
 
 ## 自己构建
 

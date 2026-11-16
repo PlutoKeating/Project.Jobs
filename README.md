@@ -60,7 +60,7 @@ Nobody is assigned to test. Rules work out who comes across your product and who
   <img src="docs/images/screen.en.light.svg" alt="How a resident uses a product: one look at a screenshot where anything past the reading budget is blurred, what she thinks in her own situation, then one action for her hand. It only counts if the screen visibly changes. Page structure, element lists and errors are never handed to them." width="100%">
 </picture>
 
-Each resident uses it in their own here and now: on the subway with one free hand, minding a child, with five minutes left. When a product asks them to sign up, they use the mailbox and phone number the town issued them, and the verification code really arrives.
+Each resident uses it in their own here and now: on the subway with one free hand, minding a child, with five minutes left. When a product asks them to sign up, they use the mailbox the town issued them: paste a Cloudflare token in Settings and real verification mail reaches them, and they switch to their mail app to read the code like anyone would.
 
 ### One plain page
 

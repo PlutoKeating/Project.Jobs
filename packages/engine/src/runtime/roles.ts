@@ -4,7 +4,7 @@ import { z, type PersonaSpec } from '@pux/core';
 import { gateway, type ContentPart, type Tags } from '@pux/llm';
 import { personaBio } from '../human/persona.ts';
 
-export const ACTIONS = ['tap', 'type', 'scroll', 'go_back', 'press_key', 'long_press', 'hover', 'drag', 'look_closer', 'speak', 'show_camera', 'refresh', 'none'] as const;
+export const ACTIONS = ['tap', 'type', 'scroll', 'go_back', 'press_key', 'long_press', 'hover', 'drag', 'look_closer', 'speak', 'show_camera', 'refresh', 'check_mail', 'back_to_app', 'none'] as const;
 export type MindAction = typeof ACTIONS[number];
 
 export const MindSchema = z.object({
@@ -40,6 +40,8 @@ export interface MindInput {
   history: { intent: string; outcome: string; monologue: string }[];
   image?: Buffer; zoom?: Buffer; events: string[]; interruptionNote?: string; loopNote?: string;
   pageUrlHint: string; step: number; maxSteps: number;
+  /** 屏幕上现在是邮箱 App（而不是这个产品） */
+  inMail?: boolean;
 }
 
 const BANNED = /测试|评估|可用性|找问题|用户反馈|评测|test(ing)?\b|evaluat|usability|feedback/i;
@@ -84,8 +86,10 @@ export function mindSystemPrompt(i: MindInput): string {
 - look_closer：凑近仔细看屏幕上某一块（看小字、看图）
 - speak：对着麦克风说话（说的话写在 input_text）；show_camera：用摄像头对着某个东西（对着什么写在 input_text）
 - refresh：刷新页面（很少用，刷一次没用你就不会再刷）
+- check_mail：${phone ? '切到手机上的邮箱 App' : '切到浏览器里你的邮箱'}看信（切过去、找信、再切回来都要花时间，回来后得自己记着刚才看到的内容）
+- back_to_app：从邮箱切回「${i.appName}」${i.inMail ? '\n- 你现在看的是自己的邮箱，不是「' + i.appName + '」。' : ''}
 - target_text：照抄写在那个东西上的字（按钮上的字、输入框里的灰色提示字）；它上面没有字（纯图标、图片）就留空。
-- target_look：用你的话说它长什么样、在屏幕的什么位置（例如「右上角的放大镜图标」「蓝色的大按钮」「第二条笔记右边的垃圾桶」）。scroll、go_back、press_key、refresh 不需要目标，两项都留空。
+- target_look：用你的话说它长什么样、在屏幕的什么位置（例如「右上角的放大镜图标」「蓝色的大按钮」「第二条笔记右边的垃圾桶」）。scroll、go_back、press_key、refresh、check_mail、back_to_app 不需要目标，两项都留空。
 - intent：用一句自然的话说你要做什么。
 
 【其他】
@@ -118,8 +122,10 @@ export function mindSystemPrompt(i: MindInput): string {
 - look_closer: look closely at one part of the screen (small print, an image)
 - speak: talk into the microphone (what you say goes in input_text); show_camera: point the camera at something (what at goes in input_text)
 - refresh: reload the page (rare; if once doesn't help you won't do it again)
+- check_mail: switch to ${phone ? 'the mail app on your phone' : 'your email in another browser tab'} to read your mail (switching over, finding the message and coming back all take time; when you come back you have to remember what you saw)
+- back_to_app: switch from your email back to "${i.appName}"${i.inMail ? '\n- What you are looking at now is your own email, not "' + i.appName + '".' : ''}
 - target_text: copy exactly the words written on the thing (button label, grey hint inside a field); empty if it has no words (an icon, a picture).
-- target_look: in your own words, what it looks like and where it is (e.g. "magnifier icon at top right", "the big blue button", "trash can to the right of the second note"). scroll, go_back, press_key, refresh need no target: leave both empty.
+- target_look: in your own words, what it looks like and where it is (e.g. "magnifier icon at top right", "the big blue button", "trash can to the right of the second note"). scroll, go_back, press_key, refresh, check_mail, back_to_app need no target: leave both empty.
 - intent: one natural sentence saying what you are about to do.
 
 [Other]

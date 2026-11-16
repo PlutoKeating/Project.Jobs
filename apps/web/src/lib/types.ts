@@ -60,7 +60,7 @@ export interface PersonaDetail {
   launch_of: Record<string, string>;
   spec: PersonaSpec; agenda: { items: AgendaItem[]; home_place_id: string; role: string; source: string; sim_date: string } | null; memories: Memory[]; sessions: PersonaSession[];
   trust: { ai_trust: number; app_trust: Record<string, number>; sim_day: number } | null; live: PersonaLive | null; clock: ClockMsg | null;
-  resident: { household_id: string; role: string; work_group: string; workplace_id: string | null; income_month: number; currency: string; wallet: number; life_event: string | null } | null;
+  resident: { household_id: string; role: string; work_group: string; workplace_id: string | null; income_month: number; currency: string; wallet: number; life_event: string | null; email?: string | null; phone?: string | null } | null;
   ties: Tie[];
   here: { clock: string; name: string; scenario: string; place_id: string; device: 'phone' | 'computer'; posture: { zh: string; en: string }; needs: Needs; phone_affinity: number; available: boolean; unavailable_reason: string | null; time_left_min: number; companions: { id: string; name: string; kind: string }[] } | null;
 }

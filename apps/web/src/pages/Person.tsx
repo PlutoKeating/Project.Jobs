@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Link, useParams } from '@tanstack/react-router';
 import { ArrowUpRight, MapPin, Monitor, Smartphone } from 'lucide-react';
-import { usePersona, useTown } from '../lib/api.ts';
+import { useQuery } from '@tanstack/react-query';
+import { get, usePersona, useTown } from '../lib/api.ts';
+import { MailList, type MailBrief } from '../components/Mail.tsx';
 import { useLabel, useT } from '../lib/i18n.ts';
 import { useSnapshot } from '../lib/stream.ts';
 import type { AgendaItem, Memory, PersonaSession } from '../lib/types.ts';
@@ -132,6 +134,7 @@ export function PersonPage() {
           {d.agenda && <Section title={t('today')} aside={<span className="tabular text-xs text-fg-subtle">{d.agenda.sim_date}</span>}><DayLane items={d.agenda.items} minute={minute} placeName={placeName} /></Section>}
           <Section title={t('history')}>{d.sessions.length ? <History sessions={d.sessions} launchOf={d.launch_of ?? {}} /> : <p className="text-sm text-fg-subtle">—</p>}</Section>
           <Section title={t('memories')} aside={<span className="tabular text-xs text-fg-subtle">{d.memories.length}</span>}>{d.memories.length ? <MemoryList items={d.memories} apps={apps} /> : <p className="text-sm text-fg-subtle">—</p>}</Section>
+          <Inbox id={id} email={d.resident?.email ?? null} />
         </div>
         <aside className="min-w-0">
           {(live?.needs ?? d.here?.needs) && (() => { const n = (live?.needs ?? d.here!.needs); return (
@@ -187,5 +190,16 @@ export function PersonPage() {
         </aside>
       </div>
     </article>
+  );
+}
+
+/** 他收到的邮件与短信（城里发的邮箱与手机号） */
+function Inbox({ id, email }: { id: string; email: string | null }) {
+  const { t } = useT();
+  const q = useQuery({ queryKey: ['inbox', id], queryFn: () => get<MailBrief[]>(`/personas/${id}/inbox`), refetchInterval: 20_000 });
+  return (
+    <Section title={t('inbox')} aside={email && <span className="tabular truncate text-xs text-fg-subtle">{email}</span>}>
+      {q.data ? <MailList items={q.data} /> : <Skeleton className="h-16 w-full" />}
+    </Section>
   );
 }

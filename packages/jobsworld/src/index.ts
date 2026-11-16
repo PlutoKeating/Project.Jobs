@@ -7,3 +7,4 @@ export * from './queries.ts';
 export * from './life.ts';
 export * from './residents.ts';
 export * from './context.ts';
+export * from './mailhandle.ts';

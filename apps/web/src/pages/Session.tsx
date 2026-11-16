@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ArrowRight, Check, Timer, Globe2, MapPin, Send, X, Zap } from 'lucide-react';
-import { evidenceUrl, post, useSession } from '../lib/api.ts';
+import { useQuery } from '@tanstack/react-query';
+import { evidenceUrl, get, post, useSession } from '../lib/api.ts';
+import { MailList, type MailBrief } from '../components/Mail.tsx';
 import { useLabel, useT } from '../lib/i18n.ts';
 import type { StepRow } from '../lib/types.ts';
 import { Avatar, Button, ErrorState, Section, Skeleton, Stat } from '../components/ui.tsx';
@@ -53,6 +55,8 @@ export function SessionPage() {
   const { id } = useParams({ strict: false }) as { id: string };
   const q = useSession(id); const { t } = useT(); const L = useLabel(); const nav = useNavigate();
   const [ask, setAsk] = useState(''); const [busy, setBusy] = useState(false);
+  const live = !!q.data && ['running', 'waiting_human', 'planned'].includes(q.data.session.status);
+  const mail = useQuery({ queryKey: ['session-mail', id], queryFn: () => get<MailBrief[]>(`/sessions/${id}/mail`), refetchInterval: live ? 8000 : false });
   if (q.isError) return <ErrorState onRetry={() => void q.refetch()} />;
   if (!q.data) return <Skeleton className="h-96 w-full" />;
   const d = q.data; const s = d.session;
@@ -91,6 +95,7 @@ export function SessionPage() {
           <ol>{d.steps.map((x) => <Step key={x.idx} s={x} events={d.events.filter((e) => e.step_idx === x.idx)} />)}</ol>
         </Section>
         <aside className="min-w-0">
+          {mail.data && mail.data.length > 0 && <Section title={t('session_mail')} aside={<span className="tabular text-xs text-fg-subtle">{mail.data.length}</span>}><MailList items={mail.data} /></Section>}
           <Section title={t('interview')}>
             <div className="space-y-5 xl:max-h-[70vh] xl:overflow-y-auto xl:pr-2">
               {qa.map((x, i) => <div key={i}><p className="text-xs text-fg-subtle">{x.q}</p><p className="mt-1 text-sm leading-relaxed">{x.a}</p></div>)}

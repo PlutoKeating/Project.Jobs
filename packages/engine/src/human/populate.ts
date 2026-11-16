@@ -1,5 +1,6 @@
 // 人口生成：统计骨架（population.ts）→ 规则推导数值 → 模型按家庭写叙事 → 入库 → 住进城里。
 // 生成结果可以导出成数据文件随安装包自带（config/population/residents.jsonl），别的机器直接导入，不必再生成。
+import { mailDomain } from '../mail/settings.ts';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { configPath, logger, PersonaSpecSchema, Rng, shortHash, z, type PersonaSpec } from '@pux/core';
 import { and, eq, getDb, personas } from '@pux/db';
@@ -129,7 +130,7 @@ export async function generatePopulation(opts: { n: number; seed?: number; zhSha
 export async function settleRecords(records: ResidentRecord[]) {
   const layout = computeLayout(loadTown());
   const input: SettleInput[] = records.map((r) => ({ persona_id: r.spec.id, spec: r.spec, household: r.household, role: r.skeleton.role, work_group: r.skeleton.work_group, income_month: r.skeleton.income_month, life_event: r.skeleton.life_event, skeleton: r.skeleton }));
-  const s = await settleResidents(layout, input);
+  const s = await settleResidents(layout, input, await mailDomain());
   const res = await allResidents(); const hhs = await allHouseholds();
   const ps = await getDb().select({ id: personas.id, spec: personas.spec }).from(personas).where(eq(personas.active, true));
   const specs = new Map(ps.map((p) => [p.id, p.spec as PersonaSpec]));
