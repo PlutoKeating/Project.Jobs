@@ -27,6 +27,8 @@ export function modelRoutes(app: FastifyInstance) {
   };
 
   app.get('/api/v1/models', async (q, r) => { if (!requireAdmin(q, r)) return; return state(); });
+  // 「使用这台机器的 gcloud 登录」：服务能不能读到 gcloud 的配置目录、当前账号与默认项目（不返回凭证内容）
+  app.get('/api/v1/models/gcloud', async (q, r) => { if (!requireAdmin(q, r)) return; return L.probeGcloud(); });
 
   app.get('/api/v1/models/catalog/:id', async (q, r) => {
     if (!requireAdmin(q, r)) return;

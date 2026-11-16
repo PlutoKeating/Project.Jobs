@@ -101,7 +101,7 @@ docker compose --profile game up -d --build --no-deps tml      # tModLoader（�
 ## 10. 故障排查
 
 - 城里一直没人用产品、世界服务日志里有「还没有接入可用的模型」：到「模型」页看上方三项哪一项标红。
-- 模型调用报凭证无效：到「模型」页给对应连接换一把凭证并保存（旧的删掉）。用 gcloud 的 ADC 文件做凭证时它会过期，过期后重新粘贴。
+- 模型调用报凭证无效：到「模型」页给对应连接换一把凭证并保存（旧的删掉）。用粘贴的 gcloud ADC 文件做凭证时它会过期，过期后重新粘贴；用「使用这台机器的 gcloud 登录」时只需在这台机器上重新 `gcloud auth login`。
 - 城里没有人在动 / 时钟显示 `--:--`：确认 NATS 容器在运行、世界服务在运行。
 - 发布之后一直没人打开：看 `pnpm jobs status <产品>` 里路过的人怎么想；提高宣发强度、换一句话介绍，或 `pnpm jobs invite <产品>`。世界服务以 `JW_RUNNER=0` 启动时不会驱动发布引擎。
 - 浏览器启动失败：`npx playwright install chromium`。

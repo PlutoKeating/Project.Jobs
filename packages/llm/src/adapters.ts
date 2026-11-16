@@ -4,6 +4,7 @@ import { createSign } from 'node:crypto';
 import { lookup } from 'node:dns/promises';
 import { readFileSync } from 'node:fs';
 import { isAbsolute } from 'node:path';
+import { gcloudDirs, readGcloud } from './gcloud.ts';
 import type { ModelEntry, ProviderConn } from './config.ts';
 
 export type ContentPart = { type: 'text'; text: string } | { type: 'image'; data: Buffer | string; mime?: string };
@@ -45,16 +46,27 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
 }
 
 // ---- Google 凭证 JSON → 访问令牌（服务账号或 gcloud 的 application default credentials）----
-// 也可以只保存一个文件引用 { "file": "<容器里的路径>", "project_id"?: "<项目>" }：每次换令牌前重新读这个文件，
-// 这样宿主机上 gcloud 重新登录、文件内容换了之后不用回到「模型」页重新粘贴。
+// 也可以只保存一个引用，每次换令牌前现读，宿主机上重新登录之后不用回到「模型」页重新粘贴：
+//   { "gcloud": "auto" | "<gcloud 配置目录>", "project_id"?: "<项目>" }：这台机器的 gcloud 登录（gcloud auth login），见 gcloud.ts
+//   { "file": "<凭证文件的绝对路径>", "project_id"?: "<项目>" }：一个 Google 凭证文件
 interface GoogleCred { type?: string; client_id?: string; client_secret?: string; refresh_token?: string; client_email?: string; private_key?: string; token_uri?: string; project_id?: string; quota_project_id?: string }
 const tokens = new Map<string, { token: string; exp: number }>();
 const b64u = (b: Buffer | string) => Buffer.from(b).toString('base64url');
 
 /** 保存的凭证 → 实际的 Google 凭证（文件引用时现读文件；引用里写的项目优先于文件里的） */
 export function googleCred(secret: string): GoogleCred {
-  let j: GoogleCred & { file?: unknown };
-  try { j = JSON.parse(secret) as typeof j; } catch { throw new UpstreamError('这里需要粘贴 Google 凭证的 JSON（服务账号密钥，gcloud auth application-default login 生成的文件内容，或 {"file": "凭证文件在容器里的路径"}）', 401); }
+  let j: GoogleCred & { file?: unknown; gcloud?: unknown };
+  try { j = JSON.parse(secret) as typeof j; } catch { throw new UpstreamError('这里需要粘贴 Google 凭证的 JSON（服务账号密钥，gcloud auth application-default login 生成的文件内容，或 {"gcloud": "auto"} 使用这台机器的 gcloud 登录）', 401); }
+  if (typeof j.gcloud === 'string') {
+    const dirs = j.gcloud === 'auto' ? gcloudDirs() : [j.gcloud];
+    if (!dirs.length) throw new UpstreamError('没有找到 gcloud 的配置目录：确认它挂进了容器（见安装文档「用这台机器的 gcloud 登录」）', 401);
+    let last: Error | undefined;
+    for (const d of dirs) {
+      try { const l = readGcloud(d); const project = j.project_id ?? j.quota_project_id ?? l.project; return project ? { ...(l.cred as GoogleCred), quota_project_id: project } : (l.cred as GoogleCred); }
+      catch (e) { last ??= e as Error; }
+    }
+    throw new UpstreamError(last?.message ?? 'gcloud 没有登录', 401);
+  }
   if (typeof j.file !== 'string') return j;
   if (!isAbsolute(j.file)) throw new UpstreamError('凭证文件的路径要写成绝对路径', 401);
   let text: string;

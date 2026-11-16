@@ -13,6 +13,7 @@ export * from './store.ts';
 export * from './catalog.ts';
 export { proxyChat, startLocalEndpoint, handleProxy } from './endpoint.ts';
 export { UpstreamError, googleCred, googleProject } from './adapters.ts';
+export { gcloudDirs, probeGcloud, readGcloud } from './gcloud.ts';
 export { seal, open, _setMasterKey } from './secrets.ts';
 export type { ContentPart, Msg } from './adapters.ts';
 

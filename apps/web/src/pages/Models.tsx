@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Check, ChevronDown, ChevronUp, ChevronsDown, ChevronsUp, Crosshair, Eye, GripVertical, Plus, RefreshCw, Trash2, X } from 'lucide-react';
 import { ApiError, get, post } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
-import type { MCatalogLite, MCatalogModel, MCatalogProvider, MConfig, MModel, MPreview, MProvider, MState, MTest, MUse, MVersion } from '../lib/types.ts';
+import type { MCatalogLite, MCatalogModel, MCatalogProvider, MConfig, MGcloud, MModel, MPreview, MProvider, MState, MTest, MUse, MVersion } from '../lib/types.ts';
 import { Button, ErrorState, Seg, Skeleton } from '../components/ui.tsx';
 
 // crypto.randomUUID 只在安全上下文（HTTPS 或 localhost）里有；用局域网 IP 走 http 打开时没有，getRandomValues 则处处可用。
@@ -69,6 +69,7 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
   const cat = useQuery({ queryKey: ['m-catalog', p.catalog_id], queryFn: () => get<MCatalogProvider>(`/models/catalog/${p.catalog_id}`), enabled: open && !!p.catalog_id, staleTime: Infinity, retry: false });
   const [key, setKey] = useState(''); const [q, setQ] = useState(''); const [only, setOnly] = useState(false); const [custom, setCustom] = useState(''); const [customVision, setCustomVision] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
+  const [gc, setGc] = useState<{ busy?: boolean; msg?: string; mount?: boolean } | null>(null);
   const json = lite?.credential === 'google_json' || p.protocol === 'vertex';
   const hasSavedCred = p.credentials.some((c) => !(c.id in secrets));
   const selected = new Map(p.models.map((m) => [m.model, m]));
@@ -82,6 +83,16 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
   const shown = rows.slice(0, 60);
   const toggle = (m: MCatalogModel) => update((x) => { const i = x.models.findIndex((y) => y.model === m.id); if (i >= 0) x.models.splice(i, 1); else x.models.push({ id: rid('tgt'), model: m.id, name: m.name, kind: m.kind, uses: defaultUses(m), caps: m.caps, cost: m.cost }); });
   const addKey = () => { const v = key.trim(); if (!v) return; const id = rid('cred'); setSecret(id, v); update((x) => { x.credentials.push({ id, label: '', enabled: true, hint: t('m_new'), secret_id: 'pending' }); }); setKey(''); };
+  const addGcloud = async () => {
+    setGc({ busy: true });
+    try {
+      const g = await get<MGcloud>('/models/gcloud');
+      if (!g.found || !g.project) { setGc({ msg: t('m_gcloud_none', { error: g.error ?? '' }), mount: !g.found && g.in_container }); return; }
+      const id = rid('cred'); setSecret(id, JSON.stringify({ gcloud: 'auto' }));
+      update((x) => { x.credentials.push({ id, label: `gcloud · ${g.account}`, enabled: true, hint: 'gcloud', secret_id: 'pending' }); });
+      setGc({ msg: t('m_gcloud_added', { account: g.account ?? '', project: g.project }) });
+    } catch (e) { setGc({ msg: t('m_gcloud_none', { error: e instanceof ApiError ? e.code : String(e) }) }); }
+  };
   const runTest = async (m: MModel) => {
     setBusy(m.id);
     const caps = m.kind === 'embed' ? ['embed'] : m.kind === 'image' ? ['image'] : ['text', ...(m.caps.vision ? ['vision'] : []), 'json'];
@@ -116,7 +127,7 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
               {p.credentials.map((c) => (
                 <li key={c.id} className="flex items-center gap-3 text-sm">
                   <Switch on={c.enabled} label={c.hint} onChange={(v) => update((x) => { x.credentials.find((y) => y.id === c.id)!.enabled = v; })} />
-                  <span className={`tabular min-w-0 flex-1 truncate font-mono text-xs ${c.enabled ? 'text-fg' : 'text-fg-subtle'}`}>{c.id in secrets ? `${t('m_new')} …${secrets[c.id].trim().slice(-4)}` : c.hint}</span>
+                  <span className={`tabular min-w-0 flex-1 truncate font-mono text-xs ${c.enabled ? 'text-fg' : 'text-fg-subtle'}`}>{c.id in secrets ? `${t('m_new')} ${c.label || `…${secrets[c.id].trim().slice(-4)}`}` : c.label ? `${c.label} · ${c.hint}` : c.hint}</span>
                   <button type="button" aria-label="remove" onClick={() => { dropSecret(c.id); update((x) => { x.credentials = x.credentials.filter((y) => y.id !== c.id); }); }} className="rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-danger"><Trash2 size={14} /></button>
                 </li>
               ))}
@@ -126,6 +137,18 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
                 : <input aria-label={t('m_paste_key')} placeholder={t('m_paste_key')} type="password" autoComplete="off" className="field h-9" value={key} onChange={(e) => setKey(e.target.value)} />}
               <Button type="submit" disabled={!key.trim()}>{t('m_add_cred')}</Button>
             </form>
+            {p.protocol === 'vertex' && (
+              <div className="mt-2 space-y-2">
+                <Button type="button" variant="ghost" size="sm" disabled={gc?.busy} onClick={() => void addGcloud()}>{t('m_gcloud_use')}</Button>
+                {gc?.msg && <p role="status" className="text-xs text-fg-muted">{gc.msg}</p>}
+                {gc?.mount && (
+                  <div className="space-y-1.5 text-xs text-fg-muted">
+                    <p>{t('m_gcloud_mount')}</p>
+                    <pre className="overflow-x-auto rounded-md border border-border p-2 font-mono text-[11px] text-fg">{'services:\n  jobs:\n    volumes:\n      - /home/<you>/.config/gcloud:/root/.config/gcloud:ro'}</pre>
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           <section>

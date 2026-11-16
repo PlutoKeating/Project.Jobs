@@ -2,13 +2,14 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { randomBytes } from 'node:crypto';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
-  LlmError, _setMasterKey, _setSnapshot, candidates, classifyError, defaultUses, diffConfig, gateway, googleCred, googleProject, health, hintOf, locateFamily, normalizeCatalog, normalizeConfig, open, proxyChat, reaction, seal, solidPng, useOfRole,
+  LlmError, _setMasterKey, _setSnapshot, candidates, classifyError, defaultUses, diffConfig, gateway, googleCred, googleProject, health, hintOf, readGcloud, locateFamily, normalizeCatalog, normalizeConfig, open, proxyChat, reaction, seal, solidPng, useOfRole,
   type LlmConfig, type ModelEntry, type ProviderConn,
 } from '@pux/llm';
 
@@ -113,6 +114,28 @@ describe('凭证', () => {
     expect(() => googleCred(JSON.stringify({ file: join(dir, 'missing.json') }))).toThrow(/读不到凭证文件/);
     expect(() => googleCred(JSON.stringify({ file: 'adc.json' }))).toThrow(/绝对路径/);
     expect(hintOf(ref)).toBe('proj-a · file');
+    rmSync(dir, { recursive: true, force: true });
+  });
+  it('「这台机器的 gcloud 登录」：读 gcloud 自己的配置目录（当前账号、默认项目、credentials.db），重新登录、换项目立即生效', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'jobs-gcloud-'));
+    const db = (refresh: string) => { const d = new DatabaseSync(join(dir, 'credentials.db')); d.exec('create table if not exists credentials (account_id text primary key, value blob)'); d.prepare('insert or replace into credentials values (?, ?)').run('me@example.com', JSON.stringify({ type: 'authorized_user', client_id: 'c', client_secret: 's', refresh_token: refresh })); d.close(); };
+    const conf = (body: string) => { mkdirSync(join(dir, 'configurations'), { recursive: true }); writeFileSync(join(dir, 'configurations', 'config_default'), body); };
+    writeFileSync(join(dir, 'active_config'), 'default');
+    conf('[core]\nproject = p1\n');
+    expect(() => readGcloud(dir)).toThrow(/还没有登录/);
+    conf('[core]\naccount = me@example.com\nproject = p1\n');
+    expect(() => readGcloud(dir)).toThrow(/找不到账号/);
+    mkdirSync(join(dir, 'legacy_credentials', 'me@example.com'), { recursive: true });
+    writeFileSync(join(dir, 'legacy_credentials', 'me@example.com', 'adc.json'), JSON.stringify({ type: 'authorized_user', refresh_token: 'legacy' }));
+    expect(readGcloud(dir)).toMatchObject({ account: 'me@example.com', project: 'p1', cred: { refresh_token: 'legacy' } });
+    db('r1');
+    const ref = JSON.stringify({ gcloud: dir });
+    expect(googleCred(ref)).toMatchObject({ refresh_token: 'r1', quota_project_id: 'p1' });
+    db('r2'); conf('[core]\naccount = me@example.com\nproject = p2\n');
+    expect(googleCred(ref)).toMatchObject({ refresh_token: 'r2', quota_project_id: 'p2' }); expect(googleProject(ref)).toBe('p2');
+    expect(googleProject(JSON.stringify({ gcloud: dir, project_id: 'pinned' }))).toBe('pinned');
+    expect(() => googleCred(JSON.stringify({ gcloud: join(dir, 'nope') }))).toThrow(/读不到 gcloud 的配置目录/);
+    expect(hintOf(JSON.stringify({ gcloud: 'auto' }))).toBe('gcloud');
     rmSync(dir, { recursive: true, force: true });
   });
 });

@@ -42,7 +42,7 @@ Jobs 自己管理模型调用：管理员在网页的「模型」里从目录选
 
 **回滚** = 把旧版本的内容作为一个新版本重新保存，时间顺序完整。旧版本里后来被撤销的凭证不会回来：对应条目被去掉，界面提示去掉了几把。
 
-**凭证**：AES-256-GCM 加密，密文绑定所属连接（搬到别的连接上解不开）。主密钥来自环境变量 `JOBS_SECRET_KEY`（安装时生成），与数据库分开存放；从源码运行且没设置时在 `data/secret.key` 生成。读取配置只返回脱敏提示（末四位，或 Google 凭证里的账号 / 项目名；文件引用另加 `file`）。凭证只在真正发起调用前解密，按快照版本缓存在内存里。
+**凭证**：AES-256-GCM 加密，密文绑定所属连接（搬到别的连接上解不开）。主密钥来自环境变量 `JOBS_SECRET_KEY`（安装时生成），与数据库分开存放；从源码运行且没设置时在 `data/secret.key` 生成。读取配置只返回脱敏提示（末四位，或 Google 凭证里的账号 / 项目名；gcloud 登录与文件引用另加 `gcloud` / `file`；界面上 gcloud 登录还显示标签里的账号）。凭证只在真正发起调用前解密，按快照版本缓存在内存里。
 
 ## 3. 一次调用经过什么
 
@@ -70,7 +70,7 @@ Jobs 自己管理模型调用：管理员在网页的「模型」里从目录选
 
 **协议适配**（`adapters.ts`）：`openai`（OpenAI 兼容：绝大多数供应商，包括 Google AI Studio 的兼容入口）、`anthropic`（Messages 接口；结构化输出靠提示里的 schema 加校验）、`vertex`（粘贴 Google 凭证 JSON——服务账号密钥或 `gcloud auth application-default login` 生成的文件——换成访问令牌后走 Vertex 的 OpenAI 兼容入口；向量与画图走 Google 原生接口）。
 
-**Vertex 凭证也可以是文件引用**：在凭证框里粘贴 `{"file": "/容器里的绝对路径/application_default_credentials.json", "project_id": "<项目>"}`（`project_id` 可省略，省略时用文件里的 `quota_project_id` / `project_id`）。保存的只是这个引用；每次换访问令牌前都重新读文件，文件内容变了就立即换新令牌（`googleCred`、`googleToken`）。适合 gcloud 登录有有效期（组织策略要求每天重新登录）的情况：宿主机上重新 `gcloud auth login` / `gcloud auth application-default login` 之后，不用回到「模型」页重新粘贴。文件要挂进容器，见 [`INSTALL.md`](INSTALL.md)「用本机 gcloud 登录的 Vertex 凭证」。登录过期期间换令牌会失败，按「凭证无效」处理（这把凭证冷却 10 分钟），所以重新登录后最迟约 10 分钟恢复。
+**Vertex 可以直接用这台机器的 gcloud 登录**：Vertex 连接的凭证下面有「使用这台机器的 gcloud 登录」按钮。它先问服务（`GET /models/gcloud`，`probeGcloud`）能不能读到 gcloud 的配置目录、当前账号和默认项目，能读到就加入一把内容为 `{"gcloud": "auto"}` 的凭证（标签写上账号）。保存的只是这个引用，不含任何密钥；每次换访问令牌前按 gcloud 自己的文件现读（`gcloud.ts` 的 `readGcloud`，按文件修改时间缓存）：`active_config` → `configurations/config_<名字>` 里 `[core]` 的 `account` 与 `project`，凭证取 `credentials.db` 里这个账号的一行（gcloud 自己用的那份；读不了时退回 gcloud 同时写出的 `legacy_credentials/<账号>/adc.json`）。所以每天 `gcloud auth login`、`gcloud config set account / project` 之后都直接生效，不需要 ADC 文件，也不需要手写的副本。`auto` 依次找 `CLOUDSDK_CONFIG`、本进程用户的 `~/.config/gcloud`、`%APPDATA%\gcloud`、`/root/.config/gcloud`、`/home/*/.config/gcloud`；也可以写成一个具体目录，或加 `project_id` 固定项目。装好的 Jobs 在容器里，要把宿主机的 gcloud 配置目录只读挂到 `/root/.config/gcloud`，见 [`INSTALL.md`](INSTALL.md)「用这台机器的 gcloud 登录接入 Vertex」。另一种引用 `{"file": "<凭证文件的绝对路径>", "project_id"?: "<项目>"}` 指向一个 Google 凭证文件，同样每次现读。登录过期期间换令牌失败（Google 返回 `invalid_rapt` 之类），按「凭证无效」处理（这把凭证冷却 10 分钟），所以重新登录后最迟约 10 分钟恢复。
 
 **出站保护**：只发往 http/https；不跟随跳转（凭证不会被带到别的地址）；拒绝云主机的元数据地址（保存时看字面，连接时再看解析结果）。本机和内网地址是允许的——本地模型服务（Ollama、LM Studio）是正当用途，而且只有管理员能配置连接。
 
@@ -100,9 +100,10 @@ Jobs 自己管理模型调用：管理员在网页的「模型」里从目录选
 
 | 层 | 证据 |
 |---|---|
-| 规则（`tests/models.test.ts`，28 项） | 顺序整理、身份唯一、用途随类型与能力收敛；候选与每一种跳过原因；冷却的目标保留名次；错误归类与处理方向；密文绑定连接；Google 凭证的文件引用（现读文件、内容换了就用新的、项目优先级、读不到与相对路径的报错）；目录收敛与拒收 |
+| 规则（`tests/models.test.ts`，29 项） | 顺序整理、身份唯一、用途随类型与能力收敛；候选与每一种跳过原因；冷却的目标保留名次；错误归类与处理方向；密文绑定连接；Google 凭证的文件引用（现读文件、内容换了就用新的、项目优先级、读不到与相对路径的报错）；gcloud 登录（没登录、找不到凭证、退回 legacy 文件、`credentials.db` 换了凭证与换默认项目立即生效、固定项目、目录不存在）；目录收敛与拒收 |
 | 故障模拟（同上，本地假上游） | 一把凭证失效只隔离那一把；限流尊重恢复时间并转到下一个目标，冷却记在失败的一方；临时故障先退避重试再换目标；带图请求不进不能看图的目标；结构不合格让同一目标改；上游不认的可选参数去掉后不再带；内容安全拒绝不换供应商；总尝试数有上限；没有候选时说清原因；兼容入口按家族转发 |
 | 真实数据库（2026-11-15，本机） | 旧版本提交被拒绝（409）且草稿不丢；同一提交标识重复提交得到同一版本；凭证明文不出现在任何返回里；删掉的凭证被撤销，回滚到含它的版本时不复活；停掉唯一能做「每一步」的模型后就绪状态变为否、世界服务暂停发布引擎并在几秒内换上新版本；已有凭证的连接换主机名被拒绝 |
+| gcloud 登录（2026-11-16，本机） | 宿主机上 `probeGcloud` 找到 `~/.config/gcloud` 的账号与默认项目；在 `node:24-bookworm-slim` 容器里把它只读挂到 `/root/.config/gcloud`，`auto` 找到并从 `credentials.db` 读出凭证，不挂时报「没有找到」并给出挂载提示。当时 gcloud 的登录已过期，Google 返回 `invalid_rapt`（`gcloud auth print-access-token` 同样失败），所以这一版没有用 gcloud 登录做成功的真实调用；同一账号此前经文件引用的真实调用见下一行 |
 | 真实调用（2026-11-16，本机，Vertex，文件引用） | 引用指向本机 gcloud 的 `application_default_credentials.json`（`gcloud auth login` 写出的用户凭证，文件里没有项目，项目写在引用里），换到令牌并经 OpenAI 兼容入口调用 Gemini 返回 200 |
 | 真实调用（2026-11-15，本机，Vertex，粘贴 ADC JSON） | 文字、看图、结构化输出、向量、画图各测一次通过；世界服务经新路由跑完多次真实使用（每一步、Midscene 定位经本地兼容入口、事后归纳），两个实例都报告同一配置版本 |
 
