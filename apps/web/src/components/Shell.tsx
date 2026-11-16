@@ -77,7 +77,7 @@ export function Login() {
   const [code, setCode] = useState(''); const [err, setErr] = useState(false); const [busy, setBusy] = useState(false);
   return (
     <div className="grid min-h-dvh place-items-center bg-bg px-6">
-      <form className="w-full max-w-xs" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(false); try { await post('/auth/login', { passcode: code }); await queryClient.invalidateQueries(); } catch { setErr(true); } finally { setBusy(false); } }}>
+      <form className="w-full max-w-[20rem]" onSubmit={async (e) => { e.preventDefault(); setBusy(true); setErr(false); try { await post('/auth/login', { passcode: code }); await queryClient.invalidateQueries(); } catch { setErr(true); } finally { setBusy(false); } }}>
         <Wordmark className="mb-8" />
         <input autoFocus type="password" className="field" placeholder={t('passcode')} value={code} onChange={(e) => setCode(e.target.value)} aria-invalid={err} />
         {err && <p className="mt-2 text-xs text-danger">{t('bad_passcode')}</p>}

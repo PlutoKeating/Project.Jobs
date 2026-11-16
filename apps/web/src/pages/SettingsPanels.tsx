@@ -103,8 +103,8 @@ export function GamePanel() {
   const addr = `${location.hostname}:${d.port}`;
   return (
     <Section title={t('game')}>
-      <button type="button" onClick={() => copy('addr', addr)} className="tabular block w-full max-w-sm rounded-md border border-border px-3 py-2 text-left font-mono text-sm text-fg-display transition-colors hover:border-fg-subtle">{copied === 'addr' ? t('copied') : addr}</button>
-      <ul className="mt-5 max-w-sm divide-y divide-border border-y border-border">
+      <button type="button" onClick={() => copy('addr', addr)} className="tabular block w-full max-w-[24rem] rounded-md border border-border px-3 py-2 text-left font-mono text-sm text-fg-display transition-colors hover:border-fg-subtle">{copied === 'addr' ? t('copied') : addr}</button>
+      <ul className="mt-5 max-w-[24rem] divide-y divide-border border-y border-border">
         {(['tshock', 'tml'] as const).map((k) => { const g = d[k]; return (
           <li key={k} className="flex items-center justify-between gap-3 py-2.5 text-sm">
             <span className="flex items-center gap-2"><Dot tone={g.up ? 'success' : g.pending ? 'accent' : 'idle'} live={g.pending} />{t(k === 'tshock' ? 'g_tshock' : 'g_tml')}</span>
@@ -112,7 +112,7 @@ export function GamePanel() {
           </li>
         ); })}
       </ul>
-      {cmd && <div className="mt-4 max-w-sm"><Code text={cmd} shown={copied === 'cmd' ? t('copied') : undefined} title={t('g_run')} onClick={() => copy('cmd', cmd)} /></div>}
+      {cmd && <div className="mt-4 max-w-[24rem]"><Code text={cmd} shown={copied === 'cmd' ? t('copied') : undefined} title={t('g_run')} onClick={() => copy('cmd', cmd)} /></div>}
     </Section>
   );
 }
@@ -126,7 +126,7 @@ export function VersionPanel() {
   const checkNow = async () => { setChecking(true); try { const out = await post<typeof d>('/version/check'); queryClient.setQueryData(['version'], (x: typeof d | undefined) => ({ ...(x ?? d), ...out })); } catch { /* 状态里会带出错误 */ } finally { setChecking(false); void q.refetch(); } };
   return (
     <Section title={t('v_title')}>
-      <dl className="grid max-w-md grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+      <dl className="grid max-w-[28rem] grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
         <dt className="text-fg-muted">{t('v_current')}</dt><dd className="tabular text-fg-display">{d.version}</dd>
         <dt className="text-fg-muted">{t('v_latest')}</dt>
         <dd className="tabular">{d.latest ? <a href={d.latest.url} target="_blank" rel="noreferrer" className="text-link hover:text-accent">{d.latest.version}</a> : '—'}{d.check && <span className="ml-2 text-xs text-fg-subtle">{when(d.checked_at)}</span>}</dd>
@@ -136,7 +136,7 @@ export function VersionPanel() {
         {running ? (
           <p className="flex items-start gap-2 text-sm text-fg" role="status"><span className="mt-1.5"><Dot tone="accent" live /></span>{slow ? t('up_slow') : t('up_running')}</p>
         ) : d.update_available || failed ? (
-          <div className="max-w-md">
+          <div className="max-w-[28rem]">
             {failed && (<>
               <p role="alert" className="text-sm text-danger">{t('up_failed')}</p>
               {d.update?.log && <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-code-bg px-3 py-2 font-mono text-[11px] leading-relaxed text-code-fg">{d.update.log}</pre>}
