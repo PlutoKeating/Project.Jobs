@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-14T12:16:21+00:00",
+  "generatedAt": "2026-11-16T17:56:22.081121+00:00",
   "title": "Design System: JobsWorld",
   "extensions": {
     "colorMeta": {
@@ -675,6 +675,13 @@
       "description": "0–1 量条：细线轨道 + 石板灰绿填充 + 等宽数值。",
       "html": "<div class=\"ds-meter\"><span class=\"ds-meter-label\">数字素养</span><span class=\"ds-meter-track\"><span class=\"ds-meter-fill\" style=\"width:75%\"></span></span><span class=\"ds-meter-val\">0.75</span></div>",
       "css": ".ds-meter{display:flex;align-items:center;gap:12px;width:320px}.ds-meter-label{width:96px;font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);color:var(--ds-color-fg-muted,#a9a49c)}.ds-meter-track{position:relative;flex:1;height:6px;border-radius:9999px;background:var(--ds-color-border,rgb(232 228 221 / .08));overflow:hidden}.ds-meter-fill{position:absolute;inset:0 auto 0 0;border-radius:9999px;background:var(--ds-color-secondary,#7d8f8a)}.ds-meter-val{width:40px;text-align:right;font:450 0.8125rem/1.2rem var(--ds-font-sans,Inter,sans-serif);font-variant-numeric:tabular-nums;color:var(--ds-color-fg,#e8e4dd)}"
+    },
+    {
+      "name": "Window Voice",
+      "kind": "custom",
+      "description": "官网首页：居民原话挂在雨夜城市画的亮窗旁；10px 细光框 + 1px 细线 + 深色玻璃标签，只有「正在用 N 人」与其窗框是琥珀，并带「模拟」胶囊。",
+      "html": "<div class=\"ds-voice-stage\"><div class=\"ds-voice ds-voice-now\"><span class=\"ds-voice-tag\"><b>Kai</b><span class=\"ds-voice-dot\"> · </span><span class=\"ds-voice-now-text\">正在用 3 人</span><span class=\"ds-voice-dot\"> · </span><span class=\"ds-voice-sim\">模拟</span></span></div></div>",
+      "css": ".ds-voice-stage { position: relative; height: 120px; background: var(--ds-color-bg); } .ds-voice { position: absolute; left: 40px; top: 96px; width: 0; height: 0; } .ds-voice::after { content: \"\"; position: absolute; left: -5px; top: -5px; width: 10px; height: 10px; border: 1px solid var(--ds-color-fg); box-shadow: 0 0 10px 1px var(--ds-color-orb-glow-mid), inset 0 0 6px var(--ds-color-orb-glow-mid); } .ds-voice-now::after { border-color: var(--ds-color-accent); box-shadow: 0 0 12px 2px var(--ds-color-accent-glow), inset 0 0 6px var(--ds-color-accent-glow); } .ds-voice-tag { position: absolute; left: -20px; bottom: 19px; display: inline-flex; align-items: baseline; padding: 6px 12px; border: 1px solid var(--ds-color-border-strong); border-radius: var(--ds-radius-md); background: var(--ds-color-surface-glass); backdrop-filter: blur(8px); box-shadow: var(--ds-shadow-md); color: var(--ds-color-fg); font-size: 14px; line-height: 1.4; white-space: nowrap; } .ds-voice-tag::before { content: \"\"; position: absolute; inset: 0; border-radius: inherit; background: repeating-linear-gradient(to bottom, var(--ds-color-border) 0 1px, transparent 1px 3px); opacity: 0.5; pointer-events: none; } .ds-voice-tag::after { content: \"\"; position: absolute; left: 20px; top: 100%; width: 1px; height: 14px; background: linear-gradient(var(--ds-color-border-strong), var(--ds-color-fg-muted)); } .ds-voice-tag b { color: var(--ds-color-fg-display); font-weight: 500; } .ds-voice-dot { padding-inline: 0.4em; color: var(--ds-color-fg-subtle); } .ds-voice-now-text { color: var(--ds-color-accent); font-weight: 500; font-variant-numeric: tabular-nums; } .ds-voice-sim { padding: 0 6px; border: 1px solid var(--ds-color-border-strong); border-radius: 9999px; color: var(--ds-color-fg-muted); font-size: 0.75em; }"
     }
   ],
   "narrative": {
@@ -683,7 +690,7 @@
     "keyCharacteristics": [
       "暖炭黑底 + 琥珀只标「此刻」与选中，次要数据用石板灰绿。",
       "Inter + 思源黑体，中英混排，数字一律等宽数字（tabular）。",
-      "像素颗粒（crispEdges / pixelated）只属于城市、头像与 Wordmark；界面是细线与圆角。",
+      "像素颗粒（crispEdges / pixelated）只属于城市（网页的城市画布、官网的雨夜城市画与页脚街道）、头像与 Wordmark；界面是细线与圆角。",
       "平面为主，深度靠色阶叠层；阴影只给浮在画布上的东西。",
       "底部像素街道跨页常驻，是导航也是签名。"
     ],
@@ -701,6 +708,11 @@
       {
         "name": "数据不借强调色 Rule",
         "body": "量条默认石板灰绿；图表用独立的河蓝/陶土双色。只有当一条量值本身就是「此刻」或被选中时才换琥珀。",
+        "section": "colors"
+      },
+      {
+        "name": "夜色不随主题 Rule",
+        "body": "城市所在的区域永远是夜里。官网首页的开头（雨夜城市）与结尾带包在 `.night` 作用域里，作用域内取暗色那一套 token，亮色主题下也不变；这与城市天空只跟模拟时钟走是同一条规则。夜色区域与页面相接处向页面底色羽化（`--site-night-bg` 到 `--site-page-bg`），亮色主题下由深到浅，暗色主题下看不出接缝。",
         "section": "colors"
       },
       {
@@ -732,7 +744,7 @@
       "**Don't** 在控件或功能旁加说明性小字；用布局、图标、状态与交互解释功能（用户硬性要求）。",
       "**Don't** 做「左侧栏 + KPI 卡片墙」的后台模板；关键数字放在细线分隔的横条或页头右侧。",
       "**Don't** 用琥珀表示分类、严重度或装饰，也不要做琥珀主按钮。",
-      "**Don't** 把像素块用到城市、头像和 Wordmark 以外的界面上。",
+      "**Don't** 把像素块用到城市（网页的城市画布、官网的雨夜城市画与页脚街道）、头像和 Wordmark 以外的界面上。",
       "**Don't** 加全大写眉题或字距标签。",
       "**Don't** 给卡片、列表、面板加阴影。",
       "**Don't** 让城市天空跟随界面明暗主题；它只跟随模拟时钟。"
