@@ -75,7 +75,7 @@ function UpdateNotice() {
   // 点了升级之后：记下当时的版本与时间；服务换上新版本后（版本号变了）刷新页面
   const [started, setStarted] = useState<{ from: string; at: number } | null>(() => { try { const x = sessionStorage.getItem('jw.updating'); return x ? JSON.parse(x) as { from: string; at: number } : null; } catch { return null; } });
   const box = useRef<HTMLDivElement>(null);
-  const q = useQuery({ queryKey: ['version'], queryFn: () => get<VersionInfo>('/version'), staleTime: 300_000, refetchInterval: started ? 3000 : 1_800_000, retry: started ? false : 2 });
+  const q = useQuery({ queryKey: ['version'], queryFn: () => get<VersionInfo>('/version'), staleTime: 300_000, refetchInterval: started ? 3000 : 900_000, refetchOnWindowFocus: true, retry: started ? false : 2 });
   useEffect(() => { try { if (started) sessionStorage.setItem('jw.updating', JSON.stringify(started)); else sessionStorage.removeItem('jw.updating'); } catch { /* */ } }, [started]);
   useEffect(() => { if (!open) return; const f = (e: MouseEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); }; const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); }; document.addEventListener('mousedown', f); document.addEventListener('keydown', k); return () => { document.removeEventListener('mousedown', f); document.removeEventListener('keydown', k); }; }, [open]);
   const d = q.data;
@@ -251,7 +251,7 @@ function Wordmark({ className = '', version }: { className?: string; version?: s
 }
 
 function NavLink({ to, children }: { to: string; children: ReactNode }) {
-  return <Link to={to} activeOptions={{ exact: to === '/' }} className="relative rounded-md px-3 py-1.5 text-sm text-fg-muted transition-colors hover:text-fg data-[status=active]:text-fg-display data-[status=active]:after:absolute data-[status=active]:after:inset-x-3 data-[status=active]:after:-bottom-[9px] sm:data-[status=active]:after:-bottom-[13px] data-[status=active]:after:h-0.5 data-[status=active]:after:bg-accent">{children}</Link>;
+  return <Link to={to} activeOptions={{ exact: to === '/' }} className="relative flex h-10 shrink-0 items-center px-3 text-sm text-fg-muted transition-colors hover:text-fg sm:h-full data-[status=active]:text-fg-display data-[status=active]:after:absolute data-[status=active]:after:inset-x-3 data-[status=active]:after:bottom-0 data-[status=active]:after:h-0.5 data-[status=active]:after:bg-accent">{children}</Link>;
 }
 
 /** 页脚的街道：读完一页，城里的人此刻在哪还在眼前。跟在内容后面，不盖住内容 */
@@ -283,9 +283,9 @@ export function Shell() {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b border-border bg-surface-glass backdrop-blur-[var(--blur-glass)]">
-        <div className="mx-auto flex max-w-[var(--container-wide)] flex-wrap items-center gap-x-2 px-4 sm:h-[var(--ds-header-height)] sm:flex-nowrap sm:px-6">
+        <div className="flex w-full flex-wrap items-center gap-x-2 px-4 sm:h-[var(--ds-header-height)] sm:flex-nowrap sm:px-6 lg:px-8">
           <Wordmark className="mr-1 h-[var(--ds-header-height)] sm:mr-4" version={me.data?.version} />
-          <nav className="order-last -mx-1 flex w-full items-center gap-0.5 overflow-x-auto pb-2 sm:order-none sm:mx-0 sm:w-auto sm:pb-0">
+          <nav className="order-last -mx-3 flex w-[calc(100%+1.5rem)] items-stretch overflow-x-auto overflow-y-hidden [scrollbar-width:none] sm:order-none sm:mx-0 sm:h-full sm:w-auto sm:overflow-visible">
             <NavLink to="/">{t('nav.world')}</NavLink>
             <NavLink to="/products">{t('nav.products')}</NavLink>
             <NavLink to="/people">{t('nav.people')}</NavLink>
