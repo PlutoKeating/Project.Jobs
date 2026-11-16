@@ -6,7 +6,8 @@
 #           → 装好 jobsworld 命令。服务随 Docker 开机自启、异常自动重启。
 #           重复运行就是升级：已有的 .env 和数据原样保留，换上新镜像之前先把数据库备份到 ~/.jobs/backups。
 # 可用的环境变量：JOBS_HOME（安装目录，默认 ~/.jobs）、JOBS_PORT（默认 7777）、JOBS_BIND（默认 0.0.0.0，只想本机访问设为 127.0.0.1）、
-#                 JOBS_IMAGE（镜像；已经装过时默认沿用 .env 里的，显式给出时会写回 .env）、JOBS_SKIP_PULL=1（镜像已在本机）、
+#                 JOBS_IMAGE（镜像；已经装过时默认沿用 .env 里的，显式给出时会写回 .env）、
+#                 JOBS_PUBLIC_URL（反向代理之后对外的 https 地址，coding agent 用 <它>/mcp 接入；显式给出时会写回 .env）、JOBS_SKIP_PULL=1（镜像已在本机）、
 #                 JOBS_NO_DOCKER_INSTALL=1（不要替我装 Docker）、JOBS_SKIP_BACKUP=1（升级前不备份数据库）
 set -euo pipefail
 # 整个脚本包在一对花括号里：bash 要先读完到收尾的 } 才开始执行。用 curl … | bash 运行时，脚本本身就是标准输入，
@@ -65,7 +66,11 @@ JOBS_PORT=$PORT
 # 0.0.0.0 = 局域网 / 公网都能访问（靠下面的口令保护）；只想本机访问改成 127.0.0.1
 JOBS_BIND=$BIND
 
-# 管理员口令：发布、调宣发、接入模型。命令行与 MCP 也用它
+# 对外的 https 地址（Jobs 放在 Caddy、Nginx 或 Cloudflare Tunnel 后面时填，例如 https://jobs.example.com）。
+# coding agent 只要一个链接 <这个地址>/mcp 就能接入（浏览器里输口令授权）；不填时只有这台机器上的 agent 能用
+JOBS_PUBLIC_URL=${JOBS_PUBLIC_URL:-}
+
+# 管理员口令：发布、调宣发、接入模型。命令行与 coding agent 授权也用它
 JW_ADMIN_PASSCODE=$(rand 4)-$(rand 4)-$(rand 4)
 # 访客口令：只能看
 JW_PASSCODE=$(rand 4)-$(rand 4)
@@ -87,6 +92,12 @@ else
       awk -v img="$IMAGE" '/^JOBS_IMAGE=/{print "JOBS_IMAGE=" img; next} {print}' "$ENV_FILE" > "$ENV_FILE.new" && cat "$ENV_FILE.new" > "$ENV_FILE" && rm -f "$ENV_FILE.new"
     else echo "JOBS_IMAGE=$IMAGE" >> "$ENV_FILE"; fi
     echo "镜像改为 $IMAGE（已写进 .env）"
+  fi
+  if [ -n "${JOBS_PUBLIC_URL:-}" ] && [ "$(envv JOBS_PUBLIC_URL)" != "$JOBS_PUBLIC_URL" ]; then
+    if grep -qE '^JOBS_PUBLIC_URL=' "$ENV_FILE"; then
+      awk -v u="$JOBS_PUBLIC_URL" '/^JOBS_PUBLIC_URL=/{print "JOBS_PUBLIC_URL=" u; next} {print}' "$ENV_FILE" > "$ENV_FILE.new" && cat "$ENV_FILE.new" > "$ENV_FILE" && rm -f "$ENV_FILE.new"
+    else echo "JOBS_PUBLIC_URL=$JOBS_PUBLIC_URL" >> "$ENV_FILE"; fi
+    echo "对外地址改为 $JOBS_PUBLIC_URL（已写进 .env）"
   fi
 fi
 # 以前有没有完整装好过（上一次如果半路失败，这次仍然算第一次）
@@ -162,6 +173,9 @@ say "Jobs 装好了。"
 echo "  打开：        http://127.0.0.1:$PORT/${IP:+    （局域网：http://$IP:$PORT/）}"
 echo "  管理员口令：  $(envv JW_ADMIN_PASSCODE)"
 echo "  访客口令：    $(envv JW_PASSCODE)"
+PUB="$(envv JOBS_PUBLIC_URL)"
+echo "  coding agent：claude mcp add --transport http jobs ${PUB:-http://127.0.0.1:$PORT}/mcp"
+[ -n "$PUB" ] || echo "                （只有这台机器上的 agent 能用；要让别处接入，见 https://github.com/PlutoKeating/Project.Jobs/blob/main/docs/INSTALL.md 的「对外访问」）"
 echo
 if [ -n "$FIRST" ]; then
   echo "  第一次打开，用管理员口令进去，在「模型」里接入一家模型供应商（粘贴 Key、勾选模型、保存）。"
