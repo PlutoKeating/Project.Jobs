@@ -29,6 +29,9 @@
 | `POST /launches/:id/reset`（管理员） | 清零：城里关于这个产品（同名产品发布过的每一版）的一切经历归零——使用过程、曝光、念头、评论、动态、一页结论、版本点、问题、使用期间收到的信，以及居民记忆里关于它的部分与对它的信任；产品本身（地址、介绍、商店截图、宣发设置）不动，状态回到 `live`，发布时刻与花费归零，等于此刻重新发布。正在进行的使用被作废。返回同 `GET /launches` 的一行，另有 `cleared`：`{ sessions, exposures, reviews, posts, memories, people }`（删掉的条数；`people` 是忘掉它的居民数）。模型调用记录不删 |
 | `DELETE /launches/:id[?history=delete]`（管理员） | 下线：从城里拿掉这个产品（发布过的每一版），商店、广告、念头里都不再有它，`GET /launches` 里也没有了；正在进行的使用被作废。默认保留经历（用过的人的使用、评论、动态与记忆都留着，人物页还能看到，同名产品再次发布时居民认得它）；`history=delete` 时连同上面清零会删的全部经历和产品记录一起删掉。返回 `{ removed: true, kept, sessions, exposures, reviews, posts, memories, people }` |
 | `POST /launches/:id/invite`（管理员） | 把手机递给人：`n`（1–20，默认 3）、`segment`、`locale`、`persona_ids`、`want`（希望他们做的一件事）。返回 `{ invited, session_ids }` |
+| `GET /launches/:id/issues?track=experience\|engineering\|all&status=` | 问题清单（默认只看亲历、不含「不是问题」）：`id`、`track`、`severity`、`title`、`category`、`status`（`open` / `confirmed` / `known` / `rejected`）、`where`、`people`、`sessions`、`sessions_since_version`（标过新版本时：最新版本里出现几次）、`github`（开成的 issue：`url`、`state`） |
+| `GET /launches/:id/compare` | 按版本对比：`versions`（每一版的 `n`、`note`、`at`、`sessions`、`finished`、`succeeded`、`gave_up`）、`issues`（每个亲历问题在每一版里出现的次数 `by_version`） |
+| `GET /launches/:id/github`、`PUT`、`DELETE`（管理员） | 这个产品交给 coding agent 用的 GitHub 设置：`repo`（`owner/name`）、`auto_verify`（issue 关闭后自动验证，默认开）、`invite_n`（自动验证时请几个人，默认 3）、`has_token`。`PUT { repo?, token?, auto_verify?, invite_n? }`：换了仓库或令牌时先用它读一次仓库确认能用；令牌加密保存，不再返回 |
 | `GET /store` | 城里的人看到的应用商店：每个上架产品的介绍、截图、评分与评论 |
 | `GET /feed[?launch_id=]` | 城里的公开动态 |
 
@@ -89,9 +92,12 @@
 |---|---|
 | `GET /sessions/:id` | 一次使用：人物、所属发布（`launch`）、逐步时间线（截图证据、想法、动作、地点、资源）、世界事件、事后访谈 |
 | `POST /sessions/:id/ask` `{ q }` | 追问这次使用 → `{ answer }` |
-| `POST /issues/:id/triage`（管理员） `{ status }` | `confirmed` / `rejected` / `open` |
+| `GET /issues/:id` | 一个问题的来龙去脉：描述、`moments`（谁在哪次使用的哪一步遇到：名字、身份、人群、结局、当时的原话 `quote`、截图证据 `screenshot`）、复现步骤 `steps`、`reproduced`、`recommendation`、`github`（`url`、`state`、`number`、`verified_version`） |
+| `POST /issues/:id/triage`（管理员） `{ status }` | `confirmed`（确认要改）/ `known`（已知，暂不改：仍列出，不再当成新问题推送）/ `rejected`（不是问题）/ `open` |
+| `GET /issues/:id/fix-task` | `{ text }`：交给 coding agent 的修复任务（Markdown：问题、谁遇到、原话、截图链接、复现步骤、建议、验收方法）。截图链接带单文件签名（`/evidence/:id?s=…`，拿到链接的人只能看这一张） |
+| `POST /issues/:id/github`（管理员） | 开成 GitHub issue（正文同上）。已经开过且还开着时返回那一个（`existed: true`）。issue 关闭后（API 每分钟看一次到期该查的 issue，每个最多 5 分钟查一次；`JOBS_GITHUB_POLL=0` 关闭）：标记新版本「修复：#n 标题」，并把手机递给撞上过这个问题的那类人（出现最多的人群与语言，人数取 `invite_n`）；以「不打算修」关闭的不验证 |
 | `GET /human`、`POST /human/:id/resolve`（管理员） | 需要人介入的任务（例如验证码） |
-| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON。设置了 `JW_PASSCODE` 时，游戏内面板用 `?k=<sha256("jw-evidence:"+JW_PASSCODE) 前 32 位十六进制>` 访问（只对本接口有效） |
+| `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON。设置了 `JW_PASSCODE` 时，游戏内面板用 `?k=<sha256("jw-evidence:"+JW_PASSCODE) 前 32 位十六进制>` 访问（只对本接口有效）；`/evidence/:id?s=<单文件签名>` 只放行这一个文件（修复任务、GitHub issue、飞书卡片里的截图用） |
 
 ### 游戏服、示例产品、飞书
 
@@ -122,11 +128,11 @@
 
 ## 2. 命令行与 MCP
 
-装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`（`import`、`list`、`leisure`：给还没有「出门与吃喝玩乐」一层的人物补上；`init` 也会做）、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`（`--who` 指定人物 id）、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`；城里现在与问题（与同名 MCP 工具同一份输出）：`town`、`find`、`whois`、`talk`、`issues`、`issue [--triage]`、`compare`、`fix [--github]`、`github`（仓库与令牌）、`system`、`human [--done]`、`tool <名字> [JSON]`（直接调用任何一个工具，`tool list` 列出全部）。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`（`import`、`list`、`leisure`：给还没有「出门与吃喝玩乐」一层的人物补上；`init` 也会做）、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ### MCP 工具
 
-工具只定义一次（`packages/engine/src/launch/tools.ts`），远程与本机两种接法注册的是同一份，都只经 REST 接口工作，权限检查只在接口那一层。
+工具只定义一次（`packages/engine/src/launch/tools.ts` 与 `tools-more.ts`），远程与本机两种接法、命令行、Jobs Agent（飞书、网页聊天面板、`jobsworld chat`）用的是同一份，都只经 REST 接口工作，权限检查只在接口那一层。
 
 | 工具 | 身份 | 做什么 |
 |---|---|---|
@@ -134,7 +140,7 @@
 | `list_products` | 访客 | 已发布的产品和漏斗人数 |
 | `product_status` | 访客 | 一个产品此刻的状况：漏斗、此刻在用的人（单独列在最前，带 `persona_id`；排队的只给人数）、用过的人、路过的人怎么想 |
 | `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录（含验证邮件的仪器读数）。正在后台重写、或归纳没有成功（带原因）时写在标题下面。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
-| `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`），返回 `session_ids` |
+| `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`、`persona_ids`：指定请谁），返回 `session_ids` |
 | `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，最多 `max_minutes`（默认 5，最多 15）分钟；客户端带了 `progressToken` 时推送进度 |
 | `mark_new_version` | 管理员 | 标记新版本（`note`），见 `POST /launches/:id/versions` |
 | `reset_product` | 管理员 | 清零（`product`），见 `POST /launches/:id/reset`：城里关于它的经历全部归零，产品本身不动，此刻重新上线 |
@@ -142,6 +148,20 @@
 | `set_promotion` | 管理员 | 宣发强度、暂停 / 恢复 / 结束、广告文案 |
 | `ask_person` | 访客 | 向用过产品的居民追问（`persona_id`、`question`） |
 | `person_inbox` | 访客 | 一位居民收到的邮件和短信（`persona_id`）：验证邮件有没有到、什么时候到、他点没点开；居民邮箱还没开通时会说明 |
+| `town_now` | 访客 | 城里此刻：世界时间、谁在哪用哪个产品到第几步、各产品在用与排队人数、正在发生的事件 |
+| `find_people` | 访客 | 按画像找人：`query`（名字、职业、地区）、`segment`、`locale`、年龄、会用手机的程度、用过某个产品、此刻在用；返回 `persona_id` |
+| `person_profile` | 访客 | 一位居民（名字或 `persona_id`）：身份、自述、近况、此刻在哪有没有空、用过的产品与结局、身边的人 |
+| `town_talk` | 访客 | 公开动态与商店评论（可选 `product`） |
+| `list_issues` | 访客 | 问题清单（`track`、`status` 筛选），见 `GET /launches/:id/issues` |
+| `issue_detail` | 访客 | 一个问题的来龙去脉，见 `GET /issues/:id` |
+| `triage_issue` | 管理员 | 分诊：`confirmed` / `known` / `rejected` / `open` |
+| `compare_versions` | 访客 | 按版本对比，见 `GET /launches/:id/compare` |
+| `fix_task` | 访客 | 修复任务文本，见 `GET /issues/:id/fix-task` |
+| `open_github_issue` | 管理员 | 开成 GitHub issue，见 `POST /issues/:id/github` |
+| `system_status` | 访客 | Jobs 自己：版本与新版本、模型是否可用、花费、居民邮箱、游戏服、待人介入 |
+| `human_tasks` / `resolve_human_task` | 访客 / 管理员 | 需要人介入的事 / 标记处理完 |
+| `update_jobs` | 管理员 | 一键升级，见 `POST /update` |
+| `toggle_game` | 管理员 | 开关游戏服（`kind`、`on`），见 `POST /game` |
 
 访客身份连接时，管理员工具不出现在工具列表里。
 

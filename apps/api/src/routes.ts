@@ -11,6 +11,7 @@ import { login, logout, requireAdmin, roleOf, authEnabled } from './auth.ts';
 import { avatarFor } from './avatars.ts';
 import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
+import { issueRoutes } from './issues.ts';
 import { mailRoutes } from './mail.ts';
 import { modelRoutes, modelsReady } from './models.ts';
 import { gameRoutes } from './game.ts';
@@ -22,6 +23,7 @@ const layout = computeLayout();
 
 export function routes(app: FastifyInstance, bus: Bus | undefined) {
   launchRoutes(app, bus);
+  issueRoutes(app, bus);
   mailRoutes(app);
   modelRoutes(app);
   gameRoutes(app);
@@ -145,13 +147,6 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   });
 
   // ---- 问题、人工接管、证据 ----
-  app.post('/api/v1/issues/:id/triage', async (q, r) => {
-    if (!requireAdmin(q, r)) return;
-    const status = String((q.body as { status?: string })?.status);
-    if (!['confirmed', 'rejected', 'open'].includes(status)) return r.code(400).send({ error: 'bad_status' });
-    await getDb().update(issues).set({ status }).where(eq(issues.id, (q.params as P).id));
-    return { ok: true };
-  });
   app.get('/api/v1/human', async () => getDb().select().from(humanTasks).orderBy(desc(humanTasks.created_at)).limit(50));
   app.post('/api/v1/human/:id/resolve', async (q, r) => {
     if (!requireAdmin(q, r)) return;

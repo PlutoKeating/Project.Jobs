@@ -19,6 +19,8 @@ export const SUBJ = {
   cmdLifecycle: 'jw.cmd.lifecycle', // 清零 / 下线一个产品（世界服务先作废进行中的使用，再清库）
   detail: 'jw.detail',          // 请求/应答：人物详情（游戏面板用）
   ask: 'jw.ask',                // 请求/应答：Session 结束后的追问访谈
+  chat: 'jw.chat',              // 请求/应答：跟一位居民连续聊天（带他的记忆与此刻的处境）
+  notice: 'jw.notice',          // 值得告诉开发者的事：一次使用结束、问题第一次出现、结论写好、需要人介入、修好后的自动验证
 } as const;
 
 export const STREAM_LIVE = 'JW_LIVE';
@@ -88,3 +90,15 @@ export interface PromoteCmd { launch_id: string; intensity?: number; status?: 'l
 export interface PublishCmd { url: string; name: string; tagline: string }
 export interface LifecycleCmd { launch_id: string; action: 'reset' | 'remove'; keep_history?: boolean }
 export interface InviteCmd { launch_id: string; persona_ids?: string[]; n?: number; segment?: string; locale?: string; want?: string }
+
+/** 跟居民聊天：history 是这段聊天之前的来回（开发者说的是 user，居民说的是 resident） */
+export interface ChatCmd { persona_id: string; message: string; history?: { role: 'user' | 'resident'; text: string }[]; lang?: 'zh' | 'en' }
+export interface ChatReply { reply?: string; name?: string; busy?: boolean; error?: string }
+
+/** 值得告诉开发者的事（API 里的推送器订阅它；飞书只是其中一个去处） */
+export type NoticeMsg =
+  | { kind: 'session_end'; launch_id: string; session_id: string; persona_id: string; outcome: string | null; invited: boolean; ts: number }
+  | { kind: 'issue_new'; launch_id: string; issue_id: string; severity: string; title: string; ts: number }
+  | { kind: 'report'; launch_id: string; headline: string; verdict: string; people_used: number; ts: number }
+  | { kind: 'human'; task_id: string; session_id: string | null; reason: string; ts: number }
+  | { kind: 'fix_verify'; launch_id: string; issue_id: string; title: string; url: string; version: number; invited: number; ts: number };

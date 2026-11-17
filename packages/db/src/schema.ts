@@ -774,3 +774,93 @@ export const oauthTokens = pgTable('oauth_tokens', {
   revoked: boolean('revoked').notNull().default(false),
   created_at: createdAt(),
 }, (t) => [index('oauth_tokens_grant').on(t.grant_id)]);
+
+// ---- Jobs Agent（飞书、网页聊天面板、jobsworld chat 共用）----
+/** 一段长期对话。键：feishu:<chat>[:<话题>]、web:<身份>、cli:<身份>。messages 是 agent 的消息记录（旧的部分压缩进 summary） */
+export const agentSessions = pgTable('agent_sessions', {
+  id: text('id').primaryKey(),
+  channel: text('channel').notNull(),                    // feishu|web|cli
+  title: text('title'),
+  messages: jsonb('messages').$type<unknown[]>().notNull().default([]),
+  summary: text('summary'),                              // 压缩掉的旧对话的摘要
+  mode: jsonb('mode').$type<{ resident?: { persona_id: string; name: string } } | null>(),   // 此刻在跟哪位居民聊
+  tokens: integer('tokens').notNull().default(0),
+  cost_usd: doublePrecision('cost_usd').notNull().default(0),
+  created_at: createdAt(),
+  updated_at: ts('updated_at').notNull().default(sql`now()`),
+});
+
+/** 等人点「确认」的动作（清零、下线）：只能点一次，30 分钟过期 */
+export const agentActions = pgTable('agent_actions', {
+  id: text('id').primaryKey(),
+  session_id: text('session_id').notNull(),
+  tool: text('tool').notNull(),
+  args: jsonb('args').notNull(),
+  actor: jsonb('actor').$type<{ id: string; name?: string; role: 'admin' | 'viewer' }>().notNull(),
+  status: text('status').notNull().default('pending'),   // pending|done|failed|cancelled|expired
+  result: text('result'),
+  message_ref: text('message_ref'),                      // 渠道里那张确认卡片（飞书消息 id）
+  expires_at: ts('expires_at').notNull(),
+  decided_at: ts('decided_at'),
+  created_at: createdAt(),
+}, (t) => [index('agent_actions_session').on(t.session_id)]);
+
+/** 飞书里跟机器人说过话的人：角色、怎么得来的（扫码的人 / 同组织默认 / 口令配对） */
+export const feishuUsers = pgTable('feishu_users', {
+  open_id: text('open_id').primaryKey(),
+  name: text('name'),
+  tenant_key: text('tenant_key'),
+  role: text('role').notNull(),                          // admin|viewer
+  via: text('via').notNull(),                            // owner|tenant|passcode
+  fp: text('fp'),                                        // 配对时那个口令的指纹；口令换了就失效
+  revoked: boolean('revoked').notNull().default(false),
+  bound_at: createdAt(),
+  last_seen_at: ts('last_seen_at'),
+});
+
+/** 推送去处（扫码人的私聊、被设为推送去处的群）与各自的偏好、看板卡 */
+export const feishuTargets = pgTable('feishu_targets', {
+  chat_id: text('chat_id').primaryKey(),
+  kind: text('kind').notNull(),                          // p2p|group
+  name: text('name'),
+  prefs: jsonb('prefs').$type<Record<string, unknown>>().notNull().default({}),
+  boards: jsonb('boards').$type<Record<string, string>>().notNull().default({}),   // 发布 id → 看板卡的消息 id
+  pending: jsonb('pending').$type<unknown[]>().notNull().default([]),              // 等着合并发的事
+  last_digest: jsonb('last_digest').$type<Record<string, string>>().notNull().default({}),   // 早报 / 晚报上次发的日期
+  enabled: boolean('enabled').notNull().default(true),
+  created_at: createdAt(),
+});
+
+// ---- 交给 coding agent：每个产品的 GitHub 设置与开出去的 issue ----
+export const launchGithub = pgTable('launch_github', {
+  launch_id: text('launch_id').primaryKey(),
+  repo: text('repo').notNull(),                          // owner/name
+  token: text('token').notNull(),                        // 加密后的细粒度令牌
+  auto_verify: boolean('auto_verify').notNull().default(true),
+  invite_n: integer('invite_n').notNull().default(3),
+  updated_at: ts('updated_at').notNull().default(sql`now()`),
+});
+
+export const issueLinks = pgTable('issue_links', {
+  id: text('id').primaryKey(),
+  issue_id: text('issue_id').notNull(),
+  launch_id: text('launch_id').notNull(),
+  repo: text('repo').notNull(),
+  number: integer('number').notNull(),
+  url: text('url').notNull(),
+  state: text('state').notNull().default('open'),        // open|closed
+  closed_at: ts('closed_at'),
+  verified_version: integer('verified_version'),         // 关闭后自动标的版本号
+  verify_sessions: jsonb('verify_sessions').$type<string[]>(),
+  checked_at: ts('checked_at'),
+  created_at: createdAt(),
+}, (t) => [index('issue_links_issue').on(t.issue_id), index('issue_links_launch').on(t.launch_id)]);
+
+/** 卡片里的一次性只读链接：只存哈希，打开一次后作废 */
+export const signedLinks = pgTable('signed_links', {
+  hash: text('hash').primaryKey(),
+  path: text('path').notNull(),
+  expires_at: ts('expires_at').notNull(),
+  used_at: ts('used_at'),
+  created_at: createdAt(),
+});

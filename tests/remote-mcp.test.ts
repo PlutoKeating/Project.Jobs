@@ -41,7 +41,7 @@ describe('remote MCP', () => {
   });
   it('写操作的工具都要管理员；读的工具访客也能用', () => {
     const admin = JOBS_TOOLS.filter((t) => t.admin).map((t) => t.name).sort();
-    expect(admin).toEqual(['invite_people', 'mark_new_version', 'publish_product', 'remove_product', 'reset_product', 'set_promotion']);
+    expect(admin).toEqual(['invite_people', 'mark_new_version', 'open_github_issue', 'publish_product', 'remove_product', 'reset_product', 'resolve_human_task', 'set_promotion', 'toggle_game', 'triage_issue', 'update_jobs']);
     expect(JOBS_TOOLS.map((t) => t.name)).toEqual(expect.arrayContaining(['list_products', 'product_status', 'product_report', 'wait_for_people', 'ask_person']));
   });
   it('清零与下线的工具调的是对应的接口：清零 POST reset；下线 DELETE，要删经历时带 history=delete', async () => {

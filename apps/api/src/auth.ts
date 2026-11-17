@@ -69,8 +69,14 @@ export function requireAdmin(req: FastifyRequest, reply: FastifyReply): boolean 
 /** 游戏内面板加载截图用的令牌（与 tModLoader mod 的 EvidenceKey() 同算法）；只放行 /api/v1/evidence/* */
 export const evidenceKey = () => (process.env.JW_PASSCODE ? createHash('sha256').update(`jw-evidence:${process.env.JW_PASSCODE}`).digest('hex').slice(0, 32) : '');
 export function evidenceAllowed(req: FastifyRequest): boolean {
+  if (!req.url.startsWith('/api/v1/evidence/') && !req.url.startsWith('/evidence/')) return false;
+  const u = new URL(req.url, 'http://x');
+  // 单个证据的签名（GitHub issue、飞书卡片里的截图链接）：只放行这一个文件
+  const s = u.searchParams.get('s'); const id = decodeURIComponent(u.pathname.split('/').pop() ?? '');
+  if (s && id && eq(s, evidenceSig(id))) return true;
   const k = evidenceKey(); if (!k) return false;
-  if (!req.url.startsWith('/api/v1/evidence/')) return false;
-  const got = new URL(req.url, 'http://x').searchParams.get('k') ?? '';
-  return eq(got, k);
+  return req.url.startsWith('/api/v1/evidence/') && eq(u.searchParams.get('k') ?? '', k);
 }
+
+/** 一个证据文件的签名：拿到链接的人只能看这一个文件（截图贴进 GitHub issue、飞书卡片时用） */
+export const evidenceSig = (id: string) => createHmac('sha256', secret()).update(`jw-ev:${id}`).digest('base64url').slice(0, 22);

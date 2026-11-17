@@ -32,4 +32,6 @@ export * from './launch/identity.ts';
 export * from './launch/engine.ts';
 export * from './launch/lifecycle.ts';
 export * from './launch/report.ts';
+export * from './launch/issues.ts';
+export * from './launch/github.ts';
 export * from './mail/index.ts';

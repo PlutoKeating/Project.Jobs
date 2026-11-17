@@ -8,6 +8,7 @@ import { dataPath, jobsVersion, logger, REPO_ROOT } from '@pux/core';
 import { connectBus, SUBJ, type Bus } from '@pux/jobsworld';
 import { bearerOf, evidenceAllowed, isPasscode, roleOf, setOAuthRole } from './auth.ts';
 import { lookupAccess } from './oauth.ts';
+import { internalRole } from './internal.ts';
 import { mcpRoutes } from './mcp.ts';
 import { routes } from './routes.ts';
 import { warmAvatars } from './avatars.ts';
@@ -27,8 +28,9 @@ const OPEN = new Set(['/api/v1/me', '/api/v1/auth/login', '/api/v1/auth/logout',
 app.addHook('onRequest', async (q, r) => {
   const path = q.url.split('?')[0];
   // 远程 MCP 授权出去的令牌（不是口令本身时才查库）
+  const inner = internalRole(q); if (inner) setOAuthRole(q, inner);
   const bearer = bearerOf(q);
-  if (bearer && path.startsWith('/api/') && !isPasscode(bearer)) { const t = await lookupAccess(bearer).catch(() => null); if (t) setOAuthRole(q, t.role); }
+  if (!inner && bearer && path.startsWith('/api/') && !isPasscode(bearer)) { const t = await lookupAccess(bearer).catch(() => null); if (t) setOAuthRole(q, t.role); }
   const guarded = path.startsWith('/api/') || path.startsWith('/reports/') || path.startsWith('/evidence/');
   if (guarded && !OPEN.has(path) && !roleOf(q).viewer && !evidenceAllowed(q)) return r.code(401).send({ error: 'auth_required' });
 });

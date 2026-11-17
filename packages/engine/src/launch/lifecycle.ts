@@ -5,7 +5,7 @@
 import { logger } from '@pux/core';
 import {
   and, appVersions, apps, coverage, eq, events, evidence, evidenceLinks, exposures, getDb, goals, humanTasks, hypotheses, inArray, intentions, interviews, issueCandidates, issues,
-  judgments, launchReports, launches, launchVersions, mailbox, observations, or, personaGlobalState, personaMemories, personaMemoryTrees, posts, reports, reproPaths,
+  issueLinks, judgments, launchGithub, launchReports, launches, launchVersions, mailbox, observations, or, personaGlobalState, personaMemories, personaMemoryTrees, posts, reports, reproPaths,
   scores, sessions, storeReviews, studies, worldStates,
 } from '@pux/db';
 import { absMinute, worldClock } from '@pux/jobsworld';
@@ -55,7 +55,7 @@ async function purgeLaunchRecords(launchIds: string[]) {
   n.exposures = (await db.delete(exposures).where(inArray(exposures.launch_id, launchIds)).returning({ id: exposures.id })).length;
   n.reviews = (await db.delete(storeReviews).where(inArray(storeReviews.launch_id, launchIds)).returning({ id: storeReviews.id })).length;
   n.posts = (await db.delete(posts).where(inArray(posts.launch_id, launchIds)).returning({ id: posts.id })).length;
-  for (const t of [intentions, launchReports, launchVersions] as const) await db.delete(t).where(inArray(t.launch_id, launchIds));
+  for (const t of [intentions, launchReports, launchVersions, issueLinks] as const) await db.delete(t).where(inArray(t.launch_id, launchIds));
   return n;
 }
 
@@ -125,10 +125,12 @@ export async function removeLaunch(l: LaunchRow, opts: { keepHistory: boolean })
     await db.delete(intentions).where(inArray(intentions.launch_id, scope.launchIds));
     await db.delete(launchReports).where(inArray(launchReports.launch_id, scope.launchIds));
     await db.delete(launchVersions).where(inArray(launchVersions.launch_id, scope.launchIds));
+    await db.delete(launchGithub).where(inArray(launchGithub.launch_id, scope.launchIds));
     await db.update(studies).set({ status: 'done', finished_at: new Date(), stop_reason: 'removed' }).where(inArray(studies.id, scope.studyIds));
     await db.delete(launches).where(inArray(launches.id, scope.launchIds));
   } else {
     counts = await purgeExperience(scope);
+    await db.delete(launchGithub).where(inArray(launchGithub.launch_id, scope.launchIds));
     await db.delete(evidence).where(inArray(evidence.study_id, scope.studyIds));
     await db.delete(launches).where(inArray(launches.id, scope.launchIds));
     await db.delete(studies).where(inArray(studies.id, scope.studyIds));
