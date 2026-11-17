@@ -5,6 +5,7 @@ export * from './human/memory.ts';
 export * from './human/literacy.ts';
 export * from './human/population.ts';
 export * from './human/populate.ts';
+export * from './human/leisure.ts';
 export * from './world/simulator.ts';
 export * from './world/live.ts';
 export * from './exploration/goals.ts';

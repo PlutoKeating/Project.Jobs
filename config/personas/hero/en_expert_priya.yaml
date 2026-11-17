@@ -42,4 +42,20 @@ behavior_policy:
   abandonment_rules: []
   input_preference: typing
 state_defaults: { fatigue: 0.2, hunger: 0.2, mood: 0.2, attention: 0.9, stress: 0.2 }
+leisure:
+  local: { activities: ["gallery openings", "long walks along the Embarcadero"], hours: 3, per_month: 3, with: ["husband"] }
+  trips: { per_year: 2, days: [5, 10], range: abroad, with: ["husband"] }
+  group_role: co_planner
+  voice: speaks_up
+  pace: balanced
+  social_battery: 0.5
+  budget: comfort
+  split: aa_rough
+  transport: transit
+  dining: { restrictions: [], choose_by: reviews, solo_ok: true, dislikes: ["hot dishes arriving lukewarm"] }
+  pet_peeves: ["companions who neither help decide nor engage, so it feels like traveling alone"]
+  habits: ["splitting up when interests differ and meeting up later"]
+  memories:
+    - { text: "In Kyoto my husband wanted temples and I wanted design shops, so we split up after lunch and met for dinner. Best day of the trip.", valence: 0.5, importance: 0.5, ago_days: 300 }
+  sources: ["C0007", "C0026", "P0007"]
 prior_knowledge: used_before

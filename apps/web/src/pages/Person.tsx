@@ -6,7 +6,7 @@ import { get, usePersona, useTown } from '../lib/api.ts';
 import { MailList, type MailBrief } from '../components/Mail.tsx';
 import { useLabel, useT } from '../lib/i18n.ts';
 import { useSnapshot } from '../lib/stream.ts';
-import type { AgendaItem, Memory, PersonaSession } from '../lib/types.ts';
+import type { AgendaItem, Leisure, Memory, PersonaSession } from '../lib/types.ts';
 import { Avatar, ErrorState, Meter, Section, Seg, Skeleton } from '../components/ui.tsx';
 
 export const PLACE_COLOR: Record<string, string> = {
@@ -187,9 +187,38 @@ export function PersonPage() {
             </div>
             {s.behavior_policy.abandonment_rules.length > 0 && <ul className="mt-6 space-y-1.5 text-xs text-fg-muted">{s.behavior_policy.abandonment_rules.map((r) => <li key={r}>— {r}</li>)}</ul>}
           </Section>
+          {s.leisure && <LeisureCard l={s.leisure} />}
         </aside>
       </div>
     </article>
+  );
+}
+
+/** 出门与吃喝玩乐：以小时计的本地活动、以天计的出远门、和别人一起时的样子、吃饭的讲究、往事 */
+function LeisureCard({ l }: { l: Leisure }) {
+  const { t, lang } = useT(); const L = useLabel();
+  const sep = lang === 'zh' ? '、' : ', ';
+  const chip = (k: string) => <span key={k} className="rounded-full border border-border px-2 py-0.5 text-xs text-fg-muted">{L(`lz_${k}`)}</span>;
+  const list = (title: string, xs: string[]) => xs.length > 0 && <div><dt className="text-xs text-fg-subtle">{title}</dt><dd className="mt-1">{xs.join(lang === 'zh' ? '；' : '; ')}</dd></div>;
+  return (
+    <Section title={t('leisure')}>
+      <div className="flex flex-wrap gap-1.5">{[l.group_role, l.voice, l.pace, l.budget, l.split, l.transport].map(chip)}</div>
+      <dl className="mt-4 space-y-4 text-sm">
+        <div><dt className="text-xs text-fg-subtle">{t('lz_local')}</dt><dd className="mt-1">{l.local.activities.join(sep) || '—'}<span className="mt-0.5 block text-xs text-fg-muted">{t('lz_local_meta', { h: l.local.hours, n: l.local.per_month })} · {t('lz_with')} {l.local.with.join(sep) || t('lz_alone')}</span></dd></div>
+        <div><dt className="text-xs text-fg-subtle">{t('lz_trips')}</dt><dd className="mt-1">{L(l.trips.range === 'nearby' ? 'lz_nearby_trip' : `lz_${l.trips.range}`)}{l.trips.range !== 'none' && <span className="mt-0.5 block text-xs text-fg-muted">{t('lz_trips_meta', { n: l.trips.per_year, a: l.trips.days[0], b: l.trips.days[1] })}{l.trips.with.length > 0 && ` · ${t('lz_with')} ${l.trips.with.join(sep)}`}</span>}</dd></div>
+        <div><dt className="text-xs text-fg-subtle">{t('lz_dining')}</dt><dd className="mt-1">{[L(`lz_${l.dining.choose_by}`), ...l.dining.restrictions, ...(l.dining.solo_ok ? [t('lz_solo_ok')] : [])].join(sep)}</dd></div>
+        {list(t('lz_dislikes'), l.dining.dislikes)}
+        {list(t('lz_peeves'), l.pet_peeves)}
+        {list(t('lz_habits'), l.habits)}
+      </dl>
+      <div className="mt-4"><Meter label={t('lz_battery')} value={l.social_battery} /></div>
+      {l.memories.length > 0 && (
+        <div className="mt-5"><p className="text-xs text-fg-subtle">{t('lz_past')}</p>
+          <ul className="mt-1.5 space-y-2 text-sm leading-relaxed">{l.memories.map((m) => <li key={m.text} className="border-l-2 pl-3" style={{ borderColor: m.valence < -0.2 ? 'var(--color-danger)' : m.valence > 0.2 ? 'var(--color-success)' : 'var(--color-border)' }}>{m.text}</li>)}</ul>
+        </div>
+      )}
+      {l.sources.length > 0 && <p className="mt-4 text-xs text-fg-subtle" title={l.sources.join(' ')}>{t('lz_sources')}: {l.sources.length} · docs/research</p>}
+    </Section>
   );
 }
 

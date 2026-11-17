@@ -44,4 +44,21 @@ behavior_policy:
   abandonment_rules: [发现 AI 编造信息会大幅降低信任]
   input_preference: typing
 state_defaults: { fatigue: 0.3, hunger: 0.2, mood: 0.2, attention: 0.8, stress: 0.3 }
+leisure:
+  local: { activities: ["周末带儿子去科技馆", "探新开的餐厅"], hours: 4, per_month: 4, with: ["妻子", "6 岁儿子"] }
+  trips: { per_year: 2, days: [4, 8], range: abroad, with: ["妻子", "6 岁儿子"] }
+  group_role: planner
+  voice: speaks_up
+  pace: balanced
+  social_battery: 0.48
+  budget: comfort
+  split: aa_rough
+  transport: drive
+  dining: { restrictions: [], choose_by: reviews, solo_ok: true, dislikes: ["实际人均比网上写的高一截", "热菜端上来是温的"] }
+  pet_peeves: ["同伴不出主意也不搭话，一路像一个人玩", "嘴上说「随便」，到了又挑这挑那"]
+  habits: ["和新搭子先短途走一次，合拍再说长途", "兴趣不一样就分开玩，约个地方会合"]
+  memories:
+    - { text: "和大学同学群约了次日本自由行，我做了详细攻略，有两个人全程不出主意也不搭话，晚上回酒店各刷各的手机，像我一个人在带团。", valence: -0.5, importance: 0.6, ago_days: 280 }
+    - { text: "对比了三个点评软件选了家粤菜馆，几道热菜端上来都是温的，我拍照发群里吐槽了半天。", valence: -0.4, importance: 0.4, ago_days: 45 }
+  sources: ["C0001", "C0003", "C0005", "C0007", "C0008", "C0015", "C0026", "C0060", "P0007"]
 prior_knowledge: seen_ads

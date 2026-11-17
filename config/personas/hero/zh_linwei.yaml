@@ -44,4 +44,21 @@ behavior_policy:
   abandonment_rules: [连续两次没反应就换别的办法, 找入口超过 1 分钟就放弃]
   input_preference: mixed
 state_defaults: { fatigue: 0.5, hunger: 0.3, mood: 0.0, attention: 0.6, stress: 0.5 }
+leisure:
+  local: { activities: ["周末带女儿去亲子乐园", "和妈妈群的家长一起吃饭", "逛商场"], hours: 4, per_month: 4, with: ["丈夫", "6 岁女儿"] }
+  trips: { per_year: 2, days: [3, 5], range: domestic, with: ["丈夫", "6 岁女儿"] }
+  group_role: planner
+  voice: speaks_up
+  pace: balanced
+  social_battery: 0.62
+  budget: comfort
+  split: take_turns
+  transport: drive
+  dining: { restrictions: ["不吃辣"], choose_by: familiar, solo_ok: false, dislikes: ["上菜慢，加水要叫好几次", "停车费比饭还贵"] }
+  pet_peeves: ["要拿主意的时候，所有人都看向自己", "攻略、订房全落在自己头上，别人还觉得理所当然"]
+  habits: ["谁要求多，就让谁一起做攻略", "出发前先把忌口和作息说清楚"]
+  memories:
+    - { text: "五一一家三口去千岛湖，酒店、门票、吃饭全是我订的，老公一路说「都行」，到了又嫌湖边那家鱼头贵。回来我跟他说下次他来订。", valence: -0.5, importance: 0.6, ago_days: 190 }
+    - { text: "带女儿和妈妈群几个家长在商场吃饭，开车去的，饭吃了两百多，停车三个小时又交了三十。", valence: -0.3, importance: 0.4, ago_days: 50 }
+  sources: ["C0006", "C0011", "C0012", "C0016", "C0017", "C0050", "C0052", "C0070", "P0002", "P0011"]
 prior_knowledge: heard_of

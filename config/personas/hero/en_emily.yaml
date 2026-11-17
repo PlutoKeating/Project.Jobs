@@ -42,4 +42,21 @@ behavior_policy:
   abandonment_rules: [two dead ends in a row and she moves on]
   input_preference: typing
 state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.1, attention: 0.6, stress: 0.5 }
+leisure:
+  local: { activities: ["trying new brunch spots", "live music on Sixth Street", "paddleboarding on Lady Bird Lake"], hours: 4, per_month: 6, with: ["partner", "college friends"] }
+  trips: { per_year: 2, days: [3, 6], range: domestic, with: ["partner", "college friends"] }
+  group_role: planner
+  voice: speaks_up
+  pace: packed
+  social_battery: 0.68
+  budget: value
+  split: aa_rough
+  transport: drive
+  dining: { restrictions: [], choose_by: reviews, solo_ok: true, dislikes: ["the bill coming out way above what the reviews said per person", "places that look great in photos and taste ordinary"] }
+  pet_peeves: ["doing all the planning and having everyone treat it as a given", "people who say \"whatever works\" and then pick everything apart"]
+  habits: ["asking whoever has the most requests to help plan", "sending payment requests only to the people who actually came"]
+  memories:
+    - { text: "For a college friends' weekend in New Orleans I built the whole itinerary in a shared doc. Nobody opened it, and then two of them complained the jazz bar was \"too touristy\".", valence: -0.5, importance: 0.6, ago_days: 210 }
+    - { text: "A brunch place I found on Instagram looked amazing — tiny plates, and it came to nearly twice what the reviews said per person.", valence: -0.4, importance: 0.4, ago_days: 70 }
+  sources: ["C0003", "C0005", "C0006", "C0012", "C0060", "C0062", "C0065", "P0002", "P0008"]
 prior_knowledge: heard_of

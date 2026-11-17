@@ -43,4 +43,22 @@ behavior_policy:
   abandonment_rules: [遇到强制付费直接放弃]
   input_preference: typing
 state_defaults: { fatigue: 0.4, hunger: 0.4, mood: 0.3, attention: 0.55, stress: 0.35 }
+leisure:
+  local: { activities: ["和室友去网红店打卡", "逛春熙路", "剧本杀"], hours: 6, per_month: 6, with: ["室友", "社团"] }
+  trips: { per_year: 2, days: [3, 5], range: domestic, with: ["室友"] }
+  group_role: follower
+  voice: goes_along
+  pace: packed
+  social_battery: 0.75
+  budget: frugal
+  split: aa_exact
+  transport: transit
+  dining: { restrictions: ["不吃动物内脏和血制品"], choose_by: reviews, solo_ok: true, dislikes: ["照片拍得好看，吃起来一般", "实际人均比网上写的高一截"] }
+  pet_peeves: ["拍照必须按别人的构图来", "AA 时有人拖着不转账"]
+  habits: ["聚餐发群收款，只勾真来了的人", "跟着走就不挑刺，负责拍照和捧场"]
+  memories:
+    - { text: "寝室四个人去重庆三天，室友排的行程我全跟着走，一天走两万步。我负责拍照，回来照片被夸了好久。", valence: 0.5, importance: 0.5, ago_days: 200 }
+    - { text: "跟着小红书去了一家漂亮饭，一份意面没几口，算下来人均一百多，比帖子里写的贵了一倍，回宿舍又泡了碗面。", valence: -0.4, importance: 0.5, ago_days: 40 }
+    - { text: "上次寝室聚餐我先垫了钱，有个室友提醒了一次还拖了一天才转，我在群里发了个微笑表情。", valence: -0.4, importance: 0.4, ago_days: 25 }
+  sources: ["C0010", "C0013", "C0023", "C0060", "C0062", "C0065", "P0002", "P0005", "P0008", "P0009"]
 prior_knowledge: seen_ads

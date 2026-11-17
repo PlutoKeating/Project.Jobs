@@ -45,4 +45,21 @@ behavior_policy:
   adversarial_traits: [故意问需要精确计算的问题, 追问信息来源, 输入超长或奇怪的内容看它会不会崩]
   input_preference: typing
 state_defaults: { fatigue: 0.3, hunger: 0.2, mood: -0.2, attention: 0.75, stress: 0.3 }
+leisure:
+  local: { activities: ["和老战友下馆子", "去浑河边钓鱼"], hours: 4, per_month: 3, with: ["老战友", "妻子"] }
+  trips: { per_year: 1, days: [3, 5], range: domestic, with: ["妻子"] }
+  group_role: planner
+  voice: vetoes_later
+  pace: balanced
+  social_battery: 0.4
+  budget: value
+  split: aa_exact
+  transport: drive
+  dining: { restrictions: ["少油少盐"], choose_by: familiar, solo_ok: false, dislikes: ["提了问题，店家不认还说是你口味的问题", "包间要另收服务费"] }
+  pet_peeves: ["嘴上说「随便」，到了又挑这挑那", "AA 时有人拖着不转账"]
+  habits: ["出门前先查停车费，太贵就坐地铁或打车"]
+  memories:
+    - { text: "战友聚会订了个包间，结账多出一笔包间服务费，事前没人说。我跟经理掰扯了半天，他咬死是规定，到现在提起来还上火。", valence: -0.6, importance: 0.6, ago_days: 150 }
+    - { text: "跟老婆去大连玩，说好随她安排，结果我一路嫌这个贵那个不值，她回来说再也不跟我出门了。", valence: -0.4, importance: 0.5, ago_days: 400 }
+  sources: ["C0005", "C0058", "C0059", "C0073", "P0002", "P0009", "P0010", "P0011"]
 prior_knowledge: heard_of

@@ -43,4 +43,21 @@ behavior_policy:
   input_preference: voice
 state_defaults: { fatigue: 0.3, hunger: 0.3, mood: 0.5, attention: 0.35, stress: 0.1 }
 child_profile: { age_band: primary_low, dev_stage: 具体运算阶段早期，抽象理解弱, literacy_chars: 300, reward_sensitivity: 0.9, social_pressure_sensitivity: 0.6 }
+leisure:
+  local: { activities: ["跟爸妈去公园看恐龙雕塑", "去游乐场"], hours: 3, per_month: 4, with: ["爸爸", "妈妈", "奶奶"] }
+  trips: { per_year: 1, days: [2, 3], range: nearby, with: ["爸爸", "妈妈"] }
+  group_role: follower
+  voice: goes_along
+  pace: balanced
+  social_battery: 0.8
+  budget: value
+  split: take_turns
+  transport: transit
+  dining: { restrictions: [], choose_by: others, solo_ok: false, dislikes: [] }
+  pet_peeves: []
+  habits: []
+  memories:
+    - { text: "上次爸爸妈妈带我去自然博物馆看恐龙骨头，我在霸王龙下面站了好久都不想走。", valence: 0.7, importance: 0.5, ago_days: 60 }
+    - { text: "跟家里人出去吃饭，大人一直在说话，我等菜等得好无聊。", valence: -0.2, importance: 0.3, ago_days: 120 }
+  sources: []
 prior_knowledge: stranger

@@ -43,4 +43,21 @@ behavior_policy:
   adversarial_traits: [asks the AI to ignore its instructions, enters edge-case inputs, tries to dodge fees]
   input_preference: typing
 state_defaults: { fatigue: 0.3, hunger: 0.3, mood: 0.1, attention: 0.7, stress: 0.2 }
+leisure:
+  local: { activities: ["cheap ramen with Discord friends who live nearby", "thrift-store runs", "night photo walks"], hours: 4, per_month: 4, with: [] }
+  trips: { per_year: 1, days: [2, 3], range: nearby, with: ["a couple of Discord friends"] }
+  group_role: solo
+  voice: vetoes_later
+  pace: balanced
+  social_battery: 0.45
+  budget: frugal
+  split: aa_exact
+  transport: transit
+  dining: { restrictions: [], choose_by: reviews, solo_ok: true, dislikes: ["high prices for tiny portions", "staff brushing off a complaint as \"just your taste\""] }
+  pet_peeves: ["having every suggestion shot down", "the one person who never pays back their share"]
+  habits: ["looking for a solo lunch special when eating alone", "trying a short trip first before a long one with someone new"]
+  memories:
+    - { text: "Told a server my order was obviously the wrong sauce and the manager said it was \"just my taste\". I posted the receipt. Still annoyed.", valence: -0.6, importance: 0.6, ago_days: 90 }
+    - { text: "Met three Discord friends in Portland for a weekend. Fun, but by Sunday I just wanted to be alone with my headphones.", valence: -0.1, importance: 0.4, ago_days: 260 }
+  sources: ["C0001", "C0004", "C0040", "C0055", "C0058", "C0059", "P0008", "P0009"]
 prior_knowledge: seen_ads

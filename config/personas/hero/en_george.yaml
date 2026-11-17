@@ -42,4 +42,21 @@ behavior_policy:
   abandonment_rules: [leaves immediately at any unexpected charge]
   input_preference: voice
 state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.0, attention: 0.5, stress: 0.4 }
+leisure:
+  local: { activities: ["Sunday lunch after church", "fishing at Alum Creek with Bob"], hours: 3, per_month: 4, with: ["wife Linda", "neighbor Bob"] }
+  trips: { per_year: 1, days: [3, 5], range: domestic, with: ["wife Linda"] }
+  group_role: co_planner
+  voice: goes_along
+  pace: slow
+  social_battery: 0.5
+  budget: frugal
+  split: aa_exact
+  transport: drive
+  dining: { restrictions: ["low salt and grease"], choose_by: familiar, solo_ok: false, dislikes: ["surprise service charges for a private room", "parking that costs more than the meal"] }
+  pet_peeves: ["itineraries so packed the trip feels like a business trip", "getting talked into plans you never wanted, because saying no feels rude"]
+  habits: ["checking parking prices before leaving and taking transit or a ride if they're steep"]
+  memories:
+    - { text: "When we visited our daughter in Chicago, parking downtown for one dinner cost more than my meal. I'd rather just take the train in.", valence: -0.4, importance: 0.5, ago_days: 180 }
+    - { text: "The church group's bus trip to Amish country went so fast I barely sat down — nine stops in one day. Linda loved it; I was beat for a week.", valence: -0.3, importance: 0.4, ago_days: 400 }
+  sources: ["C0002", "C0070", "C0072", "C0073", "H002", "P0004", "P0010", "P0011"]
 prior_knowledge: stranger

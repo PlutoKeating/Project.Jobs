@@ -42,4 +42,20 @@ behavior_policy:
   input_preference: mixed
 state_defaults: { fatigue: 0.3, hunger: 0.3, mood: 0.4, attention: 0.45, stress: 0.15 }
 child_profile: { age_band: primary_high, dev_stage: 具体运算阶段, literacy_chars: 2000, reward_sensitivity: 0.75, social_pressure_sensitivity: 0.85 }
+leisure:
+  local: { activities: ["跟妈妈逛商场", "和舞蹈班朋友去公园"], hours: 3, per_month: 3, with: ["妈妈", "舞蹈班朋友"] }
+  trips: { per_year: 1, days: [3, 5], range: domestic, with: ["爸爸", "妈妈"] }
+  group_role: follower
+  voice: speaks_up
+  pace: balanced
+  social_battery: 0.75
+  budget: value
+  split: take_turns
+  transport: transit
+  dining: { restrictions: [], choose_by: others, solo_ok: false, dislikes: ["排很久的队"] }
+  pet_peeves: []
+  habits: []
+  memories:
+    - { text: "暑假爸妈带我去了上海迪士尼，排队排得腿都酸了，可烟花真的好好看，回来我跟同学讲了好几天。", valence: 0.6, importance: 0.5, ago_days: 120 }
+  sources: []
 prior_knowledge: stranger

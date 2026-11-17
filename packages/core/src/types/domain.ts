@@ -71,6 +71,44 @@ export const ChildProfileSchema = z.object({
   social_pressure_sensitivity: Unit,
 });
 
+/**
+ * 第七层：出门与吃喝玩乐（可选）。依据见 docs/research/README.md（小红书出游与聚餐调研，批次 B20261115-01）。
+ * 分两种时间尺度：以小时计的本地活动（下班后、周末、节假日）与以天或周计的异地旅行。
+ * 随包居民由规则推导（human/leisure.ts），手写人物手写；sources 记下依据的调研编号（P 帖子 / C 评论 / N 诉求 / R 推荐 / W 避雷）。
+ */
+export const LeisureSchema = z.object({
+  local: z.object({
+    activities: z.array(z.string()).default([]),
+    hours: z.number().min(0.5).max(16),          // 一次出门大概多久
+    per_month: z.number().int().min(0).max(30),  // 一个月出去几次
+    with: z.array(z.string()).default([]),        // 多半和谁（空 = 自己）
+  }),
+  trips: z.object({
+    per_year: z.number().int().min(0).max(12),
+    days: z.tuple([z.number().int().min(1), z.number().int().min(1)]),
+    range: z.enum(['none', 'nearby', 'domestic', 'abroad']),
+    with: z.array(z.string()).default([]),
+  }),
+  group_role: z.enum(['planner', 'co_planner', 'follower', 'solo']),        // 拿主意的 / 一起商量 / 跟着走 / 多半自己去
+  voice: z.enum(['speaks_up', 'goes_along', 'withdrawn', 'vetoes_later']),  // 定方案时：提前说 / 都可以 / 被否多了不再提 / 嘴上随便、事后挑
+  pace: z.enum(['packed', 'balanced', 'slow']),
+  social_battery: Unit,                                                      // 和人一起玩能撑多久（越低越快没电）
+  budget: z.enum(['frugal', 'value', 'comfort', 'splurge']),
+  split: z.enum(['aa_exact', 'aa_rough', 'take_turns', 'often_pays']),
+  transport: z.enum(['walk_bike', 'transit', 'taxi', 'drive']),
+  dining: z.object({
+    restrictions: z.array(z.string()).default([]),
+    choose_by: z.enum(['reviews', 'familiar', 'nearby', 'others']),
+    solo_ok: z.boolean(),
+    dislikes: z.array(z.string()).default([]),
+  }),
+  pet_peeves: z.array(z.string()).default([]),   // 和别人一起出去最受不了的
+  habits: z.array(z.string()).default([]),       // 吃过亏之后形成的做法
+  memories: z.array(z.object({ text: z.string(), valence: z.number().min(-1).max(1), importance: Unit, ago_days: z.number().int().min(1) })).default([]),
+  sources: z.array(z.string()).default([]),
+});
+export type Leisure = z.infer<typeof LeisureSchema>;
+
 export const PersonaKind = z.enum(['hero', 'synthetic', 'expert', 'child']);
 
 export const PersonaSpecSchema = z.object({
@@ -87,6 +125,7 @@ export const PersonaSpecSchema = z.object({
   behavior_policy: BehaviorPolicySchema,
   state_defaults: DynamicStateSchema,
   child_profile: ChildProfileSchema.optional(),
+  leisure: LeisureSchema.optional(),
   prior_knowledge: z.enum(['stranger', 'heard_of', 'seen_ads', 'used_before']).default('stranger'),
   test_account: z.object({ username: z.string(), password: z.string() }).optional(),
 });

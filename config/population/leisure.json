@@ -1,0 +1,1175 @@
+{
+  "_note": "居民「出门与吃喝玩乐」一层（PersonaSpec.leisure）的词表。依据：docs/research/出游聚餐调研_公开_20261115.xlsx（小红书，批次 B20261115-01，第一阶段证据）；编号含义与检查结论见 docs/research/README.md。src 是依据的调研编号；空数组表示没有调研依据、只为补全生活常识（儿童、英语区特有的说法等）。if 的条件全部满足才可选；w 是相对权重。调研样本只来自中文平台、广州偏多、11 个来源帖，数值倾向是规则推导，不代表发生率。",
+  "places": {
+    "nearby": {
+      "zh": [
+        "周边的古镇",
+        "附近的海边",
+        "邻市",
+        "山里的民宿",
+        "郊区的农家乐",
+        "隔壁省的小城"
+      ],
+      "en": [
+        "a lake cabin a couple of hours out",
+        "a beach town nearby",
+        "the state park",
+        "the next city over",
+        "a wine country B&B"
+      ]
+    },
+    "domestic": {
+      "zh": [
+        "成都",
+        "西安",
+        "厦门",
+        "大理",
+        "三亚",
+        "长沙",
+        "青岛",
+        "重庆"
+      ],
+      "en": [
+        "Chicago",
+        "New Orleans",
+        "Denver",
+        "Nashville",
+        "San Diego",
+        "the Smoky Mountains",
+        "Seattle"
+      ]
+    },
+    "abroad": {
+      "zh": [
+        "日本",
+        "泰国",
+        "新加坡",
+        "韩国",
+        "马来西亚"
+      ],
+      "en": [
+        "Mexico",
+        "Italy",
+        "Japan",
+        "Canada",
+        "London"
+      ]
+    },
+    "quiet": {
+      "zh": [
+        "江边",
+        "公园的长椅上",
+        "市美术馆",
+        "市博物馆",
+        "城市图书馆"
+      ],
+      "en": [
+        "the riverwalk",
+        "a bench in the park",
+        "the art museum",
+        "the city library"
+      ]
+    },
+    "museum": {
+      "zh": [
+        "市美术馆",
+        "市博物馆",
+        "一个新开的展馆"
+      ],
+      "en": [
+        "the art museum",
+        "the history museum",
+        "a new gallery downtown"
+      ]
+    }
+  },
+  "activities": {
+    "slow": [
+      {
+        "zh": "一个人逛博物馆、美术馆",
+        "en": "wandering a museum or gallery alone",
+        "src": [
+          "P0004",
+          "C0028",
+          "C0037"
+        ]
+      },
+      {
+        "zh": "江边散步、找个地方坐着发呆",
+        "en": "walking by the river and sitting to zone out",
+        "src": [
+          "C0030",
+          "C0031",
+          "C0039"
+        ]
+      },
+      {
+        "zh": "公园里晒太阳",
+        "en": "sitting in the park in the sun",
+        "src": [
+          "C0039"
+        ]
+      },
+      {
+        "zh": "在咖啡店坐一下午",
+        "en": "spending an afternoon at a café",
+        "src": []
+      },
+      {
+        "zh": "逛书店",
+        "en": "browsing a bookstore",
+        "src": []
+      }
+    ],
+    "balanced": [
+      {
+        "zh": "约朋友吃饭",
+        "en": "dinner with friends",
+        "src": [
+          "P0006",
+          "P0009"
+        ]
+      },
+      {
+        "zh": "逛商场",
+        "en": "walking around the mall",
+        "src": []
+      },
+      {
+        "zh": "看电影",
+        "en": "going to the movies",
+        "src": []
+      },
+      {
+        "zh": "周边半日游",
+        "en": "half-day trips just outside town",
+        "src": []
+      },
+      {
+        "zh": "带家里人出去下馆子",
+        "en": "taking the family out to eat",
+        "src": []
+      }
+    ],
+    "packed": [
+      {
+        "zh": "去网红店打卡",
+        "en": "checking out trendy spots everyone's posting",
+        "src": [
+          "P0008"
+        ]
+      },
+      {
+        "zh": "一天跑好几个地方",
+        "en": "cramming several stops into one day",
+        "src": [
+          "P0002"
+        ]
+      },
+      {
+        "zh": "剧本杀、密室",
+        "en": "escape rooms and murder-mystery games",
+        "src": []
+      },
+      {
+        "zh": "约一大帮人聚餐",
+        "en": "big group dinners",
+        "src": [
+          "P0009"
+        ]
+      }
+    ],
+    "hobby": {
+      "露营": {
+        "zh": "去郊外露营",
+        "en": "camping out of town"
+      },
+      "钓鱼": {
+        "zh": "去水库钓鱼",
+        "en": "fishing at the reservoir"
+      },
+      "摄影": {
+        "zh": "出去扫街拍照",
+        "en": "street photography walks"
+      },
+      "K 歌": {
+        "zh": "和朋友去 K 歌",
+        "en": "karaoke with friends"
+      },
+      "打羽毛球": {
+        "zh": "约人打羽毛球",
+        "en": "badminton with friends"
+      },
+      "打篮球": {
+        "zh": "约人打篮球",
+        "en": "pickup basketball"
+      },
+      "骑行": {
+        "zh": "绿道骑行",
+        "en": "bike rides on the greenway"
+      },
+      "逛街": {
+        "zh": "逛街",
+        "en": "window shopping"
+      },
+      "玩桌游": {
+        "zh": "去桌游店",
+        "en": "board game café nights"
+      },
+      "打麻将": {
+        "zh": "约人打麻将",
+        "en": "mahjong nights"
+      },
+      "跳广场舞": {
+        "zh": "傍晚去跳广场舞",
+        "en": "evening square dancing"
+      },
+      "带孩子上兴趣班": {
+        "zh": "带孩子去游乐场、科技馆",
+        "en": "taking the kids to the playground or science center"
+      },
+      "看球赛": {
+        "zh": "和朋友一起看球",
+        "en": "watching the game with friends"
+      },
+      "跑步": {
+        "zh": "去江边跑步",
+        "en": "running by the river"
+      },
+      "做饭": {
+        "zh": "逛菜市场",
+        "en": "browsing the farmers market"
+      },
+      "健身": {
+        "zh": "去健身房",
+        "en": "going to the gym"
+      },
+      "Gardening": {
+        "zh": "逛花市",
+        "en": "visiting garden centers and botanical gardens"
+      },
+      "Fishing": {
+        "zh": "去水库钓鱼",
+        "en": "lake fishing"
+      },
+      "Hiking": {
+        "zh": "爬山",
+        "en": "trail hikes"
+      },
+      "Visiting art galleries": {
+        "zh": "逛美术馆",
+        "en": "gallery afternoons"
+      },
+      "Landscape photography": {
+        "zh": "去郊外拍风景",
+        "en": "driving out to shoot landscapes"
+      },
+      "Woodworking": {
+        "zh": "逛五金市场",
+        "en": "browsing hardware and lumber stores"
+      }
+    },
+    "child": [
+      {
+        "zh": "跟爸妈去公园玩",
+        "en": "going to the park with the family",
+        "src": []
+      },
+      {
+        "zh": "跟家里人出去吃饭",
+        "en": "eating out with the family",
+        "src": []
+      },
+      {
+        "zh": "去游乐场",
+        "en": "going to the playground",
+        "src": []
+      }
+    ]
+  },
+  "restrictions": [
+    {
+      "zh": "不吃辣",
+      "en": "no spicy food",
+      "w": 0.18,
+      "src": [
+        "C0016"
+      ]
+    },
+    {
+      "zh": "下午不喝咖啡，怕晚上睡不着",
+      "en": "no coffee after lunch, or no sleep that night",
+      "w": 0.07,
+      "src": [
+        "C0016"
+      ]
+    },
+    {
+      "zh": "少油少盐",
+      "en": "low salt and grease",
+      "w": 0.1,
+      "if": {
+        "min_age": 50
+      },
+      "src": []
+    },
+    {
+      "zh": "在控制饮食，热量高的尽量不碰",
+      "en": "watching calories",
+      "w": 0.12,
+      "if": {
+        "max_age": 45
+      },
+      "src": [
+        "P0005"
+      ]
+    },
+    {
+      "zh": "不吃动物内脏和血制品",
+      "en": "no organ meat or blood dishes",
+      "w": 0.1,
+      "src": [
+        "P0005",
+        "C0044"
+      ]
+    },
+    {
+      "zh": "海鲜过敏",
+      "en": "shellfish allergy",
+      "w": 0.04,
+      "src": []
+    },
+    {
+      "zh": "吃素",
+      "en": "vegetarian",
+      "w": 0.03,
+      "src": [
+        "H003"
+      ]
+    }
+  ],
+  "dislikes": [
+    {
+      "zh": "热菜端上来是温的",
+      "en": "hot dishes arriving lukewarm",
+      "src": [
+        "P0007",
+        "C0045",
+        "C0050"
+      ]
+    },
+    {
+      "zh": "上菜慢，加水要叫好几次",
+      "en": "slow food and having to flag someone down three times for water",
+      "src": [
+        "C0050",
+        "C0052"
+      ]
+    },
+    {
+      "zh": "价格不低、份量却很少",
+      "en": "high prices for tiny portions",
+      "if": {
+        "budget": [
+          "frugal",
+          "value"
+        ]
+      },
+      "src": [
+        "P0008",
+        "C0055"
+      ]
+    },
+    {
+      "zh": "实际人均比网上写的高一截",
+      "en": "the bill coming out way above what the reviews said per person",
+      "if": {
+        "choose_by": [
+          "reviews"
+        ]
+      },
+      "src": [
+        "C0060"
+      ]
+    },
+    {
+      "zh": "照片拍得好看，吃起来一般",
+      "en": "places that look great in photos and taste ordinary",
+      "if": {
+        "choose_by": [
+          "reviews"
+        ]
+      },
+      "src": [
+        "P0008",
+        "C0057"
+      ]
+    },
+    {
+      "zh": "提了问题，店家不认还说是你口味的问题",
+      "en": "staff brushing off a complaint as \"just your taste\"",
+      "src": [
+        "C0058",
+        "C0059"
+      ]
+    },
+    {
+      "zh": "周末团购券不能用，只能单点",
+      "en": "deals that turn out not to work on weekends",
+      "if": {
+        "budget": [
+          "frugal",
+          "value"
+        ]
+      },
+      "src": [
+        "C0069"
+      ]
+    },
+    {
+      "zh": "停车费比饭还贵",
+      "en": "parking that costs more than the meal",
+      "if": {
+        "transport": [
+          "drive"
+        ]
+      },
+      "src": [
+        "P0011",
+        "C0070",
+        "C0073"
+      ]
+    },
+    {
+      "zh": "包间要另收服务费",
+      "en": "surprise service charges for a private room",
+      "if": {
+        "budget": [
+          "frugal",
+          "value",
+          "comfort"
+        ]
+      },
+      "src": [
+        "P0010"
+      ]
+    },
+    {
+      "zh": "和不熟的人吃饭，突然冷场",
+      "en": "a sudden silence at dinner with people you barely know",
+      "if": {
+        "max_battery": 0.45
+      },
+      "src": [
+        "P0006"
+      ]
+    },
+    {
+      "zh": "室内空调太冷",
+      "en": "freezing air conditioning indoors",
+      "if": {
+        "pace": [
+          "slow"
+        ]
+      },
+      "src": [
+        "C0028"
+      ]
+    }
+  ],
+  "pet_peeves": [
+    {
+      "zh": "攻略、订房全落在自己头上，别人还觉得理所当然",
+      "en": "doing all the planning and having everyone treat it as a given",
+      "if": {
+        "role": [
+          "planner"
+        ]
+      },
+      "src": [
+        "C0011",
+        "C0012",
+        "C0017"
+      ]
+    },
+    {
+      "zh": "要拿主意的时候，所有人都看向自己",
+      "en": "everyone turning to you whenever a decision is needed",
+      "if": {
+        "role": [
+          "planner",
+          "co_planner"
+        ]
+      },
+      "src": [
+        "C0017"
+      ]
+    },
+    {
+      "zh": "嘴上说「随便」，到了又挑这挑那",
+      "en": "people who say \"whatever works\" and then pick everything apart",
+      "if": {
+        "role": [
+          "planner",
+          "co_planner"
+        ]
+      },
+      "src": [
+        "P0002",
+        "C0003",
+        "C0005"
+      ]
+    },
+    {
+      "zh": "同伴不出主意也不搭话，一路像一个人玩",
+      "en": "companions who neither help decide nor engage, so it feels like traveling alone",
+      "if": {
+        "role": [
+          "planner",
+          "co_planner"
+        ]
+      },
+      "src": [
+        "C0007",
+        "C0008"
+      ]
+    },
+    {
+      "zh": "拍照必须按别人的构图来",
+      "en": "having to pose and frame shots exactly the way someone else wants",
+      "if": {
+        "role": [
+          "follower",
+          "co_planner"
+        ]
+      },
+      "src": [
+        "P0002"
+      ]
+    },
+    {
+      "zh": "想多睡半小时就被催",
+      "en": "getting nagged for wanting another half hour of sleep",
+      "if": {
+        "pace": [
+          "slow",
+          "balanced"
+        ]
+      },
+      "src": [
+        "P0002"
+      ]
+    },
+    {
+      "zh": "提的方案总被否掉",
+      "en": "having every suggestion shot down",
+      "if": {
+        "voice": [
+          "withdrawn"
+        ]
+      },
+      "src": [
+        "C0004"
+      ]
+    },
+    {
+      "zh": "活动和吃饭一路被同伴否定",
+      "en": "a companion who vetoes every activity and every meal",
+      "if": {
+        "voice": [
+          "speaks_up",
+          "goes_along"
+        ]
+      },
+      "src": [
+        "C0005"
+      ]
+    },
+    {
+      "zh": "天天绑在一起，时间一长就累",
+      "en": "being together every waking hour on a long trip",
+      "if": {
+        "max_battery": 0.5,
+        "travels": true
+      },
+      "src": [
+        "C0018"
+      ]
+    },
+    {
+      "zh": "被劝了几句就不好意思拒绝，答应了不想去的局",
+      "en": "getting talked into plans you never wanted, because saying no feels rude",
+      "if": {
+        "voice": [
+          "withdrawn",
+          "goes_along"
+        ]
+      },
+      "src": [
+        "C0002"
+      ]
+    },
+    {
+      "zh": "AA 时有人拖着不转账",
+      "en": "the one person who never pays back their share",
+      "if": {
+        "split": [
+          "aa_exact",
+          "often_pays"
+        ]
+      },
+      "src": [
+        "P0009"
+      ]
+    },
+    {
+      "zh": "为了赶景点打卡，一路像在出差",
+      "en": "itineraries so packed the trip feels like a business trip",
+      "if": {
+        "pace": [
+          "slow"
+        ]
+      },
+      "src": [
+        "P0004",
+        "H002"
+      ]
+    }
+  ],
+  "habits": [
+    {
+      "zh": "和新搭子先短途走一次，合拍再说长途",
+      "en": "trying a short trip first before a long one with someone new",
+      "if": {
+        "role": [
+          "planner",
+          "co_planner",
+          "solo"
+        ],
+        "travels": true
+      },
+      "src": [
+        "C0001",
+        "C0018"
+      ]
+    },
+    {
+      "zh": "有想法在定方案时就说，不留到事后",
+      "en": "saying what you want while the plan is being made, not afterwards",
+      "if": {
+        "voice": [
+          "speaks_up"
+        ]
+      },
+      "src": [
+        "C0003"
+      ]
+    },
+    {
+      "zh": "谁要求多，就让谁一起做攻略",
+      "en": "asking whoever has the most requests to help plan",
+      "if": {
+        "role": [
+          "planner"
+        ]
+      },
+      "src": [
+        "C0006",
+        "C0022"
+      ]
+    },
+    {
+      "zh": "出发前先把忌口和作息说清楚",
+      "en": "telling the planner about food limits and sleep schedule before leaving",
+      "if": {
+        "has_restrictions": true
+      },
+      "src": [
+        "C0016"
+      ]
+    },
+    {
+      "zh": "兴趣不一样就分开玩，约个地方会合",
+      "en": "splitting up when interests differ and meeting up later",
+      "if": {
+        "role": [
+          "co_planner",
+          "planner",
+          "solo"
+        ]
+      },
+      "src": [
+        "C0015",
+        "C0026"
+      ]
+    },
+    {
+      "zh": "跟着走就不挑刺，负责拍照和捧场",
+      "en": "not complaining when someone else plans — taking the photos and cheering the plan on",
+      "if": {
+        "role": [
+          "follower"
+        ]
+      },
+      "src": [
+        "C0010",
+        "C0013",
+        "C0023"
+      ]
+    },
+    {
+      "zh": "长途出门尽量各住各的，留点空间",
+      "en": "booking separate rooms on long trips to keep some space",
+      "if": {
+        "max_battery": 0.5,
+        "budget": [
+          "comfort",
+          "splurge"
+        ],
+        "travels": true
+      },
+      "src": [
+        "C0019"
+      ]
+    },
+    {
+      "zh": "聚餐发群收款，只勾真来了的人",
+      "en": "sending payment requests only to the people who actually came",
+      "if": {
+        "split": [
+          "aa_exact",
+          "aa_rough",
+          "often_pays"
+        ]
+      },
+      "src": [
+        "C0062",
+        "C0064",
+        "C0065",
+        "C0067"
+      ]
+    },
+    {
+      "zh": "不再每次都替大家垫钱",
+      "en": "no longer fronting the whole bill every time",
+      "if": {
+        "split": [
+          "often_pays"
+        ]
+      },
+      "src": [
+        "C0066"
+      ]
+    },
+    {
+      "zh": "出门前先查停车费，太贵就坐地铁或打车",
+      "en": "checking parking prices before leaving and taking transit or a ride if they're steep",
+      "if": {
+        "transport": [
+          "drive",
+          "taxi"
+        ]
+      },
+      "src": [
+        "P0011",
+        "C0071",
+        "C0072",
+        "C0073"
+      ]
+    },
+    {
+      "zh": "和不熟的人吃饭，先从桌上的菜聊起，冷一会儿也不慌",
+      "en": "with people you barely know, starting with the food on the table and not panicking at a pause",
+      "if": {
+        "max_battery": 0.5
+      },
+      "src": [
+        "P0006"
+      ]
+    },
+    {
+      "zh": "一个人吃饭先找一人食套餐",
+      "en": "looking for a solo lunch special when eating alone",
+      "if": {
+        "solo_ok": true,
+        "budget": [
+          "frugal",
+          "value"
+        ]
+      },
+      "src": [
+        "C0040"
+      ]
+    },
+    {
+      "zh": "想放空就一个人去江边或公园坐坐",
+      "en": "sitting by the river or in the park alone to recharge",
+      "if": {
+        "pace": [
+          "slow"
+        ]
+      },
+      "src": [
+        "C0039",
+        "P0004"
+      ]
+    },
+    {
+      "zh": "去展馆前先看是不是免费、要不要预约",
+      "en": "checking whether a museum is free or needs booking before going",
+      "if": {
+        "pace": [
+          "slow"
+        ],
+        "budget": [
+          "frugal",
+          "value"
+        ]
+      },
+      "src": [
+        "C0034",
+        "C0038"
+      ]
+    }
+  ],
+  "memories": [
+    {
+      "zh": "那年带{who}去{place}玩了{days}天，攻略、订房、排队全是我在弄，他们一路说「都行」。回来以后我好几天不想再听到「出去玩」这三个字。",
+      "en": "The year I took {who} to {place} for {days} days, I did every bit of the planning, booking and queuing while they said \"anything's fine\" the whole way. For days afterwards I didn't want to hear the words \"let's go somewhere\".",
+      "valence": -0.5,
+      "importance": 0.6,
+      "if": {
+        "role": [
+          "planner"
+        ],
+        "travels": true
+      },
+      "src": [
+        "C0011",
+        "C0012",
+        "C0017"
+      ]
+    },
+    {
+      "zh": "每次出去都是我拿主意，有一回{who}说了句「辛苦你了，下次我来订」，就这一句，我高兴了好几天。",
+      "en": "I'm always the one deciding, but once {who} said \"thanks for doing all this, I'll book next time\" — that one line kept me happy for days.",
+      "valence": 0.5,
+      "importance": 0.5,
+      "if": {
+        "role": [
+          "planner"
+        ]
+      },
+      "src": [
+        "C0010",
+        "C0012"
+      ]
+    },
+    {
+      "zh": "跟{who}去{place}，出发前都说随便，到了每顿饭都得去对方搜好的店，拍照也得按人家的构图来。回来一周我们都没怎么说话。",
+      "en": "Before {who} and I went to {place} we both said we were easy, but once there every meal had to be at the place they'd looked up and every photo had to be framed their way. We barely talked for a week after.",
+      "valence": -0.6,
+      "importance": 0.7,
+      "if": {
+        "role": [
+          "co_planner",
+          "follower"
+        ],
+        "travels": true
+      },
+      "src": [
+        "P0002"
+      ],
+      "who": "ties"
+    },
+    {
+      "zh": "以前和{who}出去，我提了几次想去的地方都被否了，后来我就只说「都可以」。",
+      "en": "When I went out with {who}, my ideas got shot down a few times, so after that I just said \"either is fine\".",
+      "valence": -0.4,
+      "importance": 0.5,
+      "if": {
+        "voice": [
+          "withdrawn"
+        ]
+      },
+      "src": [
+        "C0004"
+      ]
+    },
+    {
+      "zh": "和{who}认识好多年，周末出去一两天一直挺好；有一次一起出门十来天，到后面大家都累了，话越来越少。",
+      "en": "I've known {who} for years and weekend trips were always great — then we did ten days together, and by the end we were all worn out and hardly talking.",
+      "valence": -0.4,
+      "importance": 0.6,
+      "if": {
+        "min_trip_days": 5,
+        "travels": true
+      },
+      "src": [
+        "C0018"
+      ]
+    },
+    {
+      "zh": "和{who}去{place}，他想去的地方我没兴趣，我们就白天分开玩、晚上约个地方吃饭，那趟反而玩得最舒服。",
+      "en": "In {place}, {who} wanted to do things I didn't care about, so we split up during the day and met for dinner. Best trip we've had.",
+      "valence": 0.5,
+      "importance": 0.5,
+      "if": {
+        "role": [
+          "co_planner",
+          "planner",
+          "solo"
+        ],
+        "travels": true
+      },
+      "src": [
+        "C0015",
+        "C0026"
+      ]
+    },
+    {
+      "zh": "跟{who}出去我从来不做攻略，跟着走、负责拍照和捧场，大家都挺开心。",
+      "en": "I never plan anything when I go out with {who} — I tag along, take the photos and hype everything up, and everyone has a good time.",
+      "valence": 0.4,
+      "importance": 0.4,
+      "if": {
+        "role": [
+          "follower"
+        ]
+      },
+      "src": [
+        "C0013",
+        "C0023"
+      ]
+    },
+    {
+      "zh": "{who}里有人约我出去，其实我不太想去，可被劝了两句就答应了，去了一路都在后悔。",
+      "en": "Someone from {who} asked me along and I didn't really want to go, but after a little coaxing I said yes and regretted it the whole time.",
+      "valence": -0.3,
+      "importance": 0.4,
+      "if": {
+        "voice": [
+          "withdrawn",
+          "goes_along"
+        ]
+      },
+      "src": [
+        "C0002"
+      ],
+      "who": "ties"
+    },
+    {
+      "zh": "有个周末特别累，一个人去{quiet}待了一下午，不用跟谁说话，回来人缓过来不少。",
+      "en": "One weekend I was completely drained, so I spent the afternoon alone at {quiet}. No talking to anyone. I came back feeling human again.",
+      "valence": 0.5,
+      "importance": 0.5,
+      "if": {
+        "pace": [
+          "slow"
+        ]
+      },
+      "src": [
+        "P0004",
+        "C0039"
+      ]
+    },
+    {
+      "zh": "上次去{museum}看展，展挺好看，就是空调冷得我直搓胳膊，后来再去都带件外套。",
+      "en": "Last time I went to {museum} the exhibit was lovely but the AC was freezing — now I always bring a jacket.",
+      "valence": 0.1,
+      "importance": 0.3,
+      "if": {
+        "pace": [
+          "slow",
+          "balanced"
+        ]
+      },
+      "src": [
+        "C0028"
+      ]
+    },
+    {
+      "zh": "有回和{who}聚餐我先垫了钱，别人很快都转了，就一个人提醒了还拖了一天，我心里憋着一股火。",
+      "en": "I covered dinner with {who} once. Everyone paid me back right away except one person, who still hadn't a day after I reminded them. It really got to me.",
+      "valence": -0.5,
+      "importance": 0.5,
+      "if": {
+        "split": [
+          "aa_exact",
+          "often_pays"
+        ]
+      },
+      "src": [
+        "P0009"
+      ],
+      "who": "ties"
+    },
+    {
+      "zh": "后来聚餐都发群收款，只勾真来了的人，省得我一个个去催。",
+      "en": "These days I send a group payment request to just the people who came, so I don't have to chase anyone.",
+      "valence": 0.3,
+      "importance": 0.4,
+      "if": {
+        "split": [
+          "aa_exact",
+          "aa_rough",
+          "often_pays"
+        ]
+      },
+      "src": [
+        "C0062",
+        "C0065"
+      ]
+    },
+    {
+      "zh": "跟{who}去一家老字号吃饭，好几道热菜端上来都是温的，加水叫了几次才有人来，那顿饭没吃完。",
+      "en": "{who} and I went to a well-known old restaurant. Several hot dishes came out lukewarm and it took three tries to get water. We didn't finish.",
+      "valence": -0.5,
+      "importance": 0.5,
+      "if": {
+        "adult": true
+      },
+      "src": [
+        "P0007",
+        "C0050"
+      ]
+    },
+    {
+      "zh": "被网上的照片吸引去了一家很好看的店，一份东西没几口，算下来人均比网上写的高了快一倍。",
+      "en": "I went to a gorgeous place I'd seen online. Each plate was a few bites, and the bill per person was nearly double what the reviews said.",
+      "valence": -0.4,
+      "importance": 0.5,
+      "if": {
+        "choose_by": [
+          "reviews"
+        ]
+      },
+      "src": [
+        "P0008",
+        "C0055",
+        "C0060"
+      ]
+    },
+    {
+      "zh": "有次觉得菜不对劲跟店长说了，他说是我口味的问题。他要是认一句我也就算了，偏不认，我到现在都记得。",
+      "en": "I once told a manager a dish seemed off and they said it was just my taste. If they'd admitted it I'd have let it go — they didn't, and I still remember it.",
+      "valence": -0.6,
+      "importance": 0.6,
+      "if": {
+        "max_agreeableness": 0.5
+      },
+      "src": [
+        "C0058",
+        "C0059"
+      ]
+    },
+    {
+      "zh": "开车去吃了顿饭，饭钱几百，停一个小时车还要二十，后来能坐地铁就坐地铁。",
+      "en": "I drove to a dinner that cost a few hundred and still paid twenty just to park for an hour. Now I take the train when I can.",
+      "valence": -0.3,
+      "importance": 0.4,
+      "if": {
+        "transport": [
+          "drive"
+        ]
+      },
+      "src": [
+        "P0011",
+        "C0070",
+        "C0072"
+      ]
+    },
+    {
+      "zh": "周末拿着团购券去吃，到店才知道周末不能用，只能单点。",
+      "en": "I showed up with a deal on a Saturday and found out it didn't work on weekends.",
+      "valence": -0.3,
+      "importance": 0.3,
+      "if": {
+        "budget": [
+          "frugal",
+          "value"
+        ]
+      },
+      "src": [
+        "C0069"
+      ]
+    },
+    {
+      "zh": "有回和{who}里几个不太熟的人吃饭，突然没人说话那几秒特别难熬，我只好一直夸桌上的菜。",
+      "en": "At dinner with a few of {who} I barely knew, there was a silence that felt endless. I just kept complimenting the food.",
+      "valence": -0.3,
+      "importance": 0.4,
+      "if": {
+        "max_battery": 0.5
+      },
+      "src": [
+        "P0006"
+      ],
+      "who": "ties"
+    },
+    {
+      "zh": "一个人去吃火锅，点了平时不吃的鸭血想换换口味，煮出来那个样子我实在下不去筷子。",
+      "en": "Eating hot pot alone I ordered something I never get, just to try it. Once it was cooked I couldn't bring myself to touch it.",
+      "valence": -0.2,
+      "importance": 0.3,
+      "if": {
+        "solo_ok": true
+      },
+      "src": [
+        "P0005",
+        "C0044"
+      ]
+    }
+  ],
+  "child_memories": [
+    {
+      "zh": "上次{who}带我去{place}，我玩得特别开心，就是回来的车上睡着了。",
+      "en": "Last time {who} took me to {place} it was so much fun — I fell asleep in the car on the way home.",
+      "valence": 0.6,
+      "importance": 0.4,
+      "src": []
+    },
+    {
+      "zh": "跟家里人出去吃饭，大人一直在说话，我等菜等得好无聊。",
+      "en": "When we eat out the grown-ups talk forever and waiting for food is so boring.",
+      "valence": -0.2,
+      "importance": 0.3,
+      "src": []
+    }
+  ],
+  "roles": {
+    "planner": {
+      "zh": "出去玩我一般是拿主意的那个，攻略、订票都是我",
+      "en": "When we go out, I'm usually the one who plans and books everything",
+      "src": [
+        "C0011",
+        "C0017"
+      ]
+    },
+    "co_planner": {
+      "zh": "出去玩我希望大家一起商量、一起分担",
+      "en": "I want trips to be decided together, with everyone pitching in",
+      "src": [
+        "C0007",
+        "C0008"
+      ]
+    },
+    "follower": {
+      "zh": "出去玩我习惯跟着别人的安排走",
+      "en": "When we go out, I'm happy to go along with whoever plans",
+      "src": [
+        "C0009",
+        "C0013",
+        "C0023"
+      ]
+    },
+    "solo": {
+      "zh": "出去玩我更喜欢一个人，或者只跟合得来的人",
+      "en": "I'd rather go out alone, or only with people I really click with",
+      "src": [
+        "C0001",
+        "C0005"
+      ]
+    }
+  }
+}

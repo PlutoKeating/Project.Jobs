@@ -36,6 +36,7 @@ program.command('init').description('一键初始化：数据库迁移 + 导入�
   const p = await E.importPersonas(); console.log(`✅ Persona：新增 ${p.imported}，未变化 ${p.unchanged}${p.errors.length ? `，错误 ${p.errors.length}\n${p.errors.join('\n')}` : ''}`);
   const w = await E.importWorldTemplates(); console.log(`✅ 世界模板：${w.join(', ')}`);
   const rs = await E.importResidents(); const ex = await E.settleExisting(); console.log(`✅ 居民：随包导入 ${rs.imported} 人，入住 ${rs.settled + ex.added} 人`);
+  const lz = await E.enrichLeisure(); if (lz.added) console.log(`✅ 出门与吃喝玩乐：给 ${lz.added} 位已有居民补上`);
   const ma = await E.assignMailAddresses(); console.log(`✅ 居民邮箱：@${ma.domain}${ma.changed ? `，更新 ${ma.changed} 个地址` : ''}`);
   if (o.demos) { const d = await E.registerDemos(); console.log(`✅ Demo：${d.map((x) => x.app).join(', ')}（先运行 pnpm demos 启动）`); }
 }));
@@ -78,6 +79,7 @@ product.command('import').argument('<file>').option('--auto-confirm', '全部功
 // ---------------------------------------------------------------- Persona / 世界
 const persona = program.command('persona').description('人物（六层描述）：导入手写人物、列出');
 persona.command('import').argument('[dirs...]').action(wrap(async (dirs: string[]) => out(await E.importPersonas(dirs.length ? dirs : undefined))));
+persona.command('leisure').description('给还没有「出门与吃喝玩乐」一层的人物按规则补上（写成新版本）').action(wrap(async () => out(await E.enrichLeisure())));
 persona.command('list').action(wrap(async () => { const rows = await getDb().select().from(personas).where(eq(personas.active, true)); console.table(rows.map((r) => ({ id: r.id, version: r.version, kind: r.kind, locale: r.locale, segment: r.segment, name: (r.spec as { identity: { name: string } }).identity.name, frozen: r.frozen }))); }));
 const world = program.command('world').description('世界：居民的生成、导入导出、入住；场景模板导入');
 world.command('import').action(wrap(async () => out(await E.importWorldTemplates())));

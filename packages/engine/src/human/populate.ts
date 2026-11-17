@@ -8,6 +8,7 @@ import { gateway } from '@pux/llm';
 import { computeLayout, loadTown, saveRelations, settleResidents, allResidents, allHouseholds, workplaceFor, type SettleInput } from '@pux/jobsworld';
 import { buildRelations, deriveTraits, enConfig, fallbackRowsEn, householdsFromRows, marginals, sampleHouseholdsZh, type HouseholdPlan, type NemotronRow, type Resident, type Skeleton } from './population.ts';
 import { upsertPersona } from './persona.ts';
+import { withLeisure } from './leisure.ts';
 
 export const RESIDENTS_FILE = () => configPath('population', 'residents.jsonl');
 export interface ResidentRecord { spec: PersonaSpec; household: { id: string; locale: string; type: string; region: string }; skeleton: Skeleton }
@@ -70,11 +71,11 @@ Never use words like test, evaluate, usability or feedback.`;
   return r.data.members;
 }
 
-function assemble(m: Skeleton, t: ReturnType<typeof deriveTraits>, n: z.infer<typeof Narrative>['members'][number]): PersonaSpec {
+function assemble(m: Skeleton, t: ReturnType<typeof deriveTraits>, n: z.infer<typeof Narrative>['members'][number], householdType: string): PersonaSpec {
   const zh = m.locale === 'zh-CN';
   const id = `${zh ? 'zh' : 'en'}_r_${shortHash(m.key, 8)}`;
   const { psychology_numbers, ...rest } = t;
-  return PersonaSpecSchema.parse({
+  return withLeisure(PersonaSpecSchema.parse({
     id, kind: m.age < 14 ? 'child' : 'synthetic', locale: m.locale, segment: rest.segment, target_user: false, tags: rest.tags,
     source: m.source === 'census-zh' ? 'population (census skeleton)' : m.source === 'nemotron-usa' ? 'population (Nemotron-Personas-USA, CC BY 4.0)' : 'population (built-in distribution)',
     identity: { name: n.name.trim() || m.seed_name || id, age: m.age, gender: m.gender, region: m.region, city_tier: m.city_tier, education: m.education, occupation: m.occupation, income_band: zh ? `月收入约 ${m.income_month} 元` : `about $${m.income_month} a month`, family: n.family.slice(0, 6), social_ties: n.social_ties.slice(0, 4), life_story: [n.life_story.trim(), m.life_event ? (zh ? `近况：${m.life_event}。` : `Lately: ${m.life_event}.`) : ''].filter(Boolean).join(' ') },
@@ -82,7 +83,7 @@ function assemble(m: Skeleton, t: ReturnType<typeof deriveTraits>, n: z.infer<ty
     psychology: { ...psychology_numbers, values: n.values.slice(0, 4), beliefs: n.beliefs.slice(0, 4), motivations: n.motivations.slice(0, 4) },
     behavior_policy: { ...rest.behavior_policy, abandonment_rules: n.abandonment_rules.slice(0, 2) },
     state_defaults: rest.state_defaults, ...(rest.child_profile ? { child_profile: rest.child_profile } : {}), prior_knowledge: 'stranger',
-  });
+  }), { hobbies: m.hobbies, householdType });
 }
 
 /**
@@ -112,7 +113,7 @@ export async function generatePopulation(opts: { n: number; seed?: number; zhSha
         for (const m of hh.members) {
           const n = story.find((x) => x.key === m.key) ?? story[hh.members.indexOf(m)];
           if (!n) { failed.push(m.key); continue; }
-          const spec = assemble(m, traits.get(m.key)!, n);
+          const spec = assemble(m, traits.get(m.key)!, n, hh.type);
           usedNames.add(spec.identity.name);
           await upsertPersona(spec, spec.source);
           records.push({ spec, household: { id: hh.id, locale: hh.locale, type: hh.type, region: hh.region }, skeleton: { ...m, seed_text: undefined } });
@@ -168,11 +169,27 @@ export async function exportResidents(file = RESIDENTS_FILE()) {
 /** 导入随包自带的居民（已存在的人物版本会被跳过） */
 export async function importResidents(file = RESIDENTS_FILE()) {
   if (!existsSync(file)) return { imported: 0, settled: 0 };
-  const records = readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as ResidentRecord).map((r) => ({ ...r, spec: PersonaSpecSchema.parse(r.spec) }));
+  const records = readFileSync(file, 'utf8').split('\n').filter(Boolean).map((l) => JSON.parse(l) as ResidentRecord).map((r) => ({ ...r, spec: withLeisure(PersonaSpecSchema.parse(r.spec), { hobbies: r.skeleton.hobbies, householdType: r.household.type }) }));
   let imported = 0;
   for (const r of records) if (await upsertPersona(r.spec, r.spec.source)) imported++;
   const s = await settleRecords(records);
   return { imported, settled: s.residents, relations: s.relations };
+}
+
+/**
+ * 给还没有「出门与吃喝玩乐」一层的现有人物补上（之前生成、只在数据库里的居民）：按规则推导，写成新版本。
+ * 随包居民与手写人物已经带着这一层，不受影响。
+ */
+export async function enrichLeisure() {
+  const res = await allResidents(); const hhs = await allHouseholds();
+  const ps = await getDb().select({ id: personas.id, spec: personas.spec, source: personas.source }).from(personas).where(eq(personas.active, true));
+  let added = 0;
+  for (const p of ps) {
+    const spec = PersonaSpecSchema.parse(p.spec); if (spec.leisure) continue;
+    const r = res.get(p.id); const sk = r?.skeleton as Skeleton | undefined;
+    if (await upsertPersona(withLeisure(spec, { hobbies: sk?.hobbies, householdType: r ? hhs.get(r.household_id)?.type : undefined }), p.source ?? spec.source)) added++;
+  }
+  return { added };
 }
 
 export { workplaceFor };

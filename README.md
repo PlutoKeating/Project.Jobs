@@ -135,8 +135,8 @@ Everything runs on your machine. Residents, memories, screenshots and conclusion
 | `Dockerfile` · `deploy/` · `.github/workflows/` | The main image · entrypoint, compose files, the install script, the `jobsworld` launcher · the release workflow |
 | `site/` | The website `jobs.plutokeating.beer`, a copy of the install script, and the source of the diagrams on this page ([`site/docs/README.md`](site/docs/README.md)) |
 | `docker-compose.yml` · `infra/` | Dependencies and local game server builds when running from source |
-| `config/` · `scripts/` · `tests/` | Population tables and bundled residents, town layout, model catalog · start-up and sync scripts · unit and integration tests |
-| `docs/` | Documentation and the images on this page (`docs/images/`); `docs/history/` holds design drafts from before the reshape |
+| `config/` · `scripts/` · `tests/` | Population tables, bundled residents and their going-out vocabulary, town layout, model catalog · start-up and sync scripts · unit and integration tests |
+| `docs/` | Documentation and the images on this page (`docs/images/`); `docs/research/` holds field research and how it shapes the residents; `docs/history/` holds design drafts from before the reshape |
 
 </details>
 

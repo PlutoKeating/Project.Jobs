@@ -6,6 +6,7 @@ import { eq, getDb, personaGlobalState, sql } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { BRANCH, withTree, type MemoryKind, type RecalledMemory } from '@pux/memory';
 import { personaBio } from './persona.ts';
+import { leisureCore } from './leisure.ts';
 
 export type { RecalledMemory };
 
@@ -17,19 +18,31 @@ export function coreStatements(p: PersonaSpec): string[] {
     ...(ps.values.length ? [zh ? `我最在乎的是${ps.values.join('、')}` : `What matters most to me: ${ps.values.join(', ')}`] : []),
     ...p.behavior_policy.abandonment_rules.map((r) => (zh ? `我的底线：${r}` : `My limit: ${r}`)),
     ...(ps.motivations.length ? [zh ? `我想要的是${ps.motivations.join('、')}` : `What I want: ${ps.motivations.join(', ')}`] : []),
-  ].slice(0, 8);
+  ].slice(0, 8).concat(leisureCore(p));
+}
+
+/** 人设自带的往事（leisure.memories）：放在 past 分支，sim_day 记成那么多天以前；只写一次，之后不随整理遗忘 */
+export function pastMemories(p: PersonaSpec) {
+  return (p.leisure?.memories ?? []).map((m) => ({ content: m.text, valence: m.valence, importance: m.importance, sim_day: -m.ago_days }));
 }
 
 async function ensureCore(p: PersonaSpec) {
   await withTree(p.id, async (t) => {
-    if (t.hasBranch(BRANCH.core)) return;
-    const items: { content: string; embedding: number[] }[] = [];
-    for (const content of coreStatements(p)) items.push({ content, embedding: await gateway().embed(content, { purpose: 'memory_core' }) });
-    t.seedCore(items, Date.now());
+    if (!t.hasBranch(BRANCH.core)) {
+      const items: { content: string; embedding: number[] }[] = [];
+      for (const content of coreStatements(p)) items.push({ content, embedding: await gateway().embed(content, { purpose: 'memory_core' }) });
+      t.seedCore(items, Date.now());
+    }
+    const past = pastMemories(p);
+    if (past.length && !t.hasBranch(BRANCH.past)) {
+      const items = [];
+      for (const m of past) items.push({ ...m, embedding: await gateway().embed(m.content, { purpose: 'memory_past' }) });
+      t.seedPast(items, Date.now());
+    }
   });
 }
 
-/** 检索：相关性 × 时效性 × 重要性加权。只在这个人的 core / self / life / people 和当前产品的分支里找；带出与之冲突的记忆 */
+/** 检索：相关性 × 时效性 × 重要性加权。只在这个人的 core / past / self / life / people 和当前产品的分支里找；带出与之冲突的记忆 */
 export async function recall(personaId: string, appId: string, query: string, simDay: number, k?: number, onlySessions?: Set<string>, persona?: PersonaSpec): Promise<RecalledMemory[]> {
   const cfg = loadConfig().memory;
   if (persona) await ensureCore(persona).catch(() => {});

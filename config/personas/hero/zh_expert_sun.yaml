@@ -44,4 +44,20 @@ behavior_policy:
   abandonment_rules: []
   input_preference: typing
 state_defaults: { fatigue: 0.2, hunger: 0.2, mood: 0.2, attention: 0.9, stress: 0.2 }
+leisure:
+  local: { activities: ["周末去爬香山", "在家附近吃熟悉的馆子"], hours: 4, per_month: 2, with: ["妻子"] }
+  trips: { per_year: 2, days: [4, 8], range: abroad, with: ["妻子"] }
+  group_role: planner
+  voice: speaks_up
+  pace: balanced
+  social_battery: 0.4
+  budget: comfort
+  split: aa_rough
+  transport: drive
+  dining: { restrictions: [], choose_by: familiar, solo_ok: true, dislikes: ["停车费比饭还贵"] }
+  pet_peeves: ["攻略、订房全落在自己头上，别人还觉得理所当然"]
+  habits: ["出门前先查停车费，太贵就坐地铁或打车"]
+  memories:
+    - { text: "去年和妻子去日本，表格做了三页，到了才发现她只想在酒店附近的商场逛，我的表格白做了。", valence: -0.2, importance: 0.4, ago_days: 330 }
+  sources: ["C0011", "C0012", "C0073", "P0011"]
 prior_knowledge: used_before

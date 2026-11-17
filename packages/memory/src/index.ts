@@ -7,7 +7,7 @@ import { and, eq, getDb, personaMemories, personaMemoryTrees, sql } from '@pux/d
 export const MEMORY_DIM = 256;          // 向量截断到 256 维再归一化（Gemini embedding 支持前缀截断），控制每棵树的体积
 export const MAX_LEAVES = 240;          // 每人最多保留的记忆条数（ewave 目前按几百节点设计）
 
-export type MemoryKind = 'core' | 'episodic' | 'belief' | 'trust' | 'habit' | 'commerce' | 'life' | 'hearsay';
+export type MemoryKind = 'core' | 'past' | 'episodic' | 'belief' | 'trust' | 'habit' | 'commerce' | 'life' | 'hearsay';
 export interface MemoryMeta {
   kind: MemoryKind; valence: number; importance: number;
   app_id?: string | null; session_id?: string | null;
@@ -16,7 +16,9 @@ export interface MemoryMeta {
 export interface MemoryItem extends MemoryMeta { id: string; content: string; branch: string }
 export interface RecalledMemory { id: string; kind: string; content: string; valence: number; importance: number; score: number; conflicts_with?: string }
 
-export const BRANCH = { core: 'core', self: 'self', life: 'life', people: 'people', app: (appId: string) => `app:${appId}` } as const;
+export const BRANCH = { core: 'core', past: 'past', self: 'self', life: 'life', people: 'people', app: (appId: string) => `app:${appId}` } as const;
+/** 不参与按上限遗忘、也不随产品清零删除的分支：钉住的自我与人设自带的往事 */
+const PINNED = new Set<string>([BRANCH.core, BRANCH.past]);
 
 /** 截断并归一化向量 */
 export function compact(v: readonly number[]): number[] {
@@ -34,7 +36,7 @@ export class MemoryTree {
   static create(personaId: string) { return new MemoryTree(personaId, new Ewave<string>(TREE_OPTS(personaId)), 0, true); }
   static from(personaId: string, snap: EwaveSnapshot<string>, version: number) { return new MemoryTree(personaId, Ewave.fromJSON<string>(snap, TREE_OPTS()), version); }
 
-  /** 分支按 meta.key 定位：core（不可改的自我）/ self（对事物的一般看法）/ life（生活经历）/ people（听别人说的）/ app:<id>（对某个产品的经历与态度） */
+  /** 分支按 meta.key 定位：core（不可改的自我）/ past（人设自带的往事）/ self（对事物的一般看法）/ life（生活经历）/ people（听别人说的）/ app:<id>（对某个产品的经历与态度） */
   branch(key: string, label?: string): Node<string> {
     const found = this.tree.projectRoots().find((b) => b.meta.key === key);
     if (found) return found;
@@ -62,9 +64,9 @@ export class MemoryTree {
     return node;
   }
 
-  /** 超出上限时忘掉最不重要、最久远的记忆（core 分支不会被忘） */
+  /** 超出上限时忘掉最不重要、最久远的记忆（core 与 past 分支不会被忘） */
   enforceCap(max = MAX_LEAVES) {
-    const ls = this.leaves().filter((n) => this.branchKeyOf(n) !== BRANCH.core);
+    const ls = this.leaves().filter((n) => !PINNED.has(this.branchKeyOf(n)));
     if (ls.length <= max) return 0;
     const today = Math.max(...ls.map((n) => Number(n.meta.sim_day ?? 0)));
     const keep = (n: Node<string>) => Number(n.meta.importance ?? 0.5) * 0.7 + Math.pow(0.5, (today - Number(n.meta.sim_day ?? 0)) / 14) * 0.3;
@@ -80,7 +82,7 @@ export class MemoryTree {
    */
   forgetApp(appId: string, sessionIds: ReadonlySet<string> = new Set()): number {
     const hit = (n: Node<string>) => n.meta.app_id === appId || (typeof n.meta.session_id === 'string' && sessionIds.has(n.meta.session_id));
-    const drop = this.leaves().filter((n) => this.branchKeyOf(n) !== BRANCH.core && (this.branchKeyOf(n) === BRANCH.app(appId) || hit(n)));
+    const drop = this.leaves().filter((n) => !PINNED.has(this.branchKeyOf(n)) && (this.branchKeyOf(n) === BRANCH.app(appId) || hit(n)));
     for (const n of drop) this.tree.remove(n.id);
     const b = this.tree.projectRoots().find((x) => x.meta.key === BRANCH.app(appId));
     if (b) this.tree.remove(b.id, { strategy: 'cascade' });
@@ -97,18 +99,27 @@ export class MemoryTree {
     this.dirty = true;
   }
 
+  /** past 分支：人设自带的往事（出游、聚餐里留下的事）。sim_day 是负数（那么多天以前），写入后只读、不按上限遗忘 */
+  seedPast(items: { content: string; embedding: readonly number[]; valence: number; importance: number; sim_day: number }[], now: number) {
+    if (this.hasBranch(BRANCH.past)) return;
+    const b = this.branch(BRANCH.past, 'past');
+    for (const it of items) this.tree.add(it.content, { parent: b.id, embedding: compact(it.embedding), text: it.content, sliceId: `day-${it.sim_day}`, at: now, meta: { kind: 'past', valence: it.valence, importance: it.importance, sim_day: it.sim_day, created_at: now } satisfies MemoryMeta });
+    this.tree.lock(b.id, 'read_only', { setBy: 'owner', reason: 'a persona\'s backstory is fixed' });
+    this.dirty = true;
+  }
+
   /**
-   * 检索：相关性 × 时效性 × 重要性（Generative Agents 式），只在 core / self / life / people 和当前产品的分支里找。
+   * 检索：相关性 × 时效性 × 重要性（Generative Agents 式），只在 core / past / self / life / people 和当前产品的分支里找。
    * 被想起的记忆如果有与之冲突的记忆（-1 边），一并带出——人想起一件事时也会想起相反的经历。
    */
   recall(query: readonly number[], o: { appId?: string; simDay: number; k: number; weights: { alpha_relevance: number; beta_recency: number; gamma_importance: number; recency_half_life_h: number }; onlySessions?: Set<string> }): RecalledMemory[] {
     const q = compact(query);
-    const allowed = new Set<string>([BRANCH.core, BRANCH.self, BRANCH.life, BRANCH.people, ...(o.appId ? [BRANCH.app(o.appId)] : [])]);
+    const allowed = new Set<string>([BRANCH.core, BRANCH.past, BRANCH.self, BRANCH.life, BRANCH.people, ...(o.appId ? [BRANCH.app(o.appId)] : [])]);
     const ranked = this.leaves().filter((n) => n.embedding && allowed.has(this.branchKeyOf(n)))
       .filter((n) => !o.onlySessions || !n.meta.app_id || (typeof n.meta.session_id === 'string' && o.onlySessions.has(n.meta.session_id)))
       .map((n) => {
         const hours = Math.max(0, (o.simDay - Number(n.meta.sim_day ?? 0)) * 24);
-        const rec = n.meta.kind === 'core' ? 0.5 : Math.pow(0.5, hours / o.weights.recency_half_life_h);
+        const rec = PINNED.has(this.branchKeyOf(n)) ? 0.5 : Math.pow(0.5, hours / o.weights.recency_half_life_h);   // 钉住的自我与往事不随时间淡出
         return { n, score: o.weights.alpha_relevance * cos(q, n.embedding!) + o.weights.beta_recency * rec + o.weights.gamma_importance * Number(n.meta.importance ?? 0.5) };
       }).sort((a, b) => b.score - a.score);
     // 几乎一样的记忆只想起一条（同一件事被记了好几遍时，不让它挤掉别的记忆）

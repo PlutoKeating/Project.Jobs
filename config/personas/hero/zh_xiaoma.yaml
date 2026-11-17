@@ -45,4 +45,21 @@ behavior_policy:
   adversarial_traits: [反复尝试领取优惠, 输入奇怪字符或超长文本, 连点按钮, 试图绕过付费]
   input_preference: typing
 state_defaults: { fatigue: 0.6, hunger: 0.5, mood: 0.2, attention: 0.4, stress: 0.2 }
+leisure:
+  local: { activities: ["和工友去夜市吃宵夜", "网吧开黑", "逛步行街"], hours: 4, per_month: 6, with: ["工友"] }
+  trips: { per_year: 1, days: [2, 3], range: nearby, with: ["工友"] }
+  group_role: follower
+  voice: goes_along
+  pace: balanced
+  social_battery: 0.6
+  budget: frugal
+  split: aa_exact
+  transport: transit
+  dining: { restrictions: [], choose_by: nearby, solo_ok: true, dislikes: ["周末团购券不能用，只能单点", "价格不低、份量却很少"] }
+  pet_peeves: ["AA 时有人拖着不转账"]
+  habits: ["一个人吃饭先找一人食套餐", "聚餐发群收款，只勾真来了的人"]
+  memories:
+    - { text: "拿着团购券和工友去吃烤肉，到了店里说周末不能用，只能单点，我们几个站门口商量半天换了一家。", valence: -0.3, importance: 0.4, ago_days: 30 }
+    - { text: "五一跟工友去深圳海边玩了两天，什么攻略都没做，跟着他们走，玩得挺开心。", valence: 0.5, importance: 0.4, ago_days: 200 }
+  sources: ["C0013", "C0040", "C0055", "C0062", "C0065", "C0069", "P0009"]
 prior_knowledge: seen_ads

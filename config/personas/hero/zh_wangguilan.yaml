@@ -43,4 +43,21 @@ behavior_policy:
   abandonment_rules: [看到要付钱的字样立刻退出, 看不懂的英文就不点]
   input_preference: voice
 state_defaults: { fatigue: 0.4, hunger: 0.3, mood: 0.1, attention: 0.5, stress: 0.4 }
+leisure:
+  local: { activities: ["傍晚去广场跳舞", "和姐妹们逛早市", "去公园晒太阳"], hours: 3, per_month: 10, with: ["跳广场舞的姐妹", "老伴"] }
+  trips: { per_year: 1, days: [5, 7], range: domestic, with: ["跳广场舞的姐妹"] }
+  group_role: follower
+  voice: goes_along
+  pace: slow
+  social_battery: 0.72
+  budget: frugal
+  split: aa_exact
+  transport: walk_bike
+  dining: { restrictions: ["少油少盐", "不吃辣"], choose_by: others, solo_ok: false, dislikes: ["价格不低、份量却很少", "室内空调太冷"] }
+  pet_peeves: ["为了赶景点打卡，一路像在出差", "被劝了几句就不好意思拒绝，答应了不想去的局"]
+  habits: ["跟着走就不挑刺，负责拍照和捧场", "出发前先把忌口和作息说清楚"]
+  memories:
+    - { text: "跟姐妹们报了个夕阳红团去云南，一天坐好几个小时大巴，早上六点就叫起床，回来腿肿了好几天。", valence: -0.4, importance: 0.6, ago_days: 300 }
+    - { text: "姐妹们非拉我去吃一家新开的自助，一个人一百多，我吃不了几口，心疼了好几天，可又不好意思说不去。", valence: -0.4, importance: 0.5, ago_days: 60 }
+  sources: ["C0002", "C0013", "C0016", "C0023", "C0028", "C0055", "H002", "P0002", "P0004"]
 prior_knowledge: stranger

@@ -66,7 +66,7 @@
 | 方法 路径 | 说明 |
 |---|---|
 | `GET /personas` | 每个人物的最新版本 + 使用统计（次数、用过的产品、记忆数）+ 此刻位置、需求、手机在不在手边、所在家庭；`live.app` 只在他此刻真在用某个产品时给（回放与刚用完的不算） |
-| `GET /personas/:id` | 画像、今天的日程、记忆（最近 120 条，来自他的记忆树）、使用历史（`sessions`；`launch_of` 把 `app_id` 对到发布 id）、信任状态、实时状态与世界时钟；`resident`（家庭、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境） |
+| `GET /personas/:id` | 画像（`spec`，含可选的 `leisure`「出门与吃喝玩乐」）、今天的日程、记忆（最近 120 条，来自他的记忆树）、使用历史（`sessions`；`launch_of` 把 `app_id` 对到发布 id）、信任状态、实时状态与世界时钟；`resident`（家庭、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境） |
 | `GET /personas/:id/avatar` | 头像：接入了画图模型时生成并缓存到 MinIO；还没有生成的（或没接入画图模型时）返回确定性的像素头像 SVG |
 | `POST /personas/generate`（管理员） `{ n, locale }` | 生成新居民并住进城里（1–12 人） |
 
@@ -122,7 +122,7 @@
 
 ## 2. 命令行与 MCP
 
-装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`（`import`、`list`、`leisure`：给还没有「出门与吃喝玩乐」一层的人物补上；`init` 也会做）、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ### MCP 工具
 
@@ -237,7 +237,8 @@ interface Executor {
 
 - 手写人物：`config/personas/{hero,child}/*.yaml`（`PersonaSpecSchema`，共 14 位）
 - 场景模板：`config/worlds/*.yaml`（`WorldTemplateSchema`，`when` 为本地可信表达式）。默认不用：每次使用发生在人物此时此地的处境里（`sessions.world_context`，`world_template_id = 'live'`）；只有内部校准批次显式指定 `world_ids` 时才用模板
-- 人口抽样表：`config/population/{zh-CN,en-US}.json`；随包居民：`config/population/residents.jsonl`（每行 `{ spec, household, skeleton }`）
+- 人口抽样表：`config/population/{zh-CN,en-US}.json`；随包居民：`config/population/residents.jsonl`（每行 `{ spec, household, skeleton }`；`spec.leisure` 由规则推导，改了规则或词表后要重新生成，`tests/leisure.test.ts` 会检查）
+- 出门与吃喝玩乐的词表：`config/population/leisure.json`（每条带 `src` 调研编号与 `if` 适用条件，见 `docs/research/README.md`）；手写人物的 `leisure` 直接写在 YAML 里
 - 城镇与日程：`config/jobsworld/town.yaml`、`agenda.yaml`
 - 模型目录的随包快照：`config/models/catalog.json`（`npx tsx scripts/update-model-catalog.ts` 更新）
 - 全局参数：`config/pux.config.yaml`（预算、护栏、阈值、记忆检索权重等；可在不入库的 `config/pux.config.local.yaml` 里覆盖）

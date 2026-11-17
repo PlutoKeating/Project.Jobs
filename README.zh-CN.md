@@ -133,9 +133,9 @@ MCP 工具：`publish_product`、`list_products`、`product_status`、`product_r
 | `demos/kit` | 11 个示例产品（每个有干净版与带着已知毛病的版本），用于演示与校准 |
 | `Dockerfile` · `deploy/` · `site/` · `.github/workflows/` | 主镜像；容器入口、装好后用的编排文件、安装脚本、`jobsworld` 命令；官网 `jobs.plutokeating.beer`（落地页、关于、条款、隐私，中英双语、明暗两种外观；页面由 `site/scripts/build.mjs` 从 `site/src/` 生成后提交）、安装脚本副本与 Cloudflare 部署配置，也是本页示意图的源（`site/src/figures.mjs`，见 [`site/docs/README.md`](site/docs/README.md)）；打标签时构建并推送镜像的工作流 |
 | `docker-compose.yml` · `infra/` | 从源码运行时的依赖服务与游戏服的本地构建；游戏服镜像的构建文件、数据库初始化脚本 |
-| `config/` | 人口抽样表与随包居民（`population/`）、城镇布局与日程骨架（`jobsworld/`）、手写人物（`personas/`）、模型目录快照（`models/`）、全局参数（`pux.config.yaml`）、校准批次用的手写场景（`worlds/`）与儿童安全规则（`rubrics/`） |
+| `config/` | 人口抽样表、随包居民与他们出门吃喝玩乐的词表（`population/`）、城镇布局与日程骨架（`jobsworld/`）、手写人物（`personas/`）、模型目录快照（`models/`）、全局参数（`pux.config.yaml`）、校准批次用的手写场景（`worlds/`）与儿童安全规则（`rubrics/`） |
 | `scripts/` · `tests/` · `examples/calibration/` | 启动脚本、游戏协议探针、目录与安装脚本的同步工具 · 单元与集成测试 · 校准输入的示例文件 |
-| `docs/` | 文档；`docs/images/` 是本页的示意图（生成物）；`docs/history/` 是重塑之前的设计稿与校准记录，不描述当前系统 |
+| `docs/` | 文档；`docs/images/` 是本页的示意图（生成物）；`docs/research/` 是调研资料与它怎样用进居民人设；`docs/history/` 是重塑之前的设计稿与校准记录，不描述当前系统 |
 
 </details>
 

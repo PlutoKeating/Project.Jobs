@@ -43,4 +43,21 @@ behavior_policy:
   abandonment_rules: [被打断后如果找不回进度就算了]
   input_preference: voice
 state_defaults: { fatigue: 0.7, hunger: 0.4, mood: -0.1, attention: 0.4, stress: 0.6 }
+leisure:
+  local: { activities: ["推婴儿车在小区附近散步", "和学校同事吃个午饭"], hours: 2, per_month: 3, with: ["1 岁儿子", "婆婆"] }
+  trips: { per_year: 1, days: [2, 3], range: nearby, with: ["丈夫", "1 岁儿子"] }
+  group_role: co_planner
+  voice: withdrawn
+  pace: slow
+  social_battery: 0.42
+  budget: value
+  split: often_pays
+  transport: transit
+  dining: { restrictions: ["下午不喝咖啡，怕晚上睡不着"], choose_by: nearby, solo_ok: true, dislikes: ["周末团购券不能用，只能单点", "和不熟的人吃饭，突然冷场"] }
+  pet_peeves: ["同伴不出主意也不搭话，一路像一个人玩", "想多睡半小时就被催"]
+  habits: ["不再每次都替大家垫钱", "一个人吃饭先找一人食套餐"]
+  memories:
+    - { text: "孩子还没出生时和老公去厦门，我提了几个地方都被他否了，后来我就只说「都可以」，那趟玩得没什么印象。", valence: -0.4, importance: 0.5, ago_days: 700 }
+    - { text: "学期末和几个家长委员会的妈妈吃饭，我先垫了钱，有一位过了两天才转，我不好意思催。", valence: -0.3, importance: 0.4, ago_days: 100 }
+  sources: ["C0004", "C0007", "C0016", "C0040", "C0066", "C0069", "P0002", "P0006", "P0009"]
 prior_knowledge: heard_of

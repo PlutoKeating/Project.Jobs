@@ -51,7 +51,17 @@ export interface PersonaSpec {
   capability: { cognition: { reading_speed_cpm: number; working_memory: number }; digital_literacy: number; ai_familiarity: number; body: { vision: number; hearing: number; motor_precision: number; hand_dominance: string }; domain_knowledge: string[] };
   psychology: { ocean: { O: number; C: number; E: number; A: number; N: number }; values: string[]; beliefs: string[]; trust_in_ai: number; privacy_sensitivity: number; risk_preference: number; price_sensitivity: number; motivations: string[] };
   behavior_policy: { decision_style: string; reading: string; navigation_habit: string; exploration_propensity: number; error_recovery: string[]; help_seeking: string[]; patience_base: number; wait_tolerance_s: number; abandonment_rules: string[]; input_preference: string };
+  leisure?: Leisure;
   prior_knowledge: string;
+}
+/** 出门与吃喝玩乐（人物的第七层，可选） */
+export interface Leisure {
+  local: { activities: string[]; hours: number; per_month: number; with: string[] };
+  trips: { per_year: number; days: [number, number]; range: 'none' | 'nearby' | 'domestic' | 'abroad'; with: string[] };
+  group_role: 'planner' | 'co_planner' | 'follower' | 'solo'; voice: 'speaks_up' | 'goes_along' | 'withdrawn' | 'vetoes_later'; pace: 'packed' | 'balanced' | 'slow';
+  social_battery: number; budget: 'frugal' | 'value' | 'comfort' | 'splurge'; split: 'aa_exact' | 'aa_rough' | 'take_turns' | 'often_pays'; transport: 'walk_bike' | 'transit' | 'taxi' | 'drive';
+  dining: { restrictions: string[]; choose_by: 'reviews' | 'familiar' | 'nearby' | 'others'; solo_ok: boolean; dislikes: string[] };
+  pet_peeves: string[]; habits: string[]; memories: { text: string; valence: number; importance: number; ago_days: number }[]; sources: string[];
 }
 export interface Memory { id: string; app_id: string | null; kind: string; content: string; valence: number; importance: number; sim_day: number; sim_time: string | null; source_session_id: string | null; created_at: string }
 export interface PersonaSession { id: string; study_id: string; app: string; app_id: string; version: string; mode: string; status: string; outcome: string | null; steps: number; world: string; revisit_day: number; started_at: string | null; ended_at: string | null }

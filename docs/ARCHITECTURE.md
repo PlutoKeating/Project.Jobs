@@ -62,7 +62,7 @@ flowchart LR
 | 部分 | 代码位置 | 说明 |
 |---|---|---|
 | 发布主线 | `packages/engine/src/launch/`、`apps/world`、`apps/api`、`apps/cli` | 见 §2 |
-| 人 | `packages/engine/src/human/` | 人物的六层描述（YAML + zod 校验 + 版本哈希）、手的能力（`motorProfile`）、身心状态的规则（`updateState`）、感知滤镜、识字量、记忆（每人一棵 ewave 记忆树，`packages/memory`：身份钉住、对某个产品的态度有界可变、对一类事物的看法要多次独立经历才动）、人口合成 |
+| 人 | `packages/engine/src/human/` | 人物的六层描述（YAML + zod 校验 + 版本哈希）与可选的第七层「出门与吃喝玩乐」（`leisure.ts`：以小时计的本地活动与以天计的出远门、同行时拿不拿主意、定方案时怎么说话、节奏、社交电量、预算与分账、出行方式、吃饭的讲究与雷点、吃过亏后的做法、往事；随包居民按规则推导，依据 `docs/research/`）、手的能力（`motorProfile`）、身心状态的规则（`updateState`）、感知滤镜、识字量、记忆（每人一棵 ewave 记忆树，`packages/memory`：身份与人设自带的往事钉住、对某个产品的态度有界可变、对一类事物的看法要多次独立经历才动）、人口合成 |
 | 世界 | `packages/jobsworld/`、`packages/engine/src/world/` | 城镇、日程、需求、居民与关系网、此时此地的处境（`liveContextFor`）；`WorldSimulator` 在一次使用期间运行这份处境生成的世界模板：模拟时钟、时间线、概率事件、资源（时间、电量、钱、注意力、网络）与约束 |
 | 一次使用 | `packages/engine/src/runtime/` | 每一步：世界推进 → 打断与弱网 → 截图 → 感知滤镜 → 想法（只看图，说出手上的一个动作）→ 预期有没有落空 → 身心状态更新 → 落点 → Policy Gate → 按这个人的手去做 → 护栏 |
 | 居民邮箱 | `packages/engine/src/mail/`、`packages/jobsworld/src/mailhandle.ts`、`apps/api/src/mail.ts`、`apps/web/src/pages/Settings.tsx` | 设置（公网链接、部署状态，存 `world_kv`）、Cloudflare 接口封装、转发 Worker 的源码、一键开通 / 关闭、按需收信规则与回收、收信验签与解析、测试信、网页邮箱（在使用过程的浏览器里拦截 `https://mail.<邮件域名>/` 画出收件箱）、仪器用的验证码与链接提取；像真人的邮箱用户名 |

@@ -15,7 +15,8 @@
 
 | 分支 | 内容 |
 |---|---|
-| `core` | 身份里钉住不动的部分（价值观、看法、底线、动机）。写入后加 `read_only` 锁，一次经历改不动它 |
+| `core` | 身份里钉住不动的部分（价值观、看法、底线、动机，以及出门时的角色和一条吃过亏后的做法）。写入后加 `read_only` 锁，一次经历改不动它 |
+| `past` | 人设自带的往事（`PersonaSpec.leisure.memories`：出游、聚餐里留下的事，`kind = 'past'`，`sim_day` 是负数，即那么多天以前）。第一次需要这个人的记忆时与 `core` 一起写入（`seedPast`），之后只读 |
 | `self` | 对一类事物的一般看法（例如对 AI 产品整体的感受） |
 | `life` | 生活经历（世界里发生的事、两次使用之间的事） |
 | `people` | 听别人说的（口碑） |
@@ -27,17 +28,17 @@
 
 ## 检索（`MemoryTree.recall`）
 
-相关性 × 时效性 × 重要性加权（Generative Agents 式），只在 `core / self / life / people` 和当前产品的分支里找；几乎一样的记忆只想起一条；排在前面的记忆如果有 `-1` 边连着的相反经历，一并带出（`conflicts_with`）。
+相关性 × 时效性 × 重要性加权（Generative Agents 式），只在 `core / past / self / life / people` 和当前产品的分支里找；`core` 与 `past` 的时效性固定为 0.5，不随时间淡出；几乎一样的记忆只想起一条；排在前面的记忆如果有 `-1` 边连着的相反经历，一并带出（`conflicts_with`）。
 
 ## 对外
 
-`withTree(personaId, fn)`、`loadTree`、`listMemories`、`memoryCounts`、`MemoryTree`（`add / seedCore / recall / list / stats / enforceCap / forgetApp`）、`BRANCH`、`compact`。
+`withTree(personaId, fn)`、`loadTree`、`listMemories`、`memoryCounts`、`MemoryTree`（`add / seedCore / seedPast / recall / list / stats / enforceCap / forgetApp`）、`BRANCH`、`compact`。
 
 态度更新规则（对某个产品的态度有界可变；全局信念要多次独立经历才动）在 `@pux/engine` 的 `human/memory.ts`（`updateAttitudes`）。
 
 ## 忘掉一个产品（`MemoryTree.forgetApp`）
 
-产品被清零、或下线并删除经历时，每个人的树上：`app:<appId>` 分支整枝删掉；其他分支里 `meta.app_id` 是它（例如 `people` 里听来的口碑）或 `meta.session_id` 属于它那几次使用（例如那次使用后写进 `self` 的对 AI 的一般感受）的记忆逐条删掉。`core` 分支不动。没有可删的时候不标脏，不写库。
+产品被清零、或下线并删除经历时，每个人的树上：`app:<appId>` 分支整枝删掉；其他分支里 `meta.app_id` 是它（例如 `people` 里听来的口碑）或 `meta.session_id` 属于它那几次使用（例如那次使用后写进 `self` 的对 AI 的一般感受）的记忆逐条删掉。`core` 与 `past` 分支不动（按上限遗忘时也不动）。没有可删的时候不标脏，不写库。
 
 ## 向量从哪来
 
