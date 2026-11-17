@@ -31,10 +31,10 @@ describe('模型配置：数据规则', () => {
     const c = normalizeConfig({ providers: [prov('a', [model('e', { kind: 'embed', uses: ['embed', 'think'] }), model('c', { uses: ['think', 'embed'] })])], order: [] });
     expect(c.providers[0].models.map((m) => m.uses)).toEqual([['embed'], ['think']]);
   });
-  it('勾选模型时的默认用途：能看图的做每一步，认得出定位家族的才做定位', () => {
-    expect(defaultUses('chat', 'gemini-4-hydrogen', { vision: true, json: true })).toEqual(['step', 'think', 'locate']);
-    expect(defaultUses('chat', 'claude-sonnet-5', { vision: true, json: true })).toEqual(['step', 'think']);
-    expect(defaultUses('chat', 'deepseek-chat', { vision: false, json: true })).toEqual(['think']);
+  it('勾选模型时的默认用途：能看图的做每一步，认得出定位家族的才做定位，对话模型都承担对话', () => {
+    expect(defaultUses('chat', 'gemini-4-hydrogen', { vision: true, json: true })).toEqual(['step', 'think', 'locate', 'chat']);
+    expect(defaultUses('chat', 'claude-sonnet-5', { vision: true, json: true })).toEqual(['step', 'think', 'chat']);
+    expect(defaultUses('chat', 'deepseek-chat', { vision: false, json: true })).toEqual(['think', 'chat']);
     expect(defaultUses('embed', 'text-embedding-3-small', { vision: false, json: false })).toEqual(['embed']);
     expect(locateFamily('qwen3-vl-plus')).toBe('qwen3-vl'); expect(locateFamily('gpt-5-mini')).toBe('gpt-5'); expect(locateFamily('doubao-seed-1-6-vision')).toBe('doubao-seed'); expect(locateFamily('gemini-embedding-2')).toBeUndefined();
   });

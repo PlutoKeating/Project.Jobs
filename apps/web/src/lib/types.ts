@@ -107,7 +107,7 @@ export interface SessionDetail {
 export interface HumanTask { id: string; session_id: string; study_id: string; reason: string; url: string | null; cdp_url: string | null; status: string; created_at: string }
 
 // ---- 模型接入（与 packages/llm/src/config.ts、apps/api/src/models.ts 保持一致）----
-export type MUse = 'step' | 'think' | 'locate' | 'embed' | 'image';
+export type MUse = 'step' | 'think' | 'locate' | 'chat' | 'embed' | 'image';
 export type MKind = 'chat' | 'embed' | 'image';
 export interface MCaps { vision: boolean; json: boolean; context?: number; output?: number }
 export interface MModel { id: string; model: string; name?: string; kind: MKind; uses: MUse[]; caps: MCaps; cost?: { input: number; output: number } | null; custom?: boolean }

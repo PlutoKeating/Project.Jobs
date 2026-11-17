@@ -13,10 +13,10 @@ const hex = (bytes: number) => Array.from(crypto.getRandomValues(new Uint8Array(
 const rid = (p: string) => `${p}_${hex(6)}`;
 const newSubmitId = () => hex(16);
 const clone = <T,>(x: T): T => JSON.parse(JSON.stringify(x)) as T;
-const CHAT_USES: MUse[] = ['step', 'think', 'locate'];
-const ALL_USES: MUse[] = ['step', 'think', 'locate', 'embed', 'image'];
+const CHAT_USES: MUse[] = ['step', 'think', 'locate', 'chat'];
+const ALL_USES: MUse[] = ['step', 'think', 'locate', 'chat', 'embed', 'image'];
 const fmtCtx = (n?: number) => (!n ? '' : n >= 1_000_000 ? `${Math.round(n / 100_000) / 10}M` : `${Math.round(n / 1000)}K`);
-const defaultUses = (m: MCatalogModel): MUse[] => (m.kind === 'embed' ? ['embed'] : m.kind === 'image' ? ['image'] : [...(m.caps.vision ? (['step'] as MUse[]) : []), 'think', ...(m.locate ? (['locate'] as MUse[]) : [])]);
+const defaultUses = (m: MCatalogModel): MUse[] => (m.kind === 'embed' ? ['embed'] : m.kind === 'image' ? ['image'] : [...(m.caps.vision ? (['step'] as MUse[]) : []), 'think', ...(m.locate ? (['locate'] as MUse[]) : []), 'chat']);
 
 function Switch({ on, onChange, label, disabled }: { on: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
   return (
@@ -33,7 +33,7 @@ function UseChips({ m, onChange, canLocate }: { m: MModel; onChange?: (uses: MUs
   return (
     <span className="flex flex-wrap gap-1">
       {CHAT_USES.map((u) => {
-        const on = m.uses.includes(u); const can = u === 'think' || (m.caps.vision && (u === 'step' || canLocate));
+        const on = m.uses.includes(u); const can = u === 'think' || u === 'chat' || (m.caps.vision && (u === 'step' || canLocate));
         if (!onChange) return on ? <span key={u} className="rounded-full border border-border px-2 py-0.5 text-xs text-fg-muted">{t(`m_use_${u}`)}</span> : null;
         return <button key={u} type="button" aria-pressed={on} disabled={!can} onClick={() => onChange(on ? m.uses.filter((x) => x !== u) : [...m.uses, u])}
           className={`rounded-full border px-2 py-0.5 text-xs transition-colors ${on ? 'border-fg-display bg-fg-display text-bg' : 'border-border text-fg-muted hover:border-border-strong hover:text-fg'}`}>{t(`m_use_${u}`)}</button>;
@@ -108,7 +108,7 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
   };
   const runTest = async (m: MModel) => {
     setBusy(m.id);
-    const caps = m.kind === 'embed' ? ['embed'] : m.kind === 'image' ? ['image'] : ['text', ...(m.caps.vision ? ['vision'] : []), 'json'];
+    const caps = m.kind === 'embed' ? ['embed'] : m.kind === 'image' ? ['image'] : ['text', ...(m.caps.vision ? ['vision'] : []), 'json', 'tools'];
     try { for (const capability of caps) { await post('/models/test', { target_id: m.id, capability }).catch(() => undefined); await new Promise((r) => setTimeout(r, 350)); } }
     finally { setBusy(null); void qc.invalidateQueries({ queryKey: ['models'] }); }
   };
@@ -197,7 +197,7 @@ function ProviderCard({ p, lite, open, onToggle, update, remove, secrets, setSec
                 {!rows.length && <li className="px-3 py-3 text-xs text-fg-subtle">—</li>}
               </ul>
             )}
-            <form className="mt-2 flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); const id = custom.trim(); if (!id || selected.has(id)) return; update((x) => { x.models.push({ id: rid('tgt'), model: id, name: id, kind: /embed/i.test(id) ? 'embed' : 'chat', uses: /embed/i.test(id) ? ['embed'] : customVision ? ['step', 'think', 'locate'] : ['think'], caps: { vision: customVision && !/embed/i.test(id), json: true }, cost: null, custom: true }); }); setCustom(''); }}>
+            <form className="mt-2 flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); const id = custom.trim(); if (!id || selected.has(id)) return; update((x) => { x.models.push({ id: rid('tgt'), model: id, name: id, kind: /embed/i.test(id) ? 'embed' : 'chat', uses: /embed/i.test(id) ? ['embed'] : customVision ? ['step', 'think', 'locate', 'chat'] : ['think', 'chat'], caps: { vision: customVision && !/embed/i.test(id), json: true }, cost: null, custom: true }); }); setCustom(''); }}>
               <input aria-label={t('m_custom_model')} placeholder={t('m_custom_model')} className="field h-8 w-56 font-mono text-xs" spellCheck={false} value={custom} onChange={(e) => setCustom(e.target.value)} />
               <label className="flex items-center gap-1.5 text-xs text-fg-muted"><input type="checkbox" checked={customVision} onChange={(e) => setCustomVision(e.target.checked)} className="accent-[var(--color-fg-display)]" />{t('m_vision')}</label>
               <Button size="sm" type="submit" disabled={!custom.trim()}><Plus size={13} /></Button>
@@ -328,7 +328,7 @@ export function ModelsPanel() {
     ...[...d.providers_removed, ...d.models_removed].map((n) => <li key={`-${n}`}><span className="text-danger">− </span>{n}</li>),
     ...(d.order_changed ? [<li key="o">{t('m_order_changed')}</li>] : []),
     ...(d.credentials.before !== d.credentials.after ? [<li key="c" className="tabular">{t('m_creds')} {d.credentials.before} → {d.credentials.after}</li>] : []),
-    ...ALL_USES.filter((u) => d.effective[u].before !== d.effective[u].after).map((u) => <li key={u} className={`tabular ${d.effective[u].after === 0 && u !== 'embed' && u !== 'image' ? 'text-danger' : ''}`}>{t(`m_use_${u}`)} · {t('m_effective')} {d.effective[u].before} → {d.effective[u].after}</li>),
+    ...ALL_USES.filter((u) => d.effective[u].before !== d.effective[u].after).map((u) => <li key={u} className={`tabular ${d.effective[u].after === 0 && u !== 'embed' && u !== 'image' && u !== 'chat' ? 'text-danger' : ''}`}>{t(`m_use_${u}`)} · {t('m_effective')} {d.effective[u].before} → {d.effective[u].after}</li>),
   ] : [];
 
   return (
@@ -361,7 +361,7 @@ export function ModelsPanel() {
           return (
             <div key={u} className="min-w-0">
               <dt className="text-xs text-fg-muted">{t(`m_use_${u}`)}</dt>
-              <dd className={`mt-0.5 truncate text-sm ${first ? 'text-fg-display' : 'text-danger'}`} title={r?.eligible.map(nameOf).join(' → ')}>{first ? <>{nameOf(first)}{r!.eligible.length > 1 && <span className="tabular text-fg-subtle"> +{r!.eligible.length - 1}</span>}</> : t('m_none')}</dd>
+              <dd className={`mt-0.5 truncate text-sm ${first ? 'text-fg-display' : u === 'chat' ? 'text-fg-muted' : 'text-danger'}`} title={r?.eligible.map(nameOf).join(' → ')}>{first ? <>{nameOf(first)}{r!.eligible.length > 1 && <span className="tabular text-fg-subtle"> +{r!.eligible.length - 1}</span>}</> : u === 'chat' ? t('m_chat_fallback') : t('m_none')}</dd>
             </div>
           );
         })}

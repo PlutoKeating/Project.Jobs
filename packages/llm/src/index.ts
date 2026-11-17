@@ -7,6 +7,7 @@ import { getDb, llmTests, llmTraces, studies, sessions, sql, eq } from '@pux/db'
 import { chat as upstreamChat, embed as upstreamEmbed, googleToken, image as upstreamImage, UpstreamError, vertexBase, type ChatReq, type ContentPart, type Msg } from './adapters.ts';
 import { allModels, candidates, classifyError, reaction, usableCredentials, useOfRole, type CredentialRef, type ErrorClass, type SkipReason, type Target, type Use } from './config.ts';
 import { health, secretOf, snapshot, tracing, type Snapshot } from './store.ts';
+import { converseUpstream, type ConvEvent, type ConvMsg, type ConvRes, type ToolSpec } from './converse.ts';
 
 export * from './config.ts';
 export * from './store.ts';
@@ -16,6 +17,8 @@ export { UpstreamError, googleCred, googleProject } from './adapters.ts';
 export { gcloudDirs, probeGcloud, readGcloud } from './gcloud.ts';
 export { seal, open, _setMasterKey } from './secrets.ts';
 export type { ContentPart, Msg } from './adapters.ts';
+export type { ConvEvent, ConvMsg, ConvRes, ConvToolCall, ToolSpec } from './converse.ts';
+export { toOpenAIMessages, toAnthropic, oaAccumulator } from './converse.ts';
 
 export type RoleKey = string;
 export interface Tags { study_id?: string; session_id?: string; step_idx?: number; purpose?: string }
@@ -70,7 +73,7 @@ function extractJson(text: string): unknown {
   throw new Error('no json');
 }
 
-const USE_NAME: Record<Use, string> = { step: '每一步（看图）', think: '归纳与判断', locate: '在截图上定位', embed: '向量', image: '画图' };
+const USE_NAME: Record<Use, string> = { step: '每一步（看图）', think: '归纳与判断', locate: '在截图上定位', chat: '对话', embed: '向量', image: '画图' };
 const REASON: Record<SkipReason, string> = { provider_off: '连接已停用', no_credential: '没有启用的凭证', not_in_group: '没有勾选这个用途', no_vision: '不能看图', cooling: '暂时不可用', wrong_family: '定位方式不同', wrong_kind: '类型不符' };
 export function noModelMessage(use: Use, skipped: { target: Target; reason: SkipReason }[]): string {
   const near = skipped.filter((s) => s.reason !== 'wrong_kind' && s.reason !== 'not_in_group').slice(0, 4).map((s) => `${s.target.provider.name} / ${s.target.model.model}（${REASON[s.reason]}）`);
@@ -154,6 +157,53 @@ export class Gateway {
     throw new LlmError(`模型调用失败（${USE_NAME[use]}，试了 ${attempt} 次）：${String((lastErr as Error)?.message ?? lastErr).slice(0, 300)}`, use, lastErr, lastCls);
   }
 
+  /**
+   * 对话（Jobs Agent）：带工具、边生成边交出增量。
+   * 先用「对话」组；这一组没有可用的目标时用「归纳」组顶上。
+   * 失败接替只在还没交出任何内容之前：已经流出一部分再换目标会让人看到两段不同的开头，这时直接报错，由 agent 告诉用户。
+   */
+  async converse(roleKey: RoleKey, opts: { messages: ConvMsg[]; tools?: ToolSpec[]; temperature?: number; maxTokens?: number; tags?: Tags; signal?: AbortSignal; onEvent?: (e: ConvEvent) => void; timeoutMs?: number }): Promise<ConvRes & { model: string; family: string; alias: Use; latency_ms: number; version: number }> {
+    const snap = await snapshot();
+    const vision = opts.messages.some((m) => typeof m.content !== 'string' && m.content.some((c) => c.type === 'image'));
+    let use = useOfRole(roleKey);
+    let { eligible, skipped } = candidates(snap.config, use, { vision }, health);
+    if (!eligible.length && use === 'chat') { use = 'think'; ({ eligible, skipped } = candidates(snap.config, use, { vision }, health)); }
+    if (!eligible.length) throw new LlmError(noModelMessage(use, skipped), use, undefined, 'no_model');
+    let attempt = 0; let lastErr: unknown; let lastCls: ErrorClass | undefined;
+    for (const t of eligible) {
+      const tried = new Set<string>(); let transient = 0; let cred: CredentialRef | undefined;
+      while (attempt < MAX_ATTEMPTS) {
+        if (opts.signal?.aborted) throw new LlmError('已停止', use, undefined, 'cancelled');
+        if (!cred) { const pool = usableCredentials(t.provider, health, Date.now()).filter((c) => !tried.has(c.id)); if (!pool.length) break; cred = pool[Math.floor(Math.random() * pool.length)]; }
+        attempt++; const t0 = Date.now(); let emitted = false;
+        try {
+          const secret = await secretOf(t.provider.id, cred.secret_id);
+          const r = await converseUpstream(t.provider, t.model, secret, { messages: opts.messages, tools: opts.tools, temperature: opts.temperature, maxTokens: opts.maxTokens, signal: opts.signal, timeoutMs: opts.timeoutMs }, (e) => { if (e.type !== 'thinking') emitted = true; opts.onEvent?.(e); });
+          if (!r.text.trim() && !r.tool_calls.length) throw new UpstreamError('上游返回了空内容');
+          const latency = Date.now() - t0;
+          await this.trace(roleKey, use, snap, t, cred, opts.tags, r.usage, latency, 'ok', attempt);
+          return { ...r, model: t.model.model, family: vendorOf(t), alias: use, latency_ms: latency, version: snap.version };
+        } catch (e) {
+          const up = e instanceof UpstreamError ? e : undefined;
+          const cls = opts.signal?.aborted ? 'cancelled' : classifyError(up?.status ?? (e as { status?: number }).status, String((e as Error).message ?? e));
+          await this.trace(roleKey, use, snap, t, cred, opts.tags, { prompt: 0, completion: 0, reasoning: 0 }, Date.now() - t0, 'error', attempt, String((e as Error).message).slice(0, 500), cls);
+          lastErr = e; lastCls = cls;
+          if (cls === 'cancelled') throw new LlmError('已停止', use, e, cls);
+          logger.warn({ target: targetName(t), attempt, cls, err: String((e as Error).message).slice(0, 200) }, '对话调用失败');
+          if (emitted) throw new LlmError(`模型在回答中途出错（${targetName(t)}）：${String((e as Error).message).slice(0, 300)}`, use, e, cls);
+          const re = reaction(cls, up?.retryAfterMs);
+          if (re.stop) throw new LlmError(`模型调用被终止（${targetName(t)}）：${String((e as Error).message).slice(0, 300)}`, use, e, cls);
+          if (re.retrySame && transient++ < 1 && attempt < MAX_ATTEMPTS) { await sleep(600 + Math.random() * 900); continue; }
+          noteFailure(t, cred, cls, up?.retryAfterMs);
+          if (re.cool === 'credential') { tried.add(cred.id); cred = undefined; continue; }
+          break;
+        }
+      }
+      if (attempt >= MAX_ATTEMPTS) break;
+    }
+    throw new LlmError(`模型调用失败（${USE_NAME[use]}，试了 ${attempt} 次）：${String((lastErr as Error)?.message ?? lastErr).slice(0, 300)}`, use, lastErr, lastCls);
+  }
+
   /** 单条向量。没有接入向量模型、或调用失败时，用本地的字符哈希向量兜底（界面会说明） */
   async embed(text: string, tags?: Tags): Promise<number[]> {
     const snap = await snapshot();
@@ -212,7 +262,7 @@ export class Gateway {
 }
 
 // ---- 单目标测试：证明的只是「这一版配置里，这个目标用这把凭证，此刻能做这一件事」----
-export type TestCapability = 'text' | 'vision' | 'json' | 'embed' | 'image';
+export type TestCapability = 'text' | 'vision' | 'json' | 'tools' | 'embed' | 'image';
 
 /** 一张 32×32 的纯色 PNG（测试看图能力用） */
 export function solidPng(r: number, g: number, b: number, size = 32): Buffer {
@@ -239,6 +289,9 @@ export async function testTarget(targetId: string, o: { credential_id?: string; 
     else if (capability === 'vision') {
       const r = await upstreamChat(t.provider, t.model, secret, { messages: [{ role: 'user', content: [{ type: 'image', data: solidPng(220, 30, 30), mime: 'image/png' }, { type: 'text', text: 'What is the main color of this image? Answer with one word.' }] }], maxTokens: 200, timeoutMs: 45_000 });
       ok = /red|红/i.test(r.text); detail = r.text.trim().slice(0, 60) || '（空）';
+    } else if (capability === 'tools') {
+      const r = await converseUpstream(t.provider, t.model, secret, { messages: [{ role: 'user', content: 'What is the weather in Paris? Use the tool.' }], tools: [{ name: 'get_weather', description: 'Get the current weather for a city', parameters: { type: 'object', properties: { city: { type: 'string' } }, required: ['city'] } }], maxTokens: 300, timeoutMs: 45_000 }, () => undefined);
+      const c = r.tool_calls[0]; ok = c?.name === 'get_weather' && /paris/i.test(c.arguments); detail = c ? `${c.name}(${c.arguments})` : r.text.trim().slice(0, 60) || '（没有调用工具）';
     } else if (capability === 'json') {
       const schema = z.object({ ok: z.boolean(), n: z.number() });
       const r = await upstreamChat(t.provider, t.model, secret, { messages: [{ role: 'user', content: 'Return ok=true and n=7.' }], json: { name: 'probe', schema: toGeminiSchema(schema) }, maxTokens: 300, timeoutMs: 45_000 });

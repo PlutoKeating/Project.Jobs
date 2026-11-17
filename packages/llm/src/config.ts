@@ -3,8 +3,8 @@
 
 export type Protocol = 'openai' | 'anthropic' | 'vertex';
 /** 业务模型组：应用按用途选模型，不依赖上游名称 */
-export type Use = 'step' | 'think' | 'locate' | 'embed' | 'image';
-export const USES: Use[] = ['step', 'think', 'locate', 'embed', 'image'];
+export type Use = 'step' | 'think' | 'locate' | 'chat' | 'embed' | 'image';
+export const USES: Use[] = ['step', 'think', 'locate', 'chat', 'embed', 'image'];
 export type ModelKind = 'chat' | 'embed' | 'image';
 
 export interface Caps { vision: boolean; json: boolean; context?: number; output?: number }
@@ -40,6 +40,7 @@ const ROLE_USE: Record<string, Use> = {
   mind_fast: 'step', world_sim: 'step', judge_2: 'step', demo: 'step',
   mind_slow: 'think', judge_0: 'think', judge_1: 'think', judge_meta: 'think', interview: 'think', gen_persona: 'think', product_induce: 'think',
   operator_locate: 'locate', embed: 'embed', image_gen: 'image',
+  agent: 'chat', agent_compact: 'think',
 };
 export const useOfRole = (role: string): Use => ROLE_USE[role] ?? 'think';
 
@@ -65,6 +66,7 @@ export function defaultUses(kind: ModelKind, model: string, caps: Caps): Use[] {
   if (kind === 'image') return ['image'];
   const u: Use[] = ['think'];
   if (caps.vision) { u.unshift('step'); if (locateFamily(model)) u.push('locate'); }
+  u.push('chat');
   return u;
 }
 

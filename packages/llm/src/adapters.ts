@@ -37,9 +37,10 @@ const netError = (e: unknown) => {
   return new UpstreamError(`${String(err?.message ?? e)}${why && !String(err?.message).includes(why) ? `（${why}）` : ''}`);
 };
 
-async function send(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): Promise<Response> {
+async function send(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number, signal?: AbortSignal): Promise<Response> {
   await assertAllowed(url);
-  try { return await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), redirect: 'error', signal: AbortSignal.timeout(timeoutMs) }); }
+  const sig = signal ? AbortSignal.any([AbortSignal.timeout(timeoutMs), signal]) : AbortSignal.timeout(timeoutMs);
+  try { return await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), redirect: 'error', signal: sig }); }
   catch (e) { throw netError(e); }
 }
 
@@ -56,8 +57,8 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
  * 中间的代理或网关会把这种「空闲」连接在一两分钟后掐断（fetch failed）。流式时数据一直在流动。
  * 上游不按 SSE 回（返回了普通 JSON）时，把那个 JSON 当成唯一的一条交出
  */
-async function* stream(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): AsyncGenerator<Record<string, unknown>> {
-  const r = await send(url, headers, body, timeoutMs);
+export async function* stream(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number, signal?: AbortSignal): AsyncGenerator<Record<string, unknown>> {
+  const r = await send(url, headers, body, timeoutMs, signal);
   if (!r.ok) { let text = ''; try { text = await r.text(); } catch { /* */ } throw httpError(r, text); }
   if (!(r.headers.get('content-type') ?? '').includes('event-stream')) {
     let text: string; try { text = await r.text(); } catch (e) { throw netError(e); }
@@ -153,7 +154,7 @@ export async function openaiEndpoint(p: ProviderConn, m: ModelEntry, secret: str
   return { base: p.base_url, headers: { authorization: `Bearer ${secret}` }, model: m.model };
 }
 
-const dataUrl = (p: Extract<ContentPart, { type: 'image' }>) => `data:${p.mime ?? 'image/jpeg'};base64,${typeof p.data === 'string' ? p.data : p.data.toString('base64')}`;
+export const dataUrl = (p: Extract<ContentPart, { type: 'image' }>) => `data:${p.mime ?? 'image/jpeg'};base64,${typeof p.data === 'string' ? p.data : p.data.toString('base64')}`;
 const jsonHint = (j: NonNullable<ChatReq['json']>) => `\n\n只输出一个 JSON 对象（不要解释、不要代码块），符合这个 JSON Schema：\n${JSON.stringify(j.schema)}`;
 function withJsonHint(msgs: Msg[], j: NonNullable<ChatReq['json']>): Msg[] {
   const out = msgs.map((m) => ({ ...m })); const i = out.map((m) => m.role).lastIndexOf('user');

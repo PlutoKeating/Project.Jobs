@@ -10,7 +10,8 @@
 | `src/catalog.ts` | models.dev 目录的拉取、收敛与缓存；随包快照 `config/models/catalog.json`（`npx tsx scripts/update-model-catalog.ts` 更新） |
 | `src/adapters.ts` | 上游协议：OpenAI 兼容、Anthropic Messages、Vertex（Google 凭证 JSON，或引用——`{ gcloud: "auto" }` 这台机器的 gcloud 登录、`{ file }` 凭证文件，每次换令牌前现读——换访问令牌）；对话、向量、画图；出站地址检查 |
 | `src/gcloud.ts` | 「这台机器的 gcloud 登录」：找 gcloud 配置目录（`gcloudDirs`），读当前账号、默认项目与 `credentials.db` 里的凭证（`readGcloud`，按修改时间缓存），给界面的探测（`probeGcloud`） |
+| `src/converse.ts` | 对话（Jobs Agent）：带工具调用的流式请求，OpenAI 兼容 / Vertex / Anthropic 的消息格式与流式解析（`toOpenAIMessages`、`toAnthropic`、`oaAccumulator`、`converseUpstream`） |
 | `src/endpoint.ts` | OpenAI 兼容入口（给 Midscene 与示例产品）：`proxyChat`、`handleProxy`、`startLocalEndpoint` |
-| `src/index.ts` | `gateway()`：`chat`（固定快照 → 候选 → 尝试 → 记录）、`embed`、`generateImage`、`ping`；`testTarget`；`modelsReady`；`vertexAccess`；`checkVendorIsolation` |
+| `src/index.ts` | `gateway()`：`chat`（固定快照 → 候选 → 尝试 → 记录）、`converse`（对话：工具 + 流式；没有「对话」组时用「归纳」组；只在交出内容之前换目标）、`embed`、`generateImage`、`ping`；`testTarget`；`modelsReady`；`vertexAccess`；`checkVendorIsolation` |
 
 调用方式不变：`gateway().chat('mind_fast', { messages, schema })`。结果里的 `model` 是实际调用的上游模型，`version` 是这次请求采用的配置版本。
