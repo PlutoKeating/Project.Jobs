@@ -75,10 +75,10 @@ curl -fsSL https://jobs.plutokeating.beer/install | bash
 
 | 入口 | 在这里做什么 |
 |---|---|
-| **网页** | 第一眼是城。发布、看谁正在用、读结论、调宣发、把手机递给几个人。 |
-| **命令行** | `jobsworld publish`、`status`、`invite`、`report`、`promote`、`reset`、`remove`。 |
-| **Coding agent** | 一个 MCP 服务：写完代码就发布，取回带复现步骤的问题清单，接着改。 |
-| **飞书** | 在网页上扫码接入后，在飞书里发布、看状况、向居民追问；有进展时机器人会主动告诉你。 |
+| **网页** | 第一眼是城。发布、看谁正在用、读结论、调宣发、把手机递给几个人。每页右下角的「问 Jobs」和飞书里是同一个 agent。 |
+| **命令行** | `jobsworld publish`、`status`、`invite`、`report`、`promote`、`reset`、`remove`、`issues`、`fix`、`town`、`find`；`jobsworld chat` 直接说话。 |
+| **Coding agent** | 一个 MCP 服务：写完代码就发布，取回带复现步骤的问题清单，接着改。问题也可以开成 GitHub issue；关掉它，Jobs 自动标新版本，请同一类人再试一遍。 |
+| **飞书** | 在网页上扫码接入，之后直接说话：午饭时、回家路上，在手机上发布、请人试、看带截图的结论、跟居民聊、把结论导出成云文档、把修复交给 coding agent。回答边做边出现在卡片里，每一步都看得到；清零这类事要点一下确认。严重问题第一次出现、结论变了、需要你介入时它会主动说，还有早报、晚报和每个产品一张自己刷新的看板卡。 |
 | **Terraria** | 用原版或 tModLoader 客户端走进同一座城。`/jw launches`、`/jw publish`、`/jw invite`。 |
 
 ```bash
@@ -119,7 +119,7 @@ MCP 工具：`publish_product`、`list_products`、`product_status`、`product_r
 | 路径 | 说明 |
 |---|---|
 | `apps/cli` | 命令行（装好后是 `jobsworld`，仓库里是 `pnpm jobs`）：发布、状况、结论、宣发、递手机、MCP 服务；`dev …` 子命令收纳内部校准用的指派式批次 |
-| `apps/api` | REST `/api/v1`（发布、模型接入、人物、世界、使用过程、证据、虚拟身份收件箱、游戏服开关）+ WebSocket 实时推送 + 托管网页 + 飞书机器人 |
+| `apps/api` | REST `/api/v1`（发布、模型接入、人物、世界、使用过程、证据、虚拟身份收件箱、游戏服开关）+ WebSocket 实时推送 + 托管网页 + 飞书渠道与推送 |
 | `apps/web` | 网页（React）：侧视像素城、产品页（结论 / 人 / 口碑 / 工程附录）、人物、使用过程回看 |
 | `apps/world` | 世界服务：时钟、日程、需求、位置；驱动发布引擎（曝光 → 决定 → 使用 → 口碑）；NATS 广播 |
 | `apps/gateway` | 单端口网关：HTTP → API，原版 Terraria → TShock，tModLoader → tML |
@@ -127,7 +127,8 @@ MCP 工具：`publish_product`、`list_products`、`product_status`、`product_r
 | `packages/engine` | 发布主线（`launch/`）、人（记忆、感知、人口）、一次使用的运行、事后评估与问题合成；内部校准批次 |
 | `packages/executor` | 浏览器沙箱（电脑 / 手机网页触屏）、Midscene 看截图定位、人类化的手、Policy Gate、模态注入、录像 |
 | `packages/memory` | 人物记忆：每人一棵 ewave 记忆树（`@plutokeating/ewave`）的适配层 |
-| `packages/llm` | 应用内模型路由：多供应商、多凭证、多模型的运行时配置（目录、加密凭证、版本、全局顺序）、失败接替、OpenAI 兼容入口、花费记录 |
+| `packages/agent` | Jobs Agent（飞书、「问 Jobs」、`jobsworld chat` 共用）：[Pi](https://github.com/earendil-works/pi) 的 agent 循环 + 我们自己的模型路由，工具与 MCP 同一份 |
+| `packages/llm` | 应用内模型路由：多供应商、多凭证、多模型的运行时配置（目录、加密凭证、版本、全局顺序）、失败接替、给 agent 用的工具调用、OpenAI 兼容入口、花费记录 |
 | `packages/core` · `packages/db` · `packages/storage` | 类型与 schema · Drizzle 表与迁移 · 证据存储（MinIO/S3，内容寻址） |
 | `game/` · `infra/game/` | Terraria 两个游戏端的插件与模组（C#）· 游戏服镜像 |
 | `demos/kit` | 11 个示例产品（每个有干净版与带着已知毛病的版本），用于演示与校准 |
@@ -158,7 +159,7 @@ pnpm jobsworld            # 世界服务 + 接口与网页 + 网关：http://127
 > 所有人数都是这座城里实际发生的人数，是**模拟**，不是对真实市场的预测；尚未用真人数据校准。合成用户的反馈偏浅、偏正面、缺少长尾。Jobs **不取代真人用户研究**：它让你在没有任何真实用户之前，先看到一群各不相同的人第一次遇到你的产品时会发生什么。
 
 - **人口从哪来。** 中国人群按普查口径的条件抽样表生成（数值是手工设定的近似值，不是微观数据拟合）；英语区人群从 [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA)（CC BY 4.0）抽样。识字量、视力、耐心、价格敏感度等数值全部由规则推导；模型只写名字、生平和看法。新装好的城里一共 199 人（随包 185 位居民加 14 位手写人物），重新生成：`pnpm jobs world populate -n <人数>`。
-- **验证过什么，没验证什么。** 模型的真实调用只在 Vertex 上的 Gemini 验证过；飞书扫码之后的环节没有用真实账号验证过。完整记录见 [`docs/VERIFICATION.md`](docs/VERIFICATION.md)。
+- **验证过什么，没验证什么。** 模型的真实调用只在 Vertex 上的 Gemini 验证过；重写后的飞书渠道用模拟的飞书接口测过，二维码能从飞书拿到，还没有用真实账号用过；同一个 agent 在网页和终端里真实跑通过。完整记录见 [`docs/VERIFICATION.md`](docs/VERIFICATION.md)。
 
 ## 文档
 

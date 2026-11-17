@@ -57,7 +57,7 @@ pnpm jobs report 闪念笔记 --eng    # 一页结论 + 亲历的问题（含复
 claude mcp add --transport http jobs http://127.0.0.1:7777/mcp
 ```
 
-第一次连接时会打开浏览器，到 Jobs 的授权页输入口令（管理员口令能发布，访客口令只能看）。网页右上角的机器人图标里有这个链接和 Codex、Cursor 的写法。要让别的机器上的 agent 接入，在 `.env` 设置 `JOBS_PUBLIC_URL`（反向代理之后的 https 地址），见 [`API.md`](API.md) §2 与 [`INSTALL.md`](INSTALL.md)「对外访问」。
+第一次连接时会打开浏览器，到 Jobs 的授权页输入口令（管理员口令能发布，访客口令只能看）。网页「设置 › Coding agent」里有这个链接和 Codex、Cursor 的写法。要让别的机器上的 agent 接入，在 `.env` 设置 `JOBS_PUBLIC_URL`（反向代理之后的 https 地址），见 [`API.md`](API.md) §2 与 [`INSTALL.md`](INSTALL.md)「对外访问」。
 
 也可以用 stdio：`claude mcp add jobs -- pnpm --dir /path/to/Project.Jobs -s jobs mcp`（服务不在默认地址时设置 `JOBS_API`；设置了管理员口令时把它放进 `JOBS_KEY`）。
 
@@ -67,7 +67,7 @@ claude mcp add --transport http jobs http://127.0.0.1:7777/mcp
 
 ## 7. 飞书（可选）
 
-管理员在网页右上角点对话气泡图标，用飞书扫码接入；之后可以在飞书里发布、看状况、要结论、向居民追问，并收到进展推送。说明见 [`INSTALL.md`](INSTALL.md) 的「飞书」一节。
+管理员在「设置 › 飞书」里用飞书扫码接入；之后在飞书里直接说话（和网页右下角的「问 Jobs」、`pnpm jobs chat` 是同一个 Jobs Agent，要先在「设置 › 模型」里接入能调用工具的模型，「对话」组没配置时用「归纳」组），并收到严重问题、结论变化、需要介入的推送与早报晚报。说明见 [`INSTALL.md`](INSTALL.md) 的「飞书」一节。
 
 ## 8. 用 Terraria 进入同一座城（可选）
 
@@ -86,7 +86,11 @@ docker compose --profile game up -d --build --no-deps tml      # tModLoader（�
 
 | 命令 | 作用 |
 |---|---|
+| `pnpm jobs chat` | 跟 Jobs 说话（和飞书、网页的「问 Jobs」是同一个 agent；要确认时输入 y / n） |
 | `pnpm jobs ls` | 已发布的产品与各自的人数 |
+| `pnpm jobs issues <产品>` / `issue <id> [--triage known]` / `compare <产品>` | 问题清单 / 一个问题的来龙去脉与分诊 / 按版本对比 |
+| `pnpm jobs fix <问题 id>` / `--github`、`pnpm jobs github <产品> --repo o/r --token …` | 修复任务（贴给 coding agent）/ 开成 GitHub issue；配置这个产品的仓库与令牌 |
+| `pnpm jobs town`、`find`、`whois <人>`、`talk`、`system`、`human` | 城里此刻、按画像找人、看一个人、城里在说什么、Jobs 自己、待人介入 |
 | `pnpm jobs promote <产品> --intensity 0.8` / `--pause` / `--resume` / `--end` | 调宣发 |
 | `pnpm jobs reset <产品>` | 清零：城里关于它的经历全部归零，产品本身不动，此刻重新上线、花费归零 |
 | `pnpm jobs remove <产品>` / `--wipe` | 下线：从城里拿掉；默认保留经历，`--wipe` 连同使用过程、评论、动态、居民的记忆一起删 |

@@ -75,10 +75,10 @@ Whether it works, what hurt most, who stays and who leaves, why people who saw i
 
 | Way in | What you do there |
 |---|---|
-| **Web** | The town comes first. Launch, watch who is using what, read the conclusion, tune promotion, hand the phone to a few people. |
-| **Command line** | `jobsworld publish`, `status`, `invite`, `report`, `promote`, `reset`, `remove`. |
-| **Coding agent** | An MCP server: launch as soon as the code is written, pull back issues with steps to reproduce, keep fixing. |
-| **Feishu** | Scan a QR code in the web page, then launch, check and ask residents from chat. The bot tells you when something happens. |
+| **Web** | The town comes first. Launch, watch who is using what, read the conclusion, tune promotion, hand the phone to a few people. "Ask Jobs" at the bottom right of every page talks to the same agent as Feishu. |
+| **Command line** | `jobsworld publish`, `status`, `invite`, `report`, `promote`, `reset`, `remove`, `issues`, `fix`, `town`, `find`, and `jobsworld chat` to just talk. |
+| **Coding agent** | An MCP server: launch as soon as the code is written, pull back issues with steps to reproduce, keep fixing. Issues can also become GitHub issues; closing one marks a new version and invites the same kind of people to check the fix. |
+| **Feishu** | Scan a QR code in the web page, then just talk, from your phone at lunch or on the way home: launch, invite, read the verdict with screenshots, talk to a resident, export the verdict as a cloud doc, hand a fix to a coding agent. Replies stream into a card with each step it takes; resets ask for a tap to confirm. It speaks up for serious first issues, changed verdicts and anything that needs you, sends a morning and evening digest, and keeps a live board per product. |
 | **Terraria** | Walk into the same town with a vanilla or tModLoader client. `/jw launches`, `/jw publish`, `/jw invite`. |
 
 ```bash
@@ -120,7 +120,7 @@ Everything runs on your machine. Residents, memories, screenshots and conclusion
 | Path | What it is |
 |---|---|
 | `apps/cli` | The command line (`jobsworld` once installed, `pnpm jobs` in this repo) and the MCP server; `dev …` holds the internal calibration batches |
-| `apps/api` | REST `/api/v1`, live updates over WebSocket, the hosted web page, the Feishu bot |
+| `apps/api` | REST `/api/v1`, live updates over WebSocket, the hosted web page, the Feishu channel and pushes |
 | `apps/web` | The web page (React): the side-view pixel town, product pages, people, session replay |
 | `apps/world` | The world service: clock, schedules, needs, places; drives the launch engine; broadcasts over NATS |
 | `apps/gateway` | Single-port gateway: HTTP to the API, vanilla Terraria to TShock, tModLoader to tML |
@@ -128,7 +128,8 @@ Everything runs on your machine. Residents, memories, screenshots and conclusion
 | `packages/engine` | The launch pipeline (`launch/`), people (memory, perception, population), one usage session, evaluation and issue synthesis |
 | `packages/executor` | Browser sandbox (desktop and mobile web), locating by screenshot with Midscene, the human hand, policy gate, recording |
 | `packages/memory` | One [ewave](https://www.npmjs.com/package/@plutokeating/ewave) memory tree per resident |
-| `packages/llm` | In-app model router: providers, credentials, failover, an OpenAI-compatible endpoint, spend records |
+| `packages/agent` | The Jobs Agent behind Feishu, "Ask Jobs" and `jobsworld chat`: [Pi](https://github.com/earendil-works/pi)'s agent loop over our own model router, the same tools as MCP |
+| `packages/llm` | In-app model router: providers, credentials, failover, tool calling for the agent, an OpenAI-compatible endpoint, spend records |
 | `packages/core` · `packages/db` · `packages/storage` | Types and schemas · Drizzle tables and migrations · evidence storage (MinIO/S3, content-addressed) |
 | `game/` · `infra/game/` | Terraria plugin and mod (C#) · game server images |
 | `demos/kit` | 11 sample products, each in a clean version and one with known flaws |
@@ -159,7 +160,7 @@ The rest is in [`docs/QUICK_START.md`](docs/QUICK_START.md).
 > Every head count is what actually happened in this simulated town. It is not a forecast of a real market, and nothing here has been calibrated against real users yet. Feedback from synthetic users runs shallow and positive, and misses the long tail. Jobs does not replace research with real people: it shows you, before you have a single user, what happens when a crowd of very different people meets your product for the first time.
 
 - **Where the residents come from.** Chinese residents are drawn from census-style sampling tables with hand-set values; English-speaking residents are sampled from [NVIDIA Nemotron-Personas-USA](https://huggingface.co/datasets/nvidia/Nemotron-Personas-USA) (CC BY 4.0). Rules derive every number (literacy, eyesight, patience, price sensitivity); the model only writes names, life stories and opinions. A fresh install has 199 residents.
-- **What has been verified, and what has not.** Model calls have only run for real against Gemini on Vertex. The Feishu flow after the QR scan has not been tried with a real account. The full record is in [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
+- **What has been verified, and what has not.** Model calls have only run for real against Gemini on Vertex. The rebuilt Feishu channel has been tested against a simulated Feishu API and the QR code comes back from Feishu, but has not yet been used with a real account; the same agent has run for real in the web page and the terminal. The full record is in [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
 ## Documentation
 

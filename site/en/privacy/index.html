@@ -103,7 +103,7 @@
           <li>The URL you launch: residents visit it with a browser on this machine, so the product’s server sees requests from this machine and the fictional email addresses and phone numbers residents sign up with.</li>
           <li>models.dev: when an administrator refreshes the catalog in Settings › Models, a public model catalog is fetched with no identity attached; otherwise the copy shipped with the software is used.</li>
           <li>Google Fonts: the installed web page requests a Chinese typeface from Google, so the browser of whoever opens the page connects to Google.</li>
-          <li>Feishu (optional): only after you connect it by scanning the code. What you say to the bot, what it replies and what it pushes to you pass through Feishu.</li>
+          <li>Feishu (optional): only after you connect it by scanning the code. What you send the bot (text, images, files), what it replies, the screenshots and pushes it sends, and any cloud documents you ask it to export pass through Feishu.</li>
           <li>GitHub’s container registry and Docker Hub: only when you upgrade, or the first time you switch a game server on, to pull images.</li>
           <li>GitHub’s public API (update check): every 6 hours the instance reads the version number of this project’s latest release on GitHub so the web page can tell you an update is out. The request carries no identity and none of this machine’s or your data; it is a plain read, and GitHub sees a request from this machine. To turn it off, add <code>JOBS_UPDATE_CHECK=0</code> to <code>~/.jobs/.env</code> and run <code>jobsworld up</code>.</li>
         </ul>

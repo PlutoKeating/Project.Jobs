@@ -34,7 +34,7 @@ export const home = {
     ],
     also: {
       heading: '也在终端和 coding agent 里',
-      body: '写完代码就发布，取回结论和带复现步骤的问题清单，接着改；想从一张白纸重来就清零，不用了就下线。同一座城还能用 Terraria 走进去，或者接到飞书里。',
+      body: '写完代码就发布，取回结论和带复现步骤的问题清单，接着改；想从一张白纸重来就清零，不用了就下线；问题可以直接开成 GitHub issue，关掉它，Jobs 就请同一类人再试一遍。不在电脑前时，在飞书里直接跟 Jobs 说话：看结论、请人试、跟居民聊，有要紧的事它会先找你。同一座城还能用 Terraria 走进去。',
       comment1: '# 发布、看状况、要结论',
       productName: '闪念笔记',
       productTagline: '想到什么，马上记下',
@@ -77,7 +77,7 @@ export const home = {
     ],
     also: {
       heading: 'In your terminal and your coding agent too',
-      body: 'Launch as soon as the code is written, pull back the conclusion and a list of issues with steps to reproduce, and keep going; reset it to start from a clean slate, or take it offline when you are done. You can also walk into the same town in Terraria, or connect it to Feishu.',
+      body: 'Launch as soon as the code is written, pull back the conclusion and a list of issues with steps to reproduce, and keep going; reset it to start from a clean slate, or take it offline when you are done; an issue can go straight to GitHub, and closing it sends the same kind of people back to check the fix. Away from your desk, just talk to Jobs in Feishu: read the verdict, invite people, chat with a resident, and hear from it first when something matters. You can also walk into the same town in Terraria.',
       comment1: '# launch, check on it, get the conclusion',
       productName: 'Quick Notes',
       productTagline: 'Write it down the moment you think of it',

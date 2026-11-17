@@ -8,7 +8,8 @@
 宿主机（pnpm / Node 24 原生运行）                     docker compose（只跑依赖）
 ┌──────────────────────────────────────────┐        ┌──────────────────────────────┐
 │ apps/cli      命令行 + 本机 MCP（stdio）     │        │ postgres  pgvector/pg17      │ 55432
-│ apps/api      接口 + 网页 + 飞书 + 远程 MCP │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
+│ apps/api      接口 + 网页 + 飞书 + 远程 MCP │
+│ packages/agent Jobs Agent（飞书/网页/终端）  │──────▶ │ minio     S3 兼容证据存储     │ 59000/59001
 │ apps/world    世界服务 + 发布引擎           │        │ nats      事件总线            │ 54222/58222
 │ apps/gateway  单端口网关 0.0.0.0:7777       │        │ tshock/tml 游戏服（profile game）│ 57777/57778
 │ demos/kit     11 个示例产品（22 个实例）     │        └──────────────────────────────┘
@@ -70,6 +71,10 @@ flowchart LR
 | 证据 | `packages/executor/src/evidence.ts`；`evidence`、`evidence_links`、`repro_paths` 表 | 所有截图、录像、日志按内容哈希登记，并与步骤、问题关联；复现路径可以干净重放 |
 | 事后评估 | `packages/engine/src/evaluation/` | 客观指标、问题候选（分「亲历」与「工程」两路）、评审、被测产品里 AI 回答的质量、事后访谈、干净重放、归因复核、问题合成与去重 |
 | 结论 | `packages/engine/src/launch/report.ts`、`launch/text.ts` | 一页结论与工程附录（标过新版本时，亲历的问题注明在新版本里还在不在）；纯文本排版（命令行、MCP、飞书共用） |
+| Jobs Agent | `packages/agent/`、`apps/api/src/agent.ts`、`apps/cli/src/chat.ts`、`apps/web/src/components/Chat.tsx` | 飞书、网页右下角「问 Jobs」、`jobsworld chat` 共用一个 `AgentHub`。循环用 Pi 的 `pi-agent-core`，`streamFn` 接 `gateway().converse('agent')`（「对话」模型组：工具调用 + 流式，没有时用「归纳」组）；工具就是 MCP 那一份，执行时用说话人自己的角色在进程内转发到 `/api/v1`（`internal.ts`，进程启动时随机生成的标记）。一个会话键同时只跑一轮：同一角色插话用 `steer`，角色不同排队；清零、下线先发确认（`agent_actions`，单次有效、30 分钟过期）；`wait_for_people` 在后台等、等到了经渠道的主动消息出口另起一轮；跟居民连续聊天（`jw.chat`）；长对话压缩成摘要。见 `packages/agent/docs/README.md` |
+| 飞书 | `apps/api/src/feishu/` | 渠道层用官方 SDK 的 `LarkChannel`（长连接、消息归一化含合并转发、去重、群里要 @、卡片回调）；回答画成 CardKit 卡片实体（步骤与回答两个元素各自流式更新，定稿时整张换掉；不用改消息的接口，它改二三十次后会静默失败）。身份：扫码的人是管理员、同组织默认访客、私聊发口令配对（`feishu_users`）。会话键：私聊和群各一条，话题各一条。推送（`notify.ts`、`rules.ts`）：订阅 `jw.notice` 与本进程的通知，按每个推送去处（`feishu_targets`）的偏好实时发、合并发或进早报晚报，并刷新每个产品的看板卡；需要介入时应用内加急。云文档导出（`docs.ts`）：应用身份建文档、所有权转给接入者。卡片里的网页链接换成一次性只读签名链接（`signed.ts`，`signed_links`）。扫码时追加的权限：机器人收发与读取消息、`im:resource`、`im:chat:readonly`、`cardkit:card:write`、应用内加急、表情回应、`contact:user.base:readonly`、`docx:document`、`drive:drive`、文档协作者管理；事件 `im.message.receive_v1`、`im.chat.member.bot.added_v1`；回调 `card.action.trigger`。旧版本接入的应用用 `registerApp({ appId })` 补权限 |
+| 通知 | `packages/engine/src/launch/notice.ts` | 引擎在一次使用结束、亲历问题第一次出现、结论写好、需要人介入时 `emitNotice`；世界服务转发到 NATS `jw.notice`，API 的推送器同时听本进程与 NATS |
+| 问题与交给 coding agent | `packages/engine/src/launch/issues.ts`、`launch/github.ts`、`apps/api/src/issues.ts` | 问题清单与分诊（多了「已知」）、按版本对比、修复任务文本；每个产品的 GitHub 仓库与令牌（加密），开 issue；API 每分钟查到期的 issue，关闭后标新版本并把手机递给撞上过这个问题的那类人 |
 | Coding agent（MCP） | `packages/engine/src/launch/tools.ts`、`apps/api/src/mcp.ts`、`apps/api/src/oauth.ts`、`apps/cli/src/mcp.ts` | 工具只定义一次，只经 REST 工作。远程：`/mcp`（Streamable HTTP，无状态）+ OAuth 2.1（协议用 MCP SDK 的 `mcpAuthRouter`，授权页输入口令），工具调用在进程内转发到 `/api/v1` 并带上这次授权的令牌；本机：`jobsworld mcp`（stdio，经 HTTP）。见 [`API.md`](API.md) §2 |
 | 模型 | `packages/llm/` | 见 [`MODELS.md`](MODELS.md) |
 | 接口与网页 | `apps/api/`、`apps/web/` | 见 [`API.md`](API.md)、`apps/web/docs/README.md` |
@@ -150,6 +155,7 @@ sequenceDiagram
 | 一次使用 | `sessions`（含 `world_context`）、`steps`、`observations`、`world_states`、`events`、`goals`、`interviews`、`human_tasks` |
 | 证据与问题 | `evidence`、`evidence_links`、`repro_paths`、`issue_candidates`、`issues`（两者都有 `track`：`experience` 亲历 / `engineering` 工程）、`judgments` |
 | 模型 | `llm_config_versions`、`llm_secrets`、`llm_instances`、`llm_tests`、`llm_traces` |
+| Jobs Agent 与飞书（迁移 `0011`） | `agent_sessions`（每条长期对话：消息、压缩摘要、跟居民聊的模式、花费）、`agent_actions`（等确认的动作）、`feishu_users`、`feishu_targets`（推送去处、偏好、看板卡、等着合并的事、早晚报上次发的日期）、`launch_github`、`issue_links`、`signed_links`；飞书应用凭证仍在 `world_kv['feishu']` |
 | 产品与容器 | `apps`、`app_versions`、`studies`（每次发布对应一行，`trigger = 'launch'`） |
 | 只有内部校准批次在用 | `features`、`task_defs`、`hypotheses`、`world_templates`、`exploration_coverage`、`scores`、`calibration_sets`、`calibration_results`、`reports` |
 | 不再写入 | `persona_memories`（首次访问某人时迁入记忆树）、`executor_comparisons`、`app_verdicts` |
