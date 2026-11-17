@@ -244,7 +244,7 @@ export class AgentHub {
   }
 }
 
-function confirmText(tool: string, a: Record<string, unknown>): string {
+export function confirmText(tool: string, a: Record<string, unknown>): string {
   if (tool === 'reset_product') return `清零「${a.product}」：城里关于它的经历全部归零（使用、曝光、评论、动态、居民的记忆与信任、问题与结论），产品本身不动，此刻重新上线、花费归零。正在用它的人会被停下来。`;
   if (tool === 'remove_product') return `下线「${a.product}」：从城里拿掉，商店、广告、念头里都不再有它${a.wipe_history ? '；连同使用过程、评论、动态、居民的记忆一起删除，就像从没发布过' : '；城里的经历保留'}。`;
   return `${tool} ${JSON.stringify(a)}`;

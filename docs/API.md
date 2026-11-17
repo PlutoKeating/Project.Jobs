@@ -111,16 +111,22 @@
 | `GET /agent/sessions/:id` | 一个会话：`items`（用户的话、Jobs 的话、做过的步骤；内部记录不显示）、`mode`（跟居民聊时的对象与聊天记录）、`summary`（压缩掉的旧对话摘要）、`busy` |
 | `POST /world/chat` `{ persona_id, message, history? }` | 跟一位居民连续聊一句（`history`：`[{ role: "user" \| "resident", text }]`）→ `{ reply, name }`；世界服务在跑时经它 |
 
-### 游戏服、示例产品、飞书
+### 游戏服、示例产品、飞书（飞书里的对话走上面的 Jobs Agent）
 
 | 方法 路径 | 说明 |
 |---|---|
 | `GET /game` | 两个 Terraria 游戏服的状态：`tshock` / `tml` 各有 `up`、`pending`；`can_toggle`（宿主机上有监视单元，网页可以一键开关）、`port`、`password`（是否设了进服密码） |
 | `POST /game`（管理员） `{ kind: "tshock" \| "tml", on }` | 开关游戏服。能一键开关时返回 `{ requested: true }`：服务只往 `control/requests/` 放一个只含动作名的文件，真正执行的是宿主机上的 `jobsworld _control`。不能时返回 409 `{ error: "manual", command }`，`command` 是要在宿主机上运行的命令 |
 | `GET /demos` | 随包的示例产品（在跑的时候）：`id`、`name`、`tagline`、`url`（干净版）、`flawed_url`（带着真实小毛病的版本） |
-| `GET /feishu`（管理员） | 飞书机器人的状态：`connected`、`app_id`、`brand`、`pending`（等待扫码时的 `url`、`qr_svg`、`expires_at`）、`error` |
-| `POST /feishu/connect`（管理员） | 开始扫码接入（飞书的一键创建应用）；返回带二维码的状态。扫码确认后在后台完成接入，并给扫码的人发一条消息 |
-| `POST /feishu/test`、`POST /feishu/disconnect`（管理员） | 发一条测试消息；断开并删除保存的应用凭证 |
+| `GET /feishu`（管理员） | 飞书机器人的状态：`connected`、`app_id`、`brand`、`owner_name`、`needs_upgrade`（这个应用是旧版本接入的，扫码时追加的权限不全，要重新扫码补）、`pending`（等待扫码时的 `url`、`qr_svg`、`expires_at`、`upgrade`）、`error` |
+| `POST /feishu/connect`（管理员） `{ upgrade? }` | 开始扫码（飞书的一键创建应用，追加的权限、事件、回调见 `ARCHITECTURE.md`）；返回带二维码的状态。`upgrade: true` 时对已接入的应用补权限（同一个应用，绑定的人与推送设置不变）。扫码确认后在后台连上，并给扫码的人发欢迎卡片 |
+| `POST /feishu/test`、`POST /feishu/disconnect`（管理员） | 给接入者发一张测试卡片；断开并删除保存的应用凭证 |
+| `GET /feishu/users`（管理员） | 跟机器人说过话的人：`open_id`、`name`、`role`（`admin` / `viewer`）、`via`（`owner` 扫码接入 / `tenant` 同组织默认访客 / `passcode` 私聊发口令配对 / `web` 网页上设定）、`revoked`、`owner`、`last_seen_at` |
+| `PATCH /feishu/users/:open_id`（管理员） `{ role?, revoked? }` | 改角色（之后不再依赖口令）或撤销 / 恢复；扫码接入的人不能改 |
+| `GET /feishu/targets`（管理员） | 推送去处（接入者的私聊、被设为推送去处的群）：`chat_id`、`kind`、`name`、`enabled`、`prefs`（`issues` 严重问题第一次出现、`reports` 结论有实质变化、`human` 需要介入、`urgent` 介入时应用内加急、`merge_minutes` 其余的事合并成一条的间隔（0 不发）、`morning` / `evening` 早报晚报时刻（`null` 不发）、`tz`、`boards` 看板卡、`products` 只关心的产品）、`boards`（看板卡张数）、`pending`（等着合并发的事） |
+| `PUT /feishu/targets/:chat_id`（管理员） `{ enabled?, prefs? }` | 改偏好 / 不再往这里推。在飞书里说一句话也能改（Agent 的 `notification_settings`） |
+| `POST /feishu/targets/:chat_id/digest`（管理员） | 现在就发一份早报（14 点前）或晚报 |
+| `GET /s/:token`（免登录） | 飞书卡片里的一次性只读链接：只能打开一次，24 小时过期；打开后这个浏览器得到 1 天的访客身份并跳到那一页。没有设置口令时卡片里直接是网页地址 |
 
 ### 版本与升级
 

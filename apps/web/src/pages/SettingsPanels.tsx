@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Check, RotateCw, X } from 'lucide-react';
-import { ApiError, del, get, post, queryClient } from '../lib/api.ts';
+import { ApiError, del, get, patch, post, put, queryClient } from '../lib/api.ts';
 import { copyText } from '../lib/clipboard.ts';
 import { useLang, useT } from '../lib/i18n.ts';
 import { useUpdate } from '../lib/update.ts';
@@ -57,37 +57,137 @@ export function AgentsPanel({ onPublic }: { onPublic: () => void }) {
 }
 
 // ---------------------------------------------------------------- 飞书
-interface FeishuState { connected: boolean; app_id: string | null; brand: string | null; connected_at: string | null; pending: { url: string; qr_svg: string; expires_at: number } | null; error: string | null }
+interface FeishuState { connected: boolean; app_id: string | null; brand: string | null; owner_name: string | null; connected_at: string | null; needs_upgrade: boolean; pending: { url: string; qr_svg: string; expires_at: number; upgrade: boolean } | null; error: string | null }
+interface FeishuUser { open_id: string; name: string | null; role: 'admin' | 'viewer'; via: 'owner' | 'tenant' | 'passcode' | 'web'; revoked: boolean; owner: boolean; last_seen_at: string | null }
+interface Prefs { issues: boolean; reports: boolean; human: boolean; urgent: boolean; merge_minutes: number; morning: string | null; evening: string | null; tz: string; boards: boolean; products: string[] | null }
+interface FeishuTarget { chat_id: string; kind: 'p2p' | 'group'; name: string | null; enabled: boolean; prefs: Prefs; boards: number; pending: number }
+
+function Toggle({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: string }) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-4 py-1.5 text-sm text-fg">
+      <span>{label}</span>
+      <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${on ? 'bg-fg-display' : 'bg-border-strong'}`}><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-bg transition-all ${on ? 'left-[1.125rem]' : 'left-0.5'}`} /></button>
+    </label>
+  );
+}
+
+function TargetPrefs({ t: tg }: { t: FeishuTarget }) {
+  const { t } = useT();
+  const [p, setP] = useState(tg.prefs); const [saved, setSaved] = useState(false);
+  const save = async (next: Prefs) => { setP(next); await put(`/feishu/targets/${tg.chat_id}`, { prefs: next }).catch(() => undefined); setSaved(true); setTimeout(() => setSaved(false), 1200); };
+  const time = (k: 'morning' | 'evening') => (
+    <label className="flex items-center justify-between gap-4 py-1.5 text-sm text-fg">
+      <span>{t(k === 'morning' ? 'fs_morning' : 'fs_evening')}</span>
+      <span className="flex items-center gap-2">
+        <input type="time" value={p[k] ?? ''} disabled={!p[k]} onChange={(e) => void save({ ...p, [k]: e.target.value || null })} className="h-7 rounded-md border border-border bg-bg-elevated px-1.5 text-xs text-fg disabled:opacity-40" />
+        <button type="button" role="switch" aria-checked={!!p[k]} aria-label={t(k === 'morning' ? 'fs_morning' : 'fs_evening')} onClick={() => void save({ ...p, [k]: p[k] ? null : k === 'morning' ? '08:30' : '19:00' })} className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${p[k] ? 'bg-fg-display' : 'bg-border-strong'}`}><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-bg transition-all ${p[k] ? 'left-[1.125rem]' : 'left-0.5'}`} /></button>
+      </span>
+    </label>
+  );
+  return (
+    <li className="border-t border-border py-3">
+      <div className="flex items-center gap-2 text-sm">
+        <span className="font-medium text-fg-display">{tg.kind === 'p2p' ? t('fs_target_dm') : tg.name ?? tg.chat_id}</span>
+        {saved && <Check size={13} className="text-success" />}
+        <span className="flex-1" />
+        <Button size="sm" variant="ghost" onClick={() => void post(`/feishu/targets/${tg.chat_id}/digest`)}>{t('fs_digest_now')}</Button>
+        {tg.kind === 'group' && <Button size="sm" variant="ghost" onClick={async () => { await put(`/feishu/targets/${tg.chat_id}`, { enabled: false }); void queryClient.invalidateQueries({ queryKey: ['feishu-targets'] }); }}>{t('fs_target_off')}</Button>}
+      </div>
+      <div className="mt-2 grid gap-x-10 sm:grid-cols-2">
+        <div>
+          <Toggle on={p.issues} label={t('fs_p_issues')} onChange={(v) => void save({ ...p, issues: v })} />
+          <Toggle on={p.reports} label={t('fs_p_reports')} onChange={(v) => void save({ ...p, reports: v })} />
+          <Toggle on={p.human} label={t('fs_p_human')} onChange={(v) => void save({ ...p, human: v })} />
+          <Toggle on={p.urgent} label={t('fs_p_urgent')} onChange={(v) => void save({ ...p, urgent: v })} />
+        </div>
+        <div>
+          <label className="flex items-center justify-between gap-4 py-1.5 text-sm text-fg">
+            <span>{t('fs_p_merge')}</span>
+            <select value={p.merge_minutes} onChange={(e) => void save({ ...p, merge_minutes: Number(e.target.value) })} className="h-7 rounded-md border border-border bg-bg-elevated px-1.5 text-xs text-fg">
+              {[0, 15, 30, 60, 120, 240].map((m) => <option key={m} value={m}>{m ? t('fs_minutes', { n: m }) : t('fs_off')}</option>)}
+            </select>
+          </label>
+          {time('morning')}{time('evening')}
+          <Toggle on={p.boards} label={t('fs_p_boards')} onChange={(v) => void save({ ...p, boards: v })} />
+        </div>
+      </div>
+    </li>
+  );
+}
 
 export function FeishuPanel() {
   const { t } = useT();
   const [busy, setBusy] = useState(false); const [sent, setSent] = useState(false);
   const q = useQuery({ queryKey: ['feishu'], queryFn: () => get<FeishuState>('/feishu'), refetchInterval: (x) => (x.state.data?.pending ? 2500 : false), retry: false });
-  const act = async (path: string) => { setBusy(true); try { const s = await post<FeishuState>(path); if ('connected' in s) queryClient.setQueryData(['feishu'], s); } catch { /* 状态里会带出错误 */ } finally { setBusy(false); void q.refetch(); } };
+  const users = useQuery({ enabled: !!q.data?.connected, queryKey: ['feishu-users'], queryFn: () => get<FeishuUser[]>('/feishu/users') });
+  const targets = useQuery({ enabled: !!q.data?.connected, queryKey: ['feishu-targets'], queryFn: () => get<FeishuTarget[]>('/feishu/targets') });
+  const act = async (path: string, body?: unknown) => { setBusy(true); try { const s = await post<FeishuState>(path, body); if ('connected' in s) queryClient.setQueryData(['feishu'], s); } catch { /* 状态里会带出错误 */ } finally { setBusy(false); void q.refetch(); } };
+  const setUser = async (id: string, body: { role?: 'admin' | 'viewer'; revoked?: boolean }) => { await patch(`/feishu/users/${id}`, body).catch(() => undefined); void users.refetch(); };
   const s = q.data;
+  const qr = (p: NonNullable<FeishuState['pending']>) => (
+    <div className="w-60">
+      <a href={p.url} target="_blank" rel="noreferrer" aria-label={t('fs_scan')} className="block rounded-md bg-white p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: p.qr_svg }} />
+      <p className="mt-2 flex items-center gap-2 text-xs text-fg-muted"><Dot tone="accent" live />{p.upgrade ? t('fs_scan_upgrade') : t('fs_scan')}</p>
+    </div>
+  );
   return (
-    <Section title={t('feishu')}>
-      {!s ? <Skeleton className="h-9 w-48" />
-        : s.connected ? (
-          <>
-            <p className="flex items-center gap-2 text-sm text-fg"><Dot tone="success" />{t('fs_connected')}{s.app_id && <span className="tabular text-xs text-fg-subtle">{s.app_id}</span>}</p>
-            <div className="mt-4 flex gap-2">
-              <Button size="sm" disabled={busy} onClick={async () => { await act('/feishu/test'); setSent(true); setTimeout(() => setSent(false), 1600); }}>{sent ? t('fs_sent') : t('fs_test')}</Button>
-              <Button size="sm" variant="ghost" disabled={busy} onClick={() => void act('/feishu/disconnect')}>{t('fs_disconnect')}</Button>
-            </div>
-          </>
-        ) : s.pending ? (
-          <div className="w-60">
-            <a href={s.pending.url} target="_blank" rel="noreferrer" aria-label={t('fs_scan')} className="block rounded-md bg-white p-2 [&>svg]:block [&>svg]:h-auto [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: s.pending.qr_svg }} />
-            <p className="mt-2 flex items-center gap-2 text-xs text-fg-muted"><Dot tone="accent" live />{t('fs_scan')}</p>
-          </div>
-        ) : (
-          <>
-            {s.error && <p role="alert" className="mb-3 break-words text-xs text-danger">{s.error}</p>}
-            <Button variant="primary" disabled={busy} onClick={() => void act('/feishu/connect')}>{busy ? '…' : t('fs_connect')}</Button>
-          </>
-        )}
-    </Section>
+    <>
+      <Section title={t('feishu')}>
+        {!s ? <Skeleton className="h-9 w-48" />
+          : s.pending ? qr(s.pending)
+          : s.connected ? (
+            <>
+              <p className="flex items-center gap-2 text-sm text-fg"><Dot tone="success" />{t('fs_connected')}{s.owner_name && <span className="text-fg-muted">· {s.owner_name}</span>}{s.app_id && <span className="tabular text-xs text-fg-subtle">{s.app_id}</span>}</p>
+              {s.needs_upgrade && (
+                <div className="mt-3 rounded-md border border-border-strong p-3 text-sm">
+                  <p className="text-fg">{t('fs_upgrade_why')}</p>
+                  <Button className="mt-2" size="sm" disabled={busy} onClick={() => void act('/feishu/connect', { upgrade: true })}>{t('fs_upgrade')}</Button>
+                </div>
+              )}
+              <div className="mt-4 flex gap-2">
+                <Button size="sm" disabled={busy} onClick={async () => { await act('/feishu/test'); setSent(true); setTimeout(() => setSent(false), 1600); }}>{sent ? t('fs_sent') : t('fs_test')}</Button>
+                <Button size="sm" variant="ghost" disabled={busy} onClick={() => void act('/feishu/disconnect')}>{t('fs_disconnect')}</Button>
+              </div>
+            </>
+          ) : (
+            <>
+              {s.error && <p role="alert" className="mb-3 break-words text-xs text-danger">{s.error}</p>}
+              <Button variant="primary" disabled={busy} onClick={() => void act('/feishu/connect')}>{busy ? '…' : t('fs_connect')}</Button>
+            </>
+          )}
+      </Section>
+
+      {s?.connected && (
+        <Section title={t('fs_users')}>
+          {!users.data?.length ? <p className="text-sm text-fg-muted">{t('fs_users_none')}</p> : (
+            <ul className="border-b border-border">
+              {users.data.map((u) => (
+                <li key={u.open_id} className="flex items-center gap-3 border-t border-border py-2.5 text-sm">
+                  <span className={`min-w-0 flex-1 truncate ${u.revoked ? 'text-fg-subtle line-through' : 'text-fg'}`}>{u.name ?? u.open_id}</span>
+                  <span className="text-xs text-fg-subtle">{t(`fs_via_${u.via}`)}</span>
+                  {u.owner ? <span className="text-xs text-fg-muted">{t('fs_role_admin')}</span> : (
+                    <>
+                      <select aria-label={t('fs_role')} value={u.role} disabled={u.revoked} onChange={(e) => void setUser(u.open_id, { role: e.target.value as 'admin' | 'viewer' })} className="h-7 rounded-md border border-border bg-bg-elevated px-1.5 text-xs text-fg">
+                        <option value="viewer">{t('fs_role_viewer')}</option><option value="admin">{t('fs_role_admin')}</option>
+                      </select>
+                      <Button size="sm" variant="ghost" onClick={() => void setUser(u.open_id, { revoked: !u.revoked })}>{u.revoked ? t('fs_restore') : t('fs_revoke')}</Button>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Section>
+      )}
+
+      {s?.connected && (
+        <Section title={t('fs_pushes')}>
+          {!targets.data?.filter((x) => x.enabled).length ? <p className="text-sm text-fg-muted">{t('fs_targets_none')}</p> : (
+            <ul className="border-b border-border">{targets.data.filter((x) => x.enabled).map((x) => <TargetPrefs key={x.chat_id} t={x} />)}</ul>
+          )}
+        </Section>
+      )}
+    </>
   );
 }
 

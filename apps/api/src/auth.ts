@@ -56,6 +56,11 @@ export function login(passcode: string, reply: FastifyReply): { viewer: boolean;
   return { viewer, admin };
 }
 
+/** 一次性签名链接打开后：给这个浏览器一个访客身份（只读，默认 1 天） */
+export function grantViewer(reply: FastifyReply, maxAgeSec = 86400) {
+  reply.header('set-cookie', [`jw_auth=${sign('viewer')}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAgeSec}`]);
+}
+
 export function logout(reply: FastifyReply) {
   reply.header('set-cookie', ['jw_auth=; Path=/; Max-Age=0', 'jw_admin=; Path=/; Max-Age=0']);
 }

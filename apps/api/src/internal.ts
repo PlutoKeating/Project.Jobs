@@ -28,3 +28,10 @@ export function internalApi(app: FastifyInstance, role: Role): ToolApi {
     return data as T;
   };
 }
+
+/** 进程内取一个文件（证据截图）：返回原始字节 */
+export async function internalFile(app: FastifyInstance, role: Role, path: string): Promise<{ body: Buffer; type: string } | undefined> {
+  const r = await app.inject({ method: 'GET', url: `/api/v1${path}`, headers: { [INTERNAL_HEADER]: `${KEY}:${role}` } });
+  if (r.statusCode >= 400) return undefined;
+  return { body: r.rawPayload, type: String(r.headers['content-type'] ?? '') };
+}

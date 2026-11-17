@@ -17,7 +17,8 @@ import { mailRoutes } from './mail.ts';
 import { modelRoutes, modelsReady } from './models.ts';
 import { gameRoutes } from './game.ts';
 import { updateRoutes } from './update.ts';
-import { feishuRoutes } from './feishu.ts';
+import { feishuRoutes } from './feishu/index.ts';
+import { signedRoutes } from './signed.ts';
 
 type P = { id: string };
 const layout = computeLayout();
@@ -31,6 +32,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   gameRoutes(app);
   updateRoutes(app);
   feishuRoutes(app, bus);
+  signedRoutes(app);
   const snapshot = async () => (bus ? await kvGetJson<Snapshot>(bus.kv, 'snapshot').catch(() => undefined) : undefined);
   const request = async (subject: string, data: unknown, timeout = 120_000) => {
     if (!bus) throw new Error('nats_unavailable');
