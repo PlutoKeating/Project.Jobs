@@ -81,7 +81,7 @@ export interface Appearance {
 }
 
 /** 已发布的产品在城里的现状（漏斗按人去重；数字是这座城里实际发生的人数） */
-export interface LaunchLive { id: string; name: string; tagline: string; intensity: number; status: string; reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; rating: number | null; reviews: number; queued?: number }
+export interface LaunchLive { id: string; name: string; tagline: string; intensity: number; status: string; reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; rating: number | null; reviews: number; /** 这个产品排着队、还没开始的使用（不算在用） */ queued?: number }
 export interface LaunchesMsg { launches: LaunchLive[]; ts: number }
 /** launch_id 可以是发布 id，也可以是产品名 */
 export interface PromoteCmd { launch_id: string; intensity?: number; status?: 'live' | 'paused' | 'ended' }

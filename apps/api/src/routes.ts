@@ -68,7 +68,7 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
         digital_literacy: r.spec.capability.digital_literacy, ai_familiarity: r.spec.capability.ai_familiarity,
         sessions: mine.length, apps: [...new Set(mine.map((s) => s.app))], last_seen: mine.reduce<Date | null>((m, s) => (s.started_at && (!m || s.started_at > m) ? s.started_at : m), null),
         memories: memN.get(r.id) ?? 0,
-        live: live ? { place_id: live.place_id, activity: live.activity, mode: live.mode, app: live.session?.app, needs: live.needs ?? null, phone: live.phone ?? null } : null,
+        live: live ? { place_id: live.place_id, activity: live.activity, mode: live.mode, app: live.session && !live.session.replay && ['running', 'waiting_human'].includes(live.session.status) ? live.session.app : undefined, needs: live.needs ?? null, phone: live.phone ?? null } : null,
         household_id: live?.household_id ?? null,
       };
     });

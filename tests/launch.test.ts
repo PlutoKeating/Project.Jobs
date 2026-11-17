@@ -1,7 +1,7 @@
 // 阶段③「发布主线」：曝光与注意、看到的东西、虚拟身份、命令行输出
 import { describe, expect, it } from 'vitest';
 import { PersonaSpecSchema, Rng, StudyInputSchema, configPath, readYaml } from '@pux/core';
-import { NOTICE, RATE_PER_HOUR, amountIn, audienceMatch, exposureChance, normFor, notices, whatTheySee, type LaunchRow } from '@pux/engine';
+import { NOTICE, RATE_PER_HOUR, amountIn, usingNow, audienceMatch, exposureChance, normFor, notices, whatTheySee, type LaunchRow } from '@pux/engine';
 import { funnelLine, reportText } from '../apps/cli/src/client.ts';
 
 const linwei = PersonaSpecSchema.parse(readYaml(configPath('personas/hero/zh_linwei.yaml')));
@@ -60,6 +60,15 @@ describe('命令行与 MCP 的输出', () => {
   const f = { reached: 159, noticed: 27, interested: 3, opened: 3, came_back: 0, using_now: 1, sessions: 3, reviews: 0, rating: null };
   const l = { id: 'lch_1', name: '闪念笔记', tagline: '想到什么，马上记下', url: 'http://x', intensity: 0.9, status: 'live', funnel: f, spend: { usd: 0.33, tokens: 1 } };
   it('漏斗一行说清：看到、注意到、有兴趣、打开过、回来再用', () => { expect(funnelLine(f)).toBe('看到 159 人 → 注意到 27 → 有兴趣 3 → 打开过 3 → 回来再用 0（此刻 1 人在用）'); });
+  it('排队的人不算在用：单独给人数', () => {
+    expect(funnelLine({ ...f, using_now: 0, queued: 2 })).toBe('看到 159 人 → 注意到 27 → 有兴趣 3 → 打开过 3 → 回来再用 0（此刻 0 人在用，2 人排队）');
+    const now = new Date();
+    expect(usingNow({ status: 'running', started_at: now })).toBe(true);
+    expect(usingNow({ status: 'waiting_human', started_at: now })).toBe(true);
+    expect(usingNow({ status: 'planned', started_at: null })).toBe(false);
+    expect(usingNow({ status: 'running', started_at: new Date(Date.now() - 4 * 3600_000) })).toBe(false);
+    expect(usingNow({ status: 'completed', started_at: now })).toBe(false);
+  });
   it('一页结论：每条带当事人的原话；数字标明是模拟；问题清单与工程附录分开', () => {
     const m = { persona: '赵红梅', who: '56 岁女，退休干部', quote: '怎么全空了', session_id: 's', step_idx: 3 };
     const txt = reportText(l, { verdict: 'not_yet', headline: '写好的字全丢了', summary: '只有 3 个人用过。', hurts: [{ text: '写完返回，内容没了', moments: [m], passersby: [] }], delights: [], who_stays: [], who_leaves: [], why_not_opened: [{ text: '自带备忘录就够了', moments: [], passersby: [{ persona: '陈雨', who: '20 岁女，大学生', thought: '下这干嘛' }] }], next: '先让自动保存真的保存', funnel: f, people_used: 3 },

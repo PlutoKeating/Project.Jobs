@@ -1,5 +1,5 @@
 // 发布状况与一页结论的纯文本排版：终端、MCP（coding agent）、飞书读的是同一份。这里只有类型和字符串，不碰数据库与网络。
-export interface FunnelView { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; sessions: number; reviews: number; rating: number | null }
+export interface FunnelView { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; queued?: number; sessions: number; reviews: number; rating: number | null }
 export interface LaunchView { id: string; name: string; tagline: string; url: string; intensity: number; status: string; funnel: FunnelView; spend: { usd: number; tokens: number } }
 export interface Cited { text: string; moments: { persona: string; who: string; quote: string; session_id: string; step_idx: number }[]; passersby: { persona: string; who: string; thought: string }[] }
 export interface ReportView { verdict: string; headline: string; summary: string; hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string; funnel: FunnelView; people_used: number }
@@ -7,7 +7,7 @@ export interface VersionView { n: number; note: string | null; at: string; sessi
 export interface EngineeringView { version?: VersionView | null; experienced: { id: string; severity: string; title: string; description: string; where: string | null; people: number; sessions?: number; sessions_since_version?: number | null; reproduced: boolean | null; steps: string[] }[]; appendix: { id: string; severity: string; category: string; title: string; description: string; recommendation: string | null; where: string | null }[]; mail?: { mails: number; sessions: number; opened: number; median_delay_s: number | null; max_delay_s: number | null; switches: number; forgot: number; mistyped: number } | null }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-export const funnelLine = (f: FunnelView) => `看到 ${f.reached} 人 → 注意到 ${f.noticed} → 有兴趣 ${f.interested} → 打开过 ${f.opened} → 回来再用 ${f.came_back}${f.using_now ? `（此刻 ${f.using_now} 人在用）` : ''}${f.rating ? ` · 评分 ${f.rating}（${f.reviews} 条）` : ''}`;
+export const funnelLine = (f: FunnelView) => `看到 ${f.reached} 人 → 注意到 ${f.noticed} → 有兴趣 ${f.interested} → 打开过 ${f.opened} → 回来再用 ${f.came_back}${f.using_now || f.queued ? `（此刻 ${f.using_now} 人在用${f.queued ? `，${f.queued} 人排队` : ''}）` : ''}${f.rating ? ` · 评分 ${f.rating}（${f.reviews} 条）` : ''}`;
 
 /** 把一页结论排成纯文本（终端和 coding agent 都读这一份） */
 export function reportText(l: LaunchView, r: ReportView, eng?: EngineeringView): string {

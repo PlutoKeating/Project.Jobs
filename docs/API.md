@@ -32,7 +32,7 @@
 | `GET /store` | 城里的人看到的应用商店：每个上架产品的介绍、截图、评分与评论 |
 | `GET /feed[?launch_id=]` | 城里的公开动态 |
 
-`funnel`：`reached`（看到）、`noticed`（注意到）、`interested`（有兴趣）、`opened`（打开过）、`came_back`（回来再用）、`using_now`（此刻在用）、`sessions`、`reviews`、`rating`、`by_channel`。按人去重，是这座城里实际发生的人数（模拟）。
+`funnel`：`reached`（看到）、`noticed`（注意到）、`interested`（有兴趣）、`opened`（打开过）、`came_back`（回来再用）、`using_now`（此刻在用：使用已经开始、还没结束，即 `running` 或 `waiting_human`，开始超过 3 小时的残留不算）、`queued`（决定要用、还没轮到的使用，排队不算在用）、`sessions`、`reviews`、`rating`、`by_channel`。按人去重，是这座城里实际发生的人数（模拟）。
 
 `audience`（投给谁，空 = 所有人）：`locales`（`zh-CN` / `en-US`）、`age_min`、`age_max`、`segments`、`tags`。不在投放范围内的人也可能看到，只是少得多。
 
@@ -65,7 +65,7 @@
 
 | 方法 路径 | 说明 |
 |---|---|
-| `GET /personas` | 每个人物的最新版本 + 使用统计（次数、用过的产品、记忆数）+ 此刻位置、需求、手机在不在手边、所在家庭 |
+| `GET /personas` | 每个人物的最新版本 + 使用统计（次数、用过的产品、记忆数）+ 此刻位置、需求、手机在不在手边、所在家庭；`live.app` 只在他此刻真在用某个产品时给（回放与刚用完的不算） |
 | `GET /personas/:id` | 画像、今天的日程、记忆（最近 120 条，来自他的记忆树）、使用历史（`sessions`；`launch_of` 把 `app_id` 对到发布 id）、信任状态、实时状态与世界时钟；`resident`（家庭、工作地点、收入、钱包、近况）、`ties`（关系网）、`here`（此时此地的处境） |
 | `GET /personas/:id/avatar` | 头像：接入了画图模型时生成并缓存到 MinIO；还没有生成的（或没接入画图模型时）返回确定性的像素头像 SVG |
 | `POST /personas/generate`（管理员） `{ n, locale }` | 生成新居民并住进城里（1–12 人） |
@@ -81,7 +81,7 @@
 | `POST /world/events`（管理员） `{ place_id, kind, minutes }` | 制造事件：`weak_network` `crowd` `rain` `power_cut` `noise`；正在该地点使用产品的人会真的受到影响 |
 | `POST /world/replay` `{ session_id, speed? }` | 在原地点回放一次使用 |
 | `POST /world/ask` `{ persona_id, question }` | 向人物追问（基于他最近一次已结束的使用；正在使用时返回 `busy`） |
-| `GET /stream`（WebSocket） | 实时推送 `{ type, data }`：`snapshot`（世界快照）、`live`（某人使用中的一步）、`say`（气泡）、`launches`（各产品的漏斗人数） |
+| `GET /stream`（WebSocket） | 实时推送 `{ type, data }`：`snapshot`（世界快照）、`live`（某人使用中的一步）、`say`（气泡）、`launches`（各产品的漏斗人数，含 `using_now` 与这个产品自己的 `queued`）。`snapshot` 里人物的 `session.status` 跟着数据库走：用完之后约 90 秒内人物还带着这次使用，但状态已不是 `running`；网页按 `running` / `waiting_human` 且不是回放判断「此刻在用」 |
 
 ### 使用过程、证据、人工接管
 
@@ -132,7 +132,7 @@
 |---|---|---|
 | `publish_product` | 管理员 | 发布：`name`、`tagline`、`url`（Jobs 服务能打开的真实地址），可选 `landing_url`、`description`、`ad_text`、`intensity`、`form` |
 | `list_products` | 访客 | 已发布的产品和漏斗人数 |
-| `product_status` | 访客 | 一个产品此刻的状况：漏斗、谁在用（带 `persona_id`）、路过的人怎么想 |
+| `product_status` | 访客 | 一个产品此刻的状况：漏斗、此刻在用的人（单独列在最前，带 `persona_id`；排队的只给人数）、用过的人、路过的人怎么想 |
 | `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录（含验证邮件的仪器读数）。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
 | `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`），返回 `session_ids` |
 | `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，最多 `max_minutes`（默认 5，最多 15）分钟；客户端带了 `progressToken` 时推送进度 |

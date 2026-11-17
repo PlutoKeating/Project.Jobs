@@ -23,7 +23,9 @@ export function userCommands(program: Command) {
   program.command('status').argument('<product>', '发布 id 或产品名').description('一个产品此刻在城里的状况').action(run(async (ref: string) => {
     const d = await api<LaunchView & { uses: { name: string; occupation: string; age: number; status: string; outcome: string | null; end_reason: string | null; where: string | null; invited: boolean }[]; passersby: { name: string; channel: string; thought: string | null; reaction: string }[] }>(`/launches/${encodeURIComponent(ref)}`);
     console.log(`${d.name} — ${d.tagline}  [${d.status} · 宣发 ${Math.round(d.intensity * 100)}% · $${d.spend.usd}]\n${funnelLine(d.funnel)}\n`);
-    for (const u of d.uses.slice(0, 20)) console.log(`  ${u.status === 'running' ? '▶' : u.outcome === 'success' ? '✓' : '✗'} ${u.name}（${u.age} 岁，${u.occupation}）${u.where ? ` · ${u.where}` : ''}${u.invited ? ' · 受邀' : ''}${u.end_reason ? `\n      ${u.end_reason.slice(0, 100)}` : ''}`);
+    // ▶ 此刻在用（✋ 卡在需要人介入的地方）· … 排队，还没开始 · ✓ / ✗ 用完了
+    const rank = (s: string) => (s === 'running' || s === 'waiting_human' ? 0 : s === 'planned' ? 2 : 1);
+    for (const u of [...d.uses].sort((a, b) => rank(a.status) - rank(b.status)).slice(0, 20)) console.log(`  ${u.status === 'running' ? '▶' : u.status === 'waiting_human' ? '✋' : u.status === 'planned' ? '…' : u.outcome === 'success' ? '✓' : '✗'} ${u.name}（${u.age} 岁，${u.occupation}）${u.where ? ` · ${u.where}` : ''}${u.invited ? ' · 受邀' : ''}${u.end_reason ? `\n      ${u.end_reason.slice(0, 100)}` : ''}`);
     if (d.passersby.length) { console.log('\n看到了没点开：'); for (const p of d.passersby.slice(0, 8)) console.log(`  · ${p.name}（${p.channel}）：${p.thought ?? p.reaction}`); }
   }));
 

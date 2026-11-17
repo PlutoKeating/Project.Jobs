@@ -93,7 +93,9 @@ export async function listLaunches(opts: { liveOnly?: boolean } = {}): Promise<L
   return opts.liveOnly ? rows.filter((r) => r.status === 'live') : rows;
 }
 
-export interface Funnel { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; sessions: number; reviews: number; rating: number | null; by_channel: Record<string, { reached: number; opened: number }> }
+/** 此刻在用：使用已经开始、还没结束（running，或卡在需要人介入的地方）。排队（planned）不算；开始超过 3 小时还没结束的是中断后留下的残留，也不算（与世界服务的实时跟踪一致） */
+export const usingNow = (s: { status: string; started_at: Date | null }) => (s.status === 'running' || s.status === 'waiting_human') && !!s.started_at && Date.now() - s.started_at.getTime() < 3 * 3600_000;
+export interface Funnel { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; queued: number; sessions: number; reviews: number; rating: number | null; by_channel: Record<string, { reached: number; opened: number }> }
 
 /** 漏斗（按人去重）：看到 → 注意到 → 有兴趣 → 打开过 → 回来再用。数字是这座城里实际发生的人数，不是对真实市场的预测 */
 export async function launchFunnel(launchId: string): Promise<Funnel> {
@@ -111,7 +113,7 @@ export async function launchFunnel(launchId: string): Promise<Funnel> {
   return {
     reached: uniq([...ex.map((e) => e.persona_id), ...opened]), noticed: uniq([...ex.filter((e) => e.reaction !== 'unnoticed').map((e) => e.persona_id), ...opened]),
     interested: uniq([...ex.filter((e) => ['curious_later', 'opened'].includes(e.reaction)).map((e) => e.persona_id), ...opened]), opened: opened.size,
-    came_back: [...days.values()].filter((d) => d.size >= 2).length, using_now: ss.filter((s) => s.status === 'running').length, sessions: ss.length,
+    came_back: [...days.values()].filter((d) => d.size >= 2).length, using_now: ss.filter(usingNow).length, queued: ss.filter((s) => s.status === 'planned').length, sessions: ss.length,
     reviews: rv.length, rating: rv.length ? Math.round((rv.reduce((a, r) => a + r.rating, 0) / rv.length) * 10) / 10 : null, by_channel: by,
   };
 }

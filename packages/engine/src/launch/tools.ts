@@ -17,7 +17,7 @@ interface Use { session_id: string; persona_id: string; name: string; occupation
 type Detail = LaunchView & { uses: Use[]; passersby: { name: string; channel: string; reaction: string; thought: string | null }[] };
 const ACTIVE = new Set(['planned', 'running']);
 const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>((res) => { const t = setTimeout(res, ms); signal?.addEventListener('abort', () => { clearTimeout(t); res(); }, { once: true }); });
-const useLine = (u: Use) => `  · ${u.name}（${u.age} 岁，${u.occupation}）${u.where ? `在「${u.where}」` : ''}${u.invited ? '【受邀】' : ''}：${u.status === 'running' ? '正在用' : u.status === 'planned' ? '马上要用' : u.status === 'waiting_human' ? '卡在需要人介入的地方（例如验证码），在网页的「接管」里处理' : `${u.outcome ?? u.status}${u.end_reason ? ` — ${u.end_reason.slice(0, 80)}` : ''}`}  [persona_id=${u.persona_id}]`;
+const useLine = (u: Use) => `  · ${u.name}（${u.age} 岁，${u.occupation}）${u.where ? `在「${u.where}」` : ''}${u.invited ? '【受邀】' : ''}：${u.status === 'running' ? '正在用' : u.status === 'planned' ? '排队中（决定要用了，还没轮到，不算在用）' : u.status === 'waiting_human' ? '卡在需要人介入的地方（例如验证码），在网页的「接管」里处理' : `${u.outcome ?? u.status}${u.end_reason ? ` — ${u.end_reason.slice(0, 80)}` : ''}`}  [persona_id=${u.persona_id}]`;
 const launchOf = (api: ToolApi, product: unknown) => api<LaunchView>(`/launches/${encodeURIComponent(String(product))}`);
 
 export const JOBS_TOOLS: JobsTool[] = [
@@ -38,7 +38,11 @@ export const JOBS_TOOLS: JobsTool[] = [
     run: async ({ product }, { api }) => {
       const d = await api<Detail & { spend: { usd: number } }>(`/launches/${encodeURIComponent(String(product))}`);
       const pass = d.passersby.slice(0, 10).map((p) => `  · ${p.name}（${p.channel}）：${p.thought ?? p.reaction}`).join('\n');
-      return `${d.name}（${d.status}，宣发 ${Math.round(d.intensity * 100)}%，已花费约 $${d.spend.usd}）\n${funnelLine(d.funnel)}\n\n用过的人：\n${d.uses.slice(0, 15).map(useLine).join('\n') || '  还没有人打开过'}\n\n看到了没点开的人：\n${pass || '  —'}`;
+      // 此刻在用（已经开始、还没结束）单独列在最前面；排队的只给人数，不算在用
+      const now = d.uses.filter((u) => u.status === 'running' || u.status === 'waiting_human');
+      const queued = d.uses.filter((u) => u.status === 'planned').length;
+      const past = d.uses.filter((u) => !['running', 'waiting_human', 'planned'].includes(u.status));
+      return `${d.name}（${d.status}，宣发 ${Math.round(d.intensity * 100)}%，已花费约 $${d.spend.usd}）\n${funnelLine(d.funnel)}\n\n此刻在用：\n${now.map(useLine).join('\n') || '  此刻没人在用'}${queued ? `\n  （另有 ${queued} 人排队，还没开始）` : ''}\n\n用过的人：\n${past.slice(0, 15).map(useLine).join('\n') || '  还没有人用完过'}\n\n看到了没点开的人：\n${pass || '  —'}`;
     },
   },
   {

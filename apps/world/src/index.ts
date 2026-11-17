@@ -130,7 +130,8 @@ function step() {
     const prev = live.get(r.id);
     const tracked = byPersona.get(r.id);
     const rp = replays.get(r.id);
-    const sess = rp?.session ?? tracked?.live;
+    // 实时帧里的状态跟着数据库走：用完之后的 90 秒里这个人还带着这次使用，但不再是「在用」
+    const sess = rp?.session ?? (tracked?.live ? { ...tracked.live, status: tracked.status } : undefined);
     const inSession = !!sess && !rp;
     // 需求推进：饿、累、孤单、压力按正在做的事变化；正在使用产品时由那次使用自己结算
     let n = needs.get(r.id);
@@ -290,7 +291,7 @@ async function launchesNow(): Promise<LaunchLive[]> {
   if (!Engine) return [];
   const ls = await Engine.listLaunches();
   const out: LaunchLive[] = [];
-  for (const l of ls.slice(0, 20)) { const f = await Engine.launchFunnel(l.id); out.push({ id: l.id, name: l.name, tagline: l.tagline, intensity: l.intensity, status: l.status, reached: f.reached, noticed: f.noticed, interested: f.interested, opened: f.opened, came_back: f.came_back, using_now: f.using_now, rating: f.rating, reviews: f.reviews, queued: engine?.busy.queued }); }
+  for (const l of ls.slice(0, 20)) { const f = await Engine.launchFunnel(l.id); out.push({ id: l.id, name: l.name, tagline: l.tagline, intensity: l.intensity, status: l.status, reached: f.reached, noticed: f.noticed, interested: f.interested, opened: f.opened, came_back: f.came_back, using_now: f.using_now, queued: f.queued, rating: f.rating, reviews: f.reviews }); }
   return out;
 }
 let lastLaunchAbs = absMinute(clock.date, clock.minute);
