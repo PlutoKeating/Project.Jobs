@@ -99,6 +99,18 @@
 | `GET /human`、`POST /human/:id/resolve`（管理员） | 需要人介入的任务（例如验证码） |
 | `GET /evidence/:id` | 证据原文件（MinIO）或内联 JSON。设置了 `JW_PASSCODE` 时，游戏内面板用 `?k=<sha256("jw-evidence:"+JW_PASSCODE) 前 32 位十六进制>` 访问（只对本接口有效）；`/evidence/:id?s=<单文件签名>` 只放行这一个文件（修复任务、GitHub issue、飞书卡片里的截图用） |
 
+### Jobs Agent（网页右下角的对话、`jobsworld chat`；飞书用同一个核心）
+
+| 方法 路径 | 说明 |
+|---|---|
+| `POST /agent/send` `{ text, images?: [{ data(base64), mime }], session?, client?: "web" \| "cli" }` | 说一句话，返回这一轮的事件流（`text/event-stream`，每条 `data:` 是一个 JSON）：`session`（会话键）、`start`、`text`（`delta`）、`step`（`id`、`tool`、`label`、`status`：`running` / `done` / `error`）、`image`（`evidence_id`、`caption`：给你看的截图）、`confirm`（`action_id`、`label`、`text`：清零、下线要确认）、`mode`（`resident`：进入 / 退出跟某位居民的对话）、`resident`（居民的回答）、`notice`、`end`（`text`、`error`、`aborted`；插进了正在跑的一轮时 `steered: true`）。会话键默认 `local:<角色>`（网页与终端共用）；管理员可以传飞书的会话键接着聊。`/new` 重新开始，`/stop` 停下，跟居民聊时说「结束」回来 |
+| `GET /agent/stream?session=` | 主动消息（后台等到受邀的人用完时另起的一轮）的事件流，格式同上 |
+| `POST /agent/stop` `{ session? }` | 停下这个会话正在跑的一轮 |
+| `POST /agent/actions/:id` `{ approve }` | 确认卡片上的「确认 / 取消」：只能点一次，30 分钟过期，只有管理员能确认。返回 `{ ok, status, text }` |
+| `GET /agent/sessions` | 会话列表（管理员看全部，包括飞书的；访客只有自己的）：`id`、`channel`、`title`、`updated_at`、`tokens`、`cost_usd`、`busy` |
+| `GET /agent/sessions/:id` | 一个会话：`items`（用户的话、Jobs 的话、做过的步骤；内部记录不显示）、`mode`（跟居民聊时的对象与聊天记录）、`summary`（压缩掉的旧对话摘要）、`busy` |
+| `POST /world/chat` `{ persona_id, message, history? }` | 跟一位居民连续聊一句（`history`：`[{ role: "user" \| "resident", text }]`）→ `{ reply, name }`；世界服务在跑时经它 |
+
 ### 游戏服、示例产品、飞书
 
 | 方法 路径 | 说明 |
@@ -128,7 +140,7 @@
 
 ## 2. 命令行与 MCP
 
-装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`（`--who` 指定人物 id）、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`；城里现在与问题（与同名 MCP 工具同一份输出）：`town`、`find`、`whois`、`talk`、`issues`、`issue [--triage]`、`compare`、`fix [--github]`、`github`（仓库与令牌）、`system`、`human [--done]`、`tool <名字> [JSON]`（直接调用任何一个工具，`tool list` 列出全部）。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`（`import`、`list`、`leisure`：给还没有「出门与吃喝玩乐」一层的人物补上；`init` 也会做）、`dev` 直接访问数据库，只在服务所在的机器上用。详见 [`QUICK_START.md`](QUICK_START.md)。
+装好之后的命令是 `jobsworld`（仓库内为 `pnpm jobs`）。日常命令通过上面的 REST 接口工作：`publish`、`ls`、`status`、`report`、`promote`、`invite`（`--who` 指定人物 id）、`reset`、`remove [--wipe]`、`people`、`ask`、`clock`；城里现在与问题（与同名 MCP 工具同一份输出）：`town`、`find`、`whois`、`talk`、`issues`、`issue [--triage]`、`compare`、`fix [--github]`、`github`（仓库与令牌）、`system`、`human [--done]`、`tool <名字> [JSON]`（直接调用任何一个工具，`tool list` 列出全部）。环境变量：`JOBS_API`（服务地址，默认 `http://127.0.0.1:7777`）、`JOBS_KEY`（管理员口令）。`doctor`、`init`、`db`、`world`、`persona`（`import`、`list`、`leisure`：给还没有「出门与吃喝玩乐」一层的人物补上；`init` 也会做）、`dev` 直接访问数据库，只在服务所在的机器上用。`chat [一句话]`：在终端里跟 Jobs 说话（交互；要确认时输入 y / n）。详见 [`QUICK_START.md`](QUICK_START.md)。
 
 ### MCP 工具
 

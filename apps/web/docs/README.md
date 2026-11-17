@@ -25,6 +25,7 @@ Jobs 的网页（Vite + React 19 + TypeScript + Tailwind v4 + TanStack Router/Qu
 | `src/components/city/` | 侧视像素城市（PixiJS）：`draw.ts` 把 `TownLayout` 图元与人物外观画成像素，`palette.ts` 天空随模拟时钟变化，`CityCanvas.tsx` 负责拖拽、缩放、聚焦与 HTML 叠加层（气泡、名牌、地名）。`mode="horizon"` 是其他页面页脚的街道 |
 | `src/components/Shell.tsx` | 顶栏（城 / 产品 / 人、累计花费、有新版本或正在升级时的升级标记（仅管理员，点开是「设置 › 版本」）、世界时钟、Terraria 浮层（地址点一下复制、两个游戏服此刻开没开；开关在「设置 › 游戏服」）、语言、明暗主题、退出、设置入口（仅管理员）、「发布」）、登录页（标志的悬停提示是当前版本）、页脚街道（跟在内容后面，不盖住内容）。语言与主题是每位访客自己的显示偏好（访客也要用，设置页只对管理员开放），所以留在顶栏 |
 | `src/components/UsingNow.tsx` | 此刻在用某个产品的人：`UsingRow`（一个人一行，产品页带屏幕缩略图、城首页紧凑版点了选中人物）、`UsingNowPanel`（产品页顶上的「此刻在用」） |
+| `src/components/Chat.tsx` | 右下角的「问 Jobs」（每个页面都有，访客也能用）：和飞书、`jobsworld chat` 是同一个 Jobs Agent，网页与终端共用一条对话；管理员可以切到飞书里的对话。文字逐字出现，做的每一步一行（转圈 → 对勾），截图直接显示，清零 / 下线是带「确认 / 取消」的卡片，跟居民聊时顶部换成她的头像和「结束」；可以粘贴或添加图片（最多 3 张）；干活时发送按钮变成「停下」。≥640px 是右下角的浮层，更窄时铺满屏幕。`openChat(text?)` 可从任意地方打开 |
 | `src/components/Mail.tsx` | 收件箱列表（人物页、使用过程、设置页的无主信共用） |
 | `src/components/Publish.tsx` | 发布对话框：网址、名字、一句话（`openPublish()` 可从任意页面打开）；居民还收不到真实邮件时提醒一句（管理员可以直接去设置）；有随包示例产品在跑时，左下角的「示例」可以一键填好 |
 | `src/pages/` | `World`、`Products`（含 `useLiveFunnel`：接口人数 + 实时帧）、`Launch`（含清零 / 下线的确认对话框 `Lifecycle`）、`People`、`Person`、`Session`、`Human`、`Settings`（标签栏、公网链接与居民邮箱）、`SettingsPanels`（coding agent、飞书、游戏服、版本）、`Models`（`ModelsPanel`，设置里的「模型」标签） |

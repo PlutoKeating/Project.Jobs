@@ -12,6 +12,7 @@ import { avatarFor } from './avatars.ts';
 import type { Bus } from '@pux/jobsworld';
 import { launchRoutes } from './launches.ts';
 import { issueRoutes } from './issues.ts';
+import { agentRoutes } from './agent.ts';
 import { mailRoutes } from './mail.ts';
 import { modelRoutes, modelsReady } from './models.ts';
 import { gameRoutes } from './game.ts';
@@ -24,6 +25,7 @@ const layout = computeLayout();
 export function routes(app: FastifyInstance, bus: Bus | undefined) {
   launchRoutes(app, bus);
   issueRoutes(app, bus);
+  agentRoutes(app);
   mailRoutes(app);
   modelRoutes(app);
   gameRoutes(app);

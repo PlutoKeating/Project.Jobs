@@ -16,6 +16,7 @@
     "@pux/core": "workspace:*",
     "@pux/db": "workspace:*",
     "@pux/demos": "workspace:*",
+    "@pux/agent": "workspace:*",
     "@pux/engine": "workspace:*",
     "@pux/jobsworld": "workspace:*",
     "@pux/llm": "workspace:*",

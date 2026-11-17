@@ -9,6 +9,7 @@ import { useUpdate } from '../lib/update.ts';
 import { startStream, useConnected, useSnapshot } from '../lib/stream.ts';
 import { CityCanvas } from './city/CityCanvas.tsx';
 import { PublishDialog, openPublish } from './Publish.tsx';
+import { ChatPanel } from './Chat.tsx';
 import { Button } from './ui.tsx';
 
 function useTheme(): ['dark' | 'light', () => void] {
@@ -155,6 +156,7 @@ export function Shell() {
       </main>
       {!onWorld && <footer><Horizon /></footer>}
       <PublishDialog />
+      <ChatPanel />
     </div>
   );
 }

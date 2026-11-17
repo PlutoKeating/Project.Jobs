@@ -98,7 +98,7 @@ export class AgentHub {
     const text = o.input.text.trim();
     if (EXIT.test(text)) {
       const row = await this.d.store.load(o.session);
-      const note = m.history.length ? `（我刚才直接跟${m.name}聊了 ${Math.ceil(m.history.length / 2)} 个来回，最后几句：\n${m.history.slice(-6).map((h) => `${h.role === 'user' ? '我' : m.name}：${h.text}`).join('\n')}）` : '';
+      const note = m.history.length ? `[记录]（我刚才直接跟${m.name}聊了 ${Math.ceil(m.history.length / 2)} 个来回，最后几句：\n${m.history.slice(-6).map((h) => `${h.role === 'user' ? '我' : m.name}：${h.text}`).join('\n')}）` : '';
       const messages = note ? [...(row?.messages ?? []), { role: 'user', content: note, timestamp: Date.now() } as AgentMessage, { role: 'assistant', content: [{ type: 'text', text: '好的，我知道你们聊了什么。' }], api: 'jobs', provider: 'jobs', model: 'jobs-chat', usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } }, stopReason: 'stop', timestamp: Date.now() } as AgentMessage] : row?.messages;
       await this.d.store.save({ id: o.session, channel: o.channel, mode: null, ...(messages ? { messages } : {}) });
       o.out({ type: 'mode', resident: null }); o.out({ type: 'end', text: `回到 Jobs 了。和${m.name}的聊天我记下了。` });
@@ -122,12 +122,12 @@ export class AgentHub {
     if (a.expires_at.getTime() < (this.d.now?.() ?? new Date()).getTime()) { await s.decideAction(a.id, 'expired'); return { ok: false, status: 'expired', text: '超过 30 分钟，已经失效。需要的话再跟我说一次。', tool: a.tool }; }
     if (actor.role !== 'admin') return { ok: false, status: 'pending', text: '只有管理员能确认这一步。', tool: a.tool };
     const t = this.tools.find((x) => x.name === a.tool);
-    if (!approve) { if (await s.decideAction(a.id, 'cancelled')) await this.note(a.session_id, `（${actor.name ?? '我'}在卡片上取消了「${t?.label ?? a.tool}」。）`); return { ok: true, status: 'cancelled', text: '已取消，什么都没动。', tool: a.tool }; }
+    if (!approve) { if (await s.decideAction(a.id, 'cancelled')) await this.note(a.session_id, `[记录]（${actor.name ?? '我'}在卡片上取消了「${t?.label ?? a.tool}」。）`); return { ok: true, status: 'cancelled', text: '已取消，什么都没动。', tool: a.tool }; }
     if (!t || !(await s.decideAction(a.id, 'running'))) return { ok: false, status: 'done', text: '已经处理过了。', tool: a.tool };
     try {
       const result = await t.run(a.args, { api: this.d.apiFor('admin') });
       await s.decideAction(a.id, 'done', result);
-      await this.note(a.session_id, `（${actor.name ?? '我'}在卡片上确认了「${t.label ?? t.name}」，已执行：${result}）`);
+      await this.note(a.session_id, `[记录]（${actor.name ?? '我'}在卡片上确认了「${t.label ?? t.name}」，已执行：${result}）`);
       return { ok: true, status: 'done', text: result, tool: a.tool };
     } catch (e) {
       const msg = String((e as Error).message).slice(0, 300);
@@ -219,7 +219,7 @@ export class AgentHub {
       const p = this.d.proactive?.(session);
       const input = { text: `[系统消息，不是用户说的] 你之前在后台等的人有结果了：\n${res}\n\n用一两句话告诉用户结果，并建议下一步（通常是取一页结论或看问题清单）。` };
       if (p) await this.send({ session, channel: p.channel, actor: p.actor, input, out: p.out, extraTools: p.extraTools, where: p.where, system: true }).catch(() => undefined);
-      else await this.note(session, `（后台等的结果：${res}）`);
+      else await this.note(session, `[记录]（后台等的结果：${res}）`);
     })();
     return Promise.resolve('已经在后台等着了：他们用完会马上告诉用户（不用一直开着对话）。现在告诉用户这一点，可以先聊别的。');
   }

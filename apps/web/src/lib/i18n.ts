@@ -9,6 +9,12 @@ export const useLang = () => useSyncExternalStore((f) => { subs.add(f); return (
 
 const D = {
   'nav.world': ['城', 'City'], 'nav.products': ['产品', 'Products'], 'nav.people': ['人', 'People'], 'nav.human': ['接管', 'Takeover'],
+  'close': ['关闭', 'Close'],
+  'chat_open': ['问 Jobs', 'Ask Jobs'], 'chat_title': ['Jobs', 'Jobs'], 'chat_hint': ['直接说话：看产品怎么样、请人试、追问居民、把问题交给 coding agent。', 'Just ask: how a product is doing, invite people, ask residents, hand an issue to a coding agent.'],
+  'chat_eg1': ['城里现在怎么样？', "What's happening in town?"], 'chat_eg2': ['我的产品最该改的一件事是什么？', 'What is the one thing to fix in my product?'], 'chat_eg3': ['找三个不太会用手机的老人来试试', 'Find three older people who struggle with phones to try it'],
+  'chat_placeholder': ['跟 Jobs 说…', 'Message Jobs…'], 'chat_to_resident': ['跟{name}说…', 'Message {name}…'], 'chat_with_resident': ['在跟居民聊', 'talking with a resident'], 'chat_end_resident': ['结束', 'End'],
+  'chat_send': ['发送', 'Send'], 'chat_stop': ['停下', 'Stop'], 'chat_new': ['重新开始', 'Start over'], 'chat_image': ['加图片', 'Add image'], 'chat_confirm': ['确认', 'Confirm'], 'chat_admin_only': ['只有管理员能确认', 'Only an admin can confirm'],
+  'chat_sessions': ['对话', 'Conversation'], 'chat_here': ['这台 Jobs', 'This Jobs'], 'chat_feishu': ['飞书', 'Feishu'],
   'publish': ['发布', 'Publish'], 'publish_title': ['发布到 JobsWorld', 'Publish to JobsWorld'], 'publishing': ['发布中…', 'Publishing…'], 'cancel': ['取消', 'Cancel'], 'f_url': ['网址', 'URL'], 'f_name': ['名字', 'Name'], 'f_tagline': ['一句话', 'One line'],
   'f_reached': ['看到', 'Saw it'], 'f_noticed': ['注意到', 'Noticed'], 'f_interested': ['有兴趣', 'Interested'], 'f_opened': ['打开过', 'Opened'], 'f_came_back': ['回来再用', 'Came back'], 'funnel': ['人数', 'People'], 'rating': ['评分', 'Rating'],
   'simulated_hint': ['这座城里实际发生的人数，不是对真实市场的预测', 'Head counts from this simulated city, not a forecast of the real market'], 'using_n': ['{n} 人在用', '{n} using it'], 'st_paused': ['已暂停', 'Paused'], 'st_ended': ['已结束', 'Ended'], 'no_products': ['还没有发布过产品', 'Nothing published yet'],

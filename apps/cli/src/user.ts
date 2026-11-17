@@ -108,5 +108,6 @@ export function userCommands(program: Command) {
   program.command('tool').argument('<name>').argument('[json]', '参数（JSON）').description('直接调用一个 Jobs 工具（与 MCP 同一份；jobsworld tool list 列出全部）')
     .action(run(async (name: string, json?: string) => { if (name === 'list') { for (const t of JOBS_TOOLS) console.log(`${t.name.padEnd(20)} ${t.admin ? '[管理员] ' : ''}${t.description.slice(0, 70)}`); return; } await tool(name, json ? JSON.parse(json) as Record<string, unknown> : {}); }));
 
+  program.command('chat').argument('[text...]', '只说一句（不进入交互）').description('跟 Jobs 说话：和飞书、网页右下角的对话是同一个 Jobs Agent（网页与终端共用一条对话）').action(async (text: string[]) => { const { runChat } = await import('./chat.ts'); try { await runChat(text.length ? text.join(' ') : undefined); } catch (e) { console.error(`❌ ${(e as Error).message}`); process.exitCode = 1; } });
   program.command('mcp').description('启动给同一台机器上的 coding agent 用的 MCP 服务（stdio）。Jobs 在别处时，把 <Jobs 地址>/mcp 直接加给 agent 即可').action(async () => { const { runMcp } = await import('./mcp.ts'); await runMcp(); });
 }
