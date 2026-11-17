@@ -13,3 +13,4 @@ allowBuilds:
   "@swc/core": true
   protobufjs: true
   puppeteer: false
+  "@google/genai": false

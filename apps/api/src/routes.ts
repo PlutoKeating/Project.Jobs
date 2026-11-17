@@ -116,6 +116,15 @@ export function routes(app: FastifyInstance, bus: Bus | undefined) {
   app.post('/api/v1/world/events', async (q, r) => { if (!requireAdmin(q, r)) return; return request(SUBJ.cmdEvent, { ...(q.body as object), by: 'web' }, 5000); });
   app.post('/api/v1/world/replay', async (q) => request(SUBJ.cmdReplay, q.body ?? {}, 10_000));
   app.post('/api/v1/world/ask', async (q) => request(SUBJ.ask, q.body ?? {}));
+  // 跟一位居民连续聊天：世界服务在跑时经它（它知道这个人此刻是不是正在用产品），否则在这里直接回答
+  app.post('/api/v1/world/chat', async (q, r) => {
+    const b = (q.body ?? {}) as { persona_id?: string; message?: string; history?: { role: 'user' | 'resident'; text: string }[] };
+    if (!b.persona_id || !b.message) return r.code(400).send({ error: 'persona_id_and_message_required' });
+    try { return await request(SUBJ.chat, b, 120_000); }
+    catch (e) { if (!/no responders|503|nats_unavailable|timeout/i.test(String((e as Error).message))) return r.code(502).send({ error: String((e as Error).message).slice(0, 200) }); }
+    const { chatWithResident } = await import('@pux/engine');
+    try { return await chatWithResident(b.persona_id, b.message, b.history ?? []); } catch (e) { return r.code(502).send({ error: String((e as Error).message).slice(0, 200) }); }
+  });
 
   // ---- 使用过程 ----
   app.get('/api/v1/sessions/:id', async (q, r) => {

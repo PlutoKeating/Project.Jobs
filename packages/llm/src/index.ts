@@ -162,7 +162,7 @@ export class Gateway {
    * 先用「对话」组；这一组没有可用的目标时用「归纳」组顶上。
    * 失败接替只在还没交出任何内容之前：已经流出一部分再换目标会让人看到两段不同的开头，这时直接报错，由 agent 告诉用户。
    */
-  async converse(roleKey: RoleKey, opts: { messages: ConvMsg[]; tools?: ToolSpec[]; temperature?: number; maxTokens?: number; tags?: Tags; signal?: AbortSignal; onEvent?: (e: ConvEvent) => void; timeoutMs?: number }): Promise<ConvRes & { model: string; family: string; alias: Use; latency_ms: number; version: number }> {
+  async converse(roleKey: RoleKey, opts: { messages: ConvMsg[]; tools?: ToolSpec[]; temperature?: number; maxTokens?: number; tags?: Tags; signal?: AbortSignal; onEvent?: (e: ConvEvent) => void; timeoutMs?: number }): Promise<ConvRes & { model: string; family: string; alias: Use; latency_ms: number; version: number; cost_usd: number }> {
     const snap = await snapshot();
     const vision = opts.messages.some((m) => typeof m.content !== 'string' && m.content.some((c) => c.type === 'image'));
     let use = useOfRole(roleKey);
@@ -182,7 +182,8 @@ export class Gateway {
           if (!r.text.trim() && !r.tool_calls.length) throw new UpstreamError('上游返回了空内容');
           const latency = Date.now() - t0;
           await this.trace(roleKey, use, snap, t, cred, opts.tags, r.usage, latency, 'ok', attempt);
-          return { ...r, model: t.model.model, family: vendorOf(t), alias: use, latency_ms: latency, version: snap.version };
+          const cost_usd = t.model.cost ? (r.usage.prompt * t.model.cost.input + r.usage.completion * t.model.cost.output) / 1e6 : 0;
+          return { ...r, model: t.model.model, family: vendorOf(t), alias: use, latency_ms: latency, version: snap.version, cost_usd };
         } catch (e) {
           const up = e instanceof UpstreamError ? e : undefined;
           const cls = opts.signal?.aborted ? 'cancelled' : classifyError(up?.status ?? (e as { status?: number }).status, String((e as Error).message ?? e));

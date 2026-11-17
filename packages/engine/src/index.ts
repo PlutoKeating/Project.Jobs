@@ -2,6 +2,7 @@ export * from './human/persona.ts';
 export * from './human/state.ts';
 export * from './human/perception.ts';
 export * from './human/memory.ts';
+export * from './human/chat.ts';
 export * from './human/literacy.ts';
 export * from './human/population.ts';
 export * from './human/populate.ts';

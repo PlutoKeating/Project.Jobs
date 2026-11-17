@@ -5,7 +5,7 @@ import {
   absMinute, actKindOf, agendaAt, agendaFor, allResidents, appearanceFor, completeAgenda, computeLayout, connectBus, decode, EVENT_EFFECT, kvPutJson, lastFinishedSession, latestPersonas,
   loadTown, needOverride, needsAt, OUTDOOR, personaMemoryList, personaSessions, phoneAffinity, placeForKind, residentOf, saveAgenda, saveNeeds, saveWorldClock, SUBJ, tickNeeds, tiesOf, toClock, toMin,
   type InviteCmd, type LifecycleCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type PublishCmd, type ResidentRow,
-  type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type SessionLive, type Snapshot, type WorldEvent,
+  type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type ChatCmd, type SessionLive, type Snapshot, type WorldEvent,
 } from '@pux/jobsworld';
 import { modelsReady, setInstanceKind } from '@pux/llm';
 import { WorldClock } from './clock.ts';
@@ -273,6 +273,13 @@ sub(SUBJ.ask, async (d) => {
   if (!sid) return { answer: null, none: true };
   const { askPersona } = await import('@pux/engine');
   return { answer: await askPersona(sid, String(question).slice(0, 500)), session_id: sid };
+});
+
+sub(SUBJ.chat, async (d) => {
+  const c = d as ChatCmd;
+  const { chatWithResident } = await import('@pux/engine');
+  const busy = tracker.byPersona().get(c.persona_id)?.status === 'running';
+  return chatWithResident(c.persona_id, String(c.message ?? ''), c.history ?? [], { busy });
 });
 
 setInstanceKind('world');
