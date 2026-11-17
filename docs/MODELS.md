@@ -57,6 +57,8 @@ Jobs 自己管理模型调用：管理员在网页的「设置 › 模型」里�
 
 一次业务请求最多发起 6 次上游调用（`MAX_ATTEMPTS`），包含重试、换凭证、换目标和修正格式。
 
+**对上游一律流式接收**（`stream: true`；Anthropic 按事件拼）。原因是模型想得久时，非流式请求在拿到整段回答之前连接上一个字节都没有，Jobs 和供应商之间的代理或网关会把这种「空闲」连接在一两分钟后掐断，表现为 `fetch failed`。2026-11-17 生产机就是这样：出口走 Clash（mihomo），超过约 125 秒的归纳与判断调用全部被掐断，一页结论一直写不出来。Vertex 的推理强度改用 `extra_body.google.thinking_config`（`include_thoughts: true` 加 `thinking_level`，与 `reasoning_effort` 二选一），让模型把思考摘要也流出来，连接上几秒就有一次数据；思考摘要带 `extra_content.google.thought` 标记，不算进回答。上游不认 `stream` 或 `thinking_config` 时去掉它重发，并记住这个目标不认（同下表最后一类）；上游不按 SSE 回、直接给普通 JSON 时照常读。网络层报错把底层原因（对方断开、超时等）一起写进错误信息。
+
 | 上游出了什么事（`classifyError`） | 怎么办（`reaction`） | 防误伤 |
 |---|---|---|
 | 凭证无效或过期 `auth` | 这把凭证冷却 10 分钟；同一目标换另一把；没有了再换目标 | 不把一把凭证的问题当成整家供应商坏了 |
@@ -65,7 +67,7 @@ Jobs 自己管理模型调用：管理员在网页的「设置 › 模型」里�
 | 连不上、超时、5xx `transient` | 同一目标退避加随机间隔后再试一次；还不行，目标冷却 20 秒并换下一个 | 不让大量请求同时再去撞一个出故障的上游 |
 | 内容太长 `context`、不支持这项能力 `capability` | 换下一个目标；不冷却 | 目标本身没坏，只是干不了这一件事 |
 | 内容安全拒绝 `content` | 到此为止，报错 | 不靠换供应商绕过安全策略 |
-| 上游不认某个可选参数（温度、推理强度、`max_tokens`、结构化输出格式） | 去掉它在同一目标上重发，并记住这个目标不认它 | 只去掉提示性的参数；结构化输出改为在提示里给 schema，结果照样校验 |
+| 上游不认某个可选参数（温度、推理强度、`max_tokens`、结构化输出格式、流式） | 去掉它在同一目标上重发，并记住这个目标不认它 | 只去掉提示性的参数；结构化输出改为在提示里给 schema，结果照样校验 |
 | 其余被拒绝的请求 `bad_request` | 换下一个目标 | — |
 
 **协议适配**（`adapters.ts`）：`openai`（OpenAI 兼容：绝大多数供应商，包括 Google AI Studio 的兼容入口）、`anthropic`（Messages 接口；结构化输出靠提示里的 schema 加校验）、`vertex`（粘贴 Google 凭证 JSON——服务账号密钥或 `gcloud auth application-default login` 生成的文件——换成访问令牌后走 Vertex 的 OpenAI 兼容入口；向量与画图走 Google 原生接口）。
@@ -107,6 +109,8 @@ Jobs 自己管理模型调用：管理员在网页的「设置 › 模型」里�
 | gcloud 自动挂载与一键补挂（2026-11-16，本机，本地构建的镜像） | 独立的测试安装（单独的项目名与端口）：`jobsworld up` 写好 `JOBS_GCLOUD_DIR`，容器里 `GET /models/gcloud` 直接 `mounted: true` 并读到账号与默认项目；去掉这一项模拟旧安装：没有监视单元时 `mounted: false`、`connect` 返回 409 `jobsworld up`；有监视单元时 ping 之后 `can_connect: true`，`connect` → 宿主机 `jobsworld _control`（不带 `HOME`，同 systemd）补好 `.env` 并重建容器，回来后 `mounted: true`。容器里用 `{"gcloud":"auto"}` 换到令牌，经 Vertex 的 OpenAI 兼容入口调用 Gemini 返回 200。网页按钮本身没有在浏览器里点过 |
 | 真实调用（2026-11-16，本机，Vertex，文件引用） | 引用指向本机 gcloud 的 `application_default_credentials.json`（`gcloud auth login` 写出的用户凭证，文件里没有项目，项目写在引用里），换到令牌并经 OpenAI 兼容入口调用 Gemini 返回 200 |
 | 真实调用（2026-11-15，本机，Vertex，粘贴 ADC JSON） | 文字、看图、结构化输出、向量、画图各测一次通过；世界服务经新路由跑完多次真实使用（每一步、Midscene 定位经本地兼容入口、事后归纳），两个实例都报告同一配置版本 |
+
+| 流式接收（2026-11-17，生产机容器里，Vertex，gemini-4-carbon） | 同一提示词：非流式 250 秒才收到响应头，期间连接上没有任何数据；只开流式，前 124 秒同样没有数据（思考不流出来）；带 `thinking_config.include_thoughts` 后 10 秒内开始有数据，此后最长间隔约 4 秒。用新的适配器做一次带结构化输出的「归纳与判断」调用：87 秒，回答里没有思考摘要，JSON 有效 |
 
 还没有验证的：除 Vertex 以外的供应商（OpenAI、Anthropic、各家兼容入口）只有假上游下的协议测试，没有用真实凭证调用过；多台机器、多个同类实例之间的传播；流式输出中途失败（兼容入口的流式是原样透传，中途断了不会接续）。
 

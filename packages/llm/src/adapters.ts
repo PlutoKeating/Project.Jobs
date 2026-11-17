@@ -30,19 +30,61 @@ export async function assertAllowed(url: string) {
   checked.set(host, Date.now() + 60_000);
 }
 
-async function post(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): Promise<unknown> {
+/** 网络层报错：fetch 只说 fetch failed，真正的原因（对方断开、超时、DNS…）在 cause 里，一起带上 */
+const netError = (e: unknown) => {
+  const err = e as Error & { cause?: { code?: string; message?: string } };
+  const c = err.cause; const why = c ? [c.code, c.message].filter(Boolean).join(' ') : '';
+  return new UpstreamError(`${String(err?.message ?? e)}${why && !String(err?.message).includes(why) ? `（${why}）` : ''}`);
+};
+
+async function send(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): Promise<Response> {
   await assertAllowed(url);
-  let r: Response;
-  try { r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), redirect: 'error', signal: AbortSignal.timeout(timeoutMs) }); }
-  catch (e) { throw new UpstreamError(String((e as Error).message ?? e)); }
-  const text = await r.text();
-  if (!r.ok) {
-    let msg = text.slice(0, 600);
-    try { const j = JSON.parse(text) as { error?: { message?: string } | string; message?: string } | { error?: { message?: string } }[]; const o = Array.isArray(j) ? j[0] : j; msg = (typeof o?.error === 'string' ? o.error : o?.error?.message) ?? (o as { message?: string })?.message ?? msg; } catch { /* 不是 JSON */ }
-    const ra = Number(r.headers.get('retry-after')); const ms = Number.isFinite(ra) && ra > 0 ? ra * 1000 : undefined;
-    throw new UpstreamError(String(msg).slice(0, 600), r.status, ms);
-  }
+  try { return await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json', ...headers }, body: JSON.stringify(body), redirect: 'error', signal: AbortSignal.timeout(timeoutMs) }); }
+  catch (e) { throw netError(e); }
+}
+
+async function post(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): Promise<unknown> {
+  const r = await send(url, headers, body, timeoutMs);
+  let text: string; try { text = await r.text(); } catch (e) { throw netError(e); }
+  if (!r.ok) throw httpError(r, text);
   try { return JSON.parse(text); } catch { throw new UpstreamError('上游返回的不是 JSON'); }
+}
+
+/**
+ * 流式请求：逐个交出 SSE 的 data（已解析成对象）。
+ * 为什么要流式：模型想得久时，非流式请求在拿到整段回答之前连接上一个字节都没有，
+ * 中间的代理或网关会把这种「空闲」连接在一两分钟后掐断（fetch failed）。流式时数据一直在流动。
+ * 上游不按 SSE 回（返回了普通 JSON）时，把那个 JSON 当成唯一的一条交出
+ */
+async function* stream(url: string, headers: Record<string, string>, body: unknown, timeoutMs: number): AsyncGenerator<Record<string, unknown>> {
+  const r = await send(url, headers, body, timeoutMs);
+  if (!r.ok) { let text = ''; try { text = await r.text(); } catch { /* */ } throw httpError(r, text); }
+  if (!(r.headers.get('content-type') ?? '').includes('event-stream')) {
+    let text: string; try { text = await r.text(); } catch (e) { throw netError(e); }
+    try { yield JSON.parse(text) as Record<string, unknown>; return; } catch { throw new UpstreamError('上游返回的不是 JSON'); }
+  }
+  const rd = r.body!.getReader(); const dec = new TextDecoder(); let buf = '';
+  for (;;) {
+    let chunk: ReadableStreamReadResult<Uint8Array>;
+    try { chunk = await rd.read(); } catch (e) { throw netError(e); }
+    if (chunk.done) break;
+    buf += dec.decode(chunk.value, { stream: true });
+    let i: number;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+      if (!line.startsWith('data:')) continue;
+      const d = line.slice(5).trim(); if (!d || d === '[DONE]') continue;
+      let o: Record<string, unknown>; try { o = JSON.parse(d) as Record<string, unknown>; } catch { continue; }
+      yield o;
+    }
+  }
+}
+
+function httpError(r: Response, text: string): UpstreamError {
+  let msg = text.slice(0, 600);
+  try { const j = JSON.parse(text) as { error?: { message?: string } | string; message?: string } | { error?: { message?: string } }[]; const o = Array.isArray(j) ? j[0] : j; msg = (typeof o?.error === 'string' ? o.error : o?.error?.message) ?? (o as { message?: string })?.message ?? msg; } catch { /* 不是 JSON */ }
+  const ra = Number(r.headers.get('retry-after')); const ms = Number.isFinite(ra) && ra > 0 ? ra * 1000 : undefined;
+  return new UpstreamError(String(msg).slice(0, 600), r.status, ms);
 }
 
 // ---- Google 凭证 JSON → 访问令牌（服务账号或 gcloud 的 application default credentials）----
@@ -123,7 +165,11 @@ function withJsonHint(msgs: Msg[], j: NonNullable<ChatReq['json']>): Msg[] {
 
 /** 某个目标不接受的可选参数（记在内存里，下次不再带上） */
 const dropped = new Map<string, Set<string>>();
-const OPTIONAL = ['temperature', 'reasoning_effort', 'response_format', 'max_tokens'] as const;
+const OPTIONAL = ['temperature', 'reasoning_effort', 'response_format', 'max_tokens', 'stream'] as const;
+/** Vertex 的推理强度用 thinking_config 给（和 reasoning_effort 二选一），同时要它把思考摘要流出来：连接上一直有数据，不会被当成空闲连接掐断 */
+const VERTEX_LEVEL = { low: 'low', medium: 'medium', high: 'high' } as const;
+
+interface OAChunk { choices?: { delta?: { content?: string | null; extra_content?: { google?: { thought?: boolean } } }; message?: { content?: string | { type?: string; text?: string }[] | null }; finish_reason?: string | null }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } }; error?: { message?: string } }
 
 async function chatOpenAI(p: ProviderConn, m: ModelEntry, secret: string, req: ChatReq): Promise<ChatRes> {
   const ep = await openaiEndpoint(p, m, secret);
@@ -134,19 +180,31 @@ async function chatOpenAI(p: ProviderConn, m: ModelEntry, secret: string, req: C
     const body: Record<string, unknown> = { model: ep.model, messages: msgs.map((x) => (typeof x.content === 'string' ? { role: x.role, content: x.content } : { role: x.role, content: x.content.map((c) => (c.type === 'text' ? { type: 'text', text: c.text } : { type: 'image_url', image_url: { url: dataUrl(c) } })) })) };
     if (req.temperature !== undefined && !skip.has('temperature')) body.temperature = req.temperature;
     if (req.maxTokens) body[skip.has('max_tokens') ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens;
-    if (req.reasoning && !skip.has('reasoning_effort')) body.reasoning_effort = req.reasoning;
+    const vertexThinking = p.protocol === 'vertex' && !skip.has('reasoning_effort');
+    if (vertexThinking) body.extra_body = { google: { thinking_config: { include_thoughts: true, ...(req.reasoning ? { thinking_level: VERTEX_LEVEL[req.reasoning] } : {}) } } };
+    else if (req.reasoning && !skip.has('reasoning_effort')) body.reasoning_effort = req.reasoning;
     if (native) body.response_format = { type: 'json_schema', json_schema: { name: req.json!.name, schema: req.json!.schema } };
+    if (!skip.has('stream')) { body.stream = true; body.stream_options = { include_usage: true }; }
     try {
-      const r = (await post(`${ep.base}/chat/completions`, ep.headers, body, req.timeoutMs ?? 180_000)) as { choices?: { message?: { content?: string | { type?: string; text?: string }[] | null; refusal?: string }; finish_reason?: string }[]; usage?: { prompt_tokens?: number; completion_tokens?: number; completion_tokens_details?: { reasoning_tokens?: number } }; error?: { message?: string } };
-      if (r.error?.message) throw new UpstreamError(r.error.message, 400);                 // 有的上游把错误放在 200 的正文里
-      const c = r.choices?.[0]?.message?.content;
-      const text = typeof c === 'string' ? c : Array.isArray(c) ? c.map((x) => x.text ?? '').join('') : '';
-      if (!text && r.choices?.[0]?.finish_reason === 'content_filter') throw new UpstreamError('content filter', 400);
-      return { text, usage: { prompt: r.usage?.prompt_tokens ?? 0, completion: r.usage?.completion_tokens ?? 0, reasoning: r.usage?.completion_tokens_details?.reasoning_tokens ?? 0 } };
+      let text = ''; let finish: string | null | undefined; let usage: OAChunk['usage'];
+      for await (const raw of stream(`${ep.base}/chat/completions`, ep.headers, body, req.timeoutMs ?? 180_000)) {
+        const r = raw as OAChunk;
+        if (r.error?.message) throw new UpstreamError(r.error.message, 400);                 // 有的上游把错误放在 200 的正文里
+        const ch = r.choices?.[0];
+        // 思考摘要（Vertex 标 thought）只用来让连接保持有数据，不算回答
+        if (ch?.delta && !ch.delta.extra_content?.google?.thought && typeof ch.delta.content === 'string') text += ch.delta.content;
+        const c = ch?.message?.content;                                                        // 非流式回答
+        if (c) text += typeof c === 'string' ? c : c.map((x) => x.text ?? '').join('');
+        if (ch?.finish_reason) finish = ch.finish_reason;
+        if (r.usage) usage = r.usage;
+      }
+      if (!text && finish === 'content_filter') throw new UpstreamError('content filter', 400);
+      return { text, usage: { prompt: usage?.prompt_tokens ?? 0, completion: usage?.completion_tokens ?? 0, reasoning: usage?.completion_tokens_details?.reasoning_tokens ?? 0 } };
     } catch (e) {
       // 可选参数被拒：去掉它再试（温度、推理强度是提示性的；结构化输出改成在提示里给 schema，结果仍由调用方校验）
       const msg = e instanceof UpstreamError && e.status === 400 ? e.message.toLowerCase() : '';
-      const bad = round < 3 ? OPTIONAL.find((k) => !skip.has(k) && k in { ...body, max_tokens: body.max_tokens } && (msg.includes(k) || (k === 'response_format' && /json_schema|structured|response format/.test(msg)) || (k === 'reasoning_effort' && /reasoning|thinking/.test(msg)) || (k === 'max_tokens' && msg.includes('max_completion_tokens')))) : undefined;
+      const has = (k: string) => k in body || (k === 'max_tokens' && 'max_completion_tokens' in body) || (k === 'reasoning_effort' && 'extra_body' in body);
+      const bad = round < 4 ? OPTIONAL.find((k) => !skip.has(k) && has(k) && (msg.includes(k) || (k === 'response_format' && /json_schema|structured|response format/.test(msg)) || (k === 'reasoning_effort' && /reasoning|thinking|extra_body/.test(msg)) || (k === 'max_tokens' && msg.includes('max_completion_tokens')) || (k === 'stream' && /stream/.test(msg)))) : undefined;
       if (!bad) throw e;
       skip.add(bad); dropped.set(m.id, skip);
     }
@@ -160,8 +218,17 @@ async function chatAnthropic(p: ProviderConn, m: ModelEntry, secret: string, req
   const body: Record<string, unknown> = { model: m.model, max_tokens: req.maxTokens ?? Math.min(m.caps.output ?? 8192, 8192), messages };
   if (system) body.system = system;
   if (req.temperature !== undefined) body.temperature = Math.min(1, req.temperature);
-  const r = (await post(`${p.base_url}/messages`, { 'x-api-key': secret, 'anthropic-version': '2023-06-01' }, body, req.timeoutMs ?? 180_000)) as { content?: { type: string; text?: string }[]; usage?: { input_tokens?: number; output_tokens?: number }; stop_reason?: string };
-  return { text: (r.content ?? []).filter((c) => c.type === 'text').map((c) => c.text ?? '').join(''), usage: { prompt: r.usage?.input_tokens ?? 0, completion: r.usage?.output_tokens ?? 0, reasoning: 0 } };
+  body.stream = true;   // 流式：模型想得久时连接上也一直有数据（Anthropic 还会定时发 ping），不会被中间的代理当成空闲连接掐断
+  let text = ''; let prompt = 0; let completion = 0;
+  for await (const e of stream(`${p.base_url}/messages`, { 'x-api-key': secret, 'anthropic-version': '2023-06-01' }, body, req.timeoutMs ?? 180_000)) {
+    const ev = e as { type?: string; delta?: { type?: string; text?: string }; message?: { usage?: { input_tokens?: number; output_tokens?: number } }; usage?: { output_tokens?: number }; error?: { message?: string }; content?: { type: string; text?: string }[] };
+    if (ev.type === 'error') throw new UpstreamError(ev.error?.message ?? 'upstream error', 529);
+    if (ev.type === 'message_start') { prompt = ev.message?.usage?.input_tokens ?? 0; completion = ev.message?.usage?.output_tokens ?? 0; }
+    else if (ev.type === 'content_block_delta' && ev.delta?.type === 'text_delta') text += ev.delta.text ?? '';
+    else if (ev.type === 'message_delta') completion = ev.usage?.output_tokens ?? completion;
+    else if (ev.content) { text += ev.content.filter((c) => c.type === 'text').map((c) => c.text ?? '').join(''); prompt = (ev as { usage?: { input_tokens?: number } }).usage?.input_tokens ?? prompt; completion = ev.usage?.output_tokens ?? completion; }   // 上游不流式时的整段回答
+  }
+  return { text, usage: { prompt, completion, reasoning: 0 } };
 }
 
 export const chat = (p: ProviderConn, m: ModelEntry, secret: string, req: ChatReq) => (p.protocol === 'anthropic' ? chatAnthropic(p, m, secret, req) : chatOpenAI(p, m, secret, req));
