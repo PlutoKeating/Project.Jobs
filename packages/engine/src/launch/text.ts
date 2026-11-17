@@ -2,7 +2,7 @@
 export interface FunnelView { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; queued?: number; sessions: number; reviews: number; rating: number | null }
 export interface LaunchView { id: string; name: string; tagline: string; url: string; intensity: number; status: string; funnel: FunnelView; spend: { usd: number; tokens: number } }
 export interface Cited { text: string; moments: { persona: string; who: string; quote: string; session_id: string; step_idx: number }[]; passersby: { persona: string; who: string; thought: string }[] }
-export interface ReportView { verdict: string; headline: string; summary: string; hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string; funnel: FunnelView; people_used: number }
+export interface ReportView { verdict: string; headline: string; summary: string; hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string; funnel: FunnelView; people_used: number; refreshing?: boolean; failed?: { reason: string; at: string } }
 export interface VersionView { n: number; note: string | null; at: string; sessions: number; finished: number }
 export interface EngineeringView { version?: VersionView | null; experienced: { id: string; severity: string; title: string; description: string; where: string | null; people: number; sessions?: number; sessions_since_version?: number | null; reproduced: boolean | null; steps: string[] }[]; appendix: { id: string; severity: string; category: string; title: string; description: string; recommendation: string | null; where: string | null }[]; mail?: { mails: number; sessions: number; opened: number; median_delay_s: number | null; max_delay_s: number | null; switches: number; forgot: number; mistyped: number } | null }
 
@@ -15,7 +15,9 @@ export function reportText(l: LaunchView, r: ReportView, eng?: EngineeringView):
   const quotes = (c: Cited) => [...c.moments.map((m) => `     — ${m.persona}（${m.who}）：「${m.quote}」`), ...c.passersby.map((p) => `     — ${p.persona}（${p.who}）：「${p.thought}」`)].join('\n');
   const sec = (title: string, xs: Cited[]) => (xs.length ? `\n${title}\n${xs.map((c, i) => `  ${i + 1}. ${c.text}\n${quotes(c)}`).join('\n')}` : '');
   const lines = [
-    `${l.name} — ${l.tagline}`, `${r.headline}  [${verdict}]`, '', r.summary, '',
+    `${l.name} — ${l.tagline}`, `${r.headline}  [${verdict}]`,
+    ...(r.failed ? [`（归纳没有成功：${r.failed.reason}${r.verdict === 'too_early' ? '' : '。下面是上一版'}）`] : r.refreshing ? ['（有新的使用，新的一版正在后台归纳，几分钟后再取）'] : []),
+    '', r.summary, '',
     `漏斗（这座城里实际发生的人数，模拟）：${funnelLine(r.funnel)}`, `宣发强度 ${pct(l.intensity)} · 已花费约 $${l.spend.usd}`,
     sec('最让人难受的地方', r.hurts), sec('让人高兴的地方', r.delights), sec('会留下的人', r.who_stays), sec('会走的人', r.who_leaves), sec('看到了却没点开', r.why_not_opened),
     r.next ? `\n如果只改一件事：${r.next}` : '',

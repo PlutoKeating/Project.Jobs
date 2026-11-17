@@ -168,7 +168,7 @@ const VERDICT_TONE: Record<LaunchReport['verdict'], string> = { works: 'bg-succe
 function VerdictTab({ id, basis, admin }: { id: string; basis: number; admin: boolean }) {
   const { t, lang } = useT(); const L = useLabel(); const qc = useQueryClient();
   const q = useLaunchReport(id, lang, true, basis);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   if (q.isError) return <ErrorState onRetry={() => void q.refetch()} />;
   if (!q.data) return <div className="py-2"><p className="flex items-center gap-2 text-sm text-fg-muted"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('summarizing')}</p><Skeleton className="mt-5 h-9 w-3/4" /><Skeleton className="mt-4 h-20 w-full max-w-[65ch]" /></div>;
   const r = q.data;
@@ -179,8 +179,9 @@ function VerdictTab({ id, basis, admin }: { id: string; basis: number; admin: bo
         <span className={`h-2 w-2 rounded-full ${VERDICT_TONE[r.verdict]}`} /><span className="text-fg">{L(`v_${r.verdict}`)}</span>
         <span>· {t('used_n', { n: r.people_used })}</span>
         {r.refreshing && <span className="flex items-center gap-1.5">· <span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('refreshing_report')}</span>}
-        {admin && <button aria-label={t('resummarize')} title={t('resummarize')} disabled={busy} onClick={async () => { setBusy(true); try { const fresh = await get<LaunchReport>(`/launches/${id}/report?lang=${lang}&force=1`); qc.setQueryData(['launch-report', id, lang, basis], fresh); } finally { setBusy(false); } }} className="ml-1 rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><RefreshCw size={13} className={busy ? 'animate-spin' : ''} /></button>}
+        {admin && <button aria-label={t('resummarize')} title={t('resummarize')} disabled={busy} onClick={async () => { setBusy(true); setErr(null); try { const fresh = await get<LaunchReport>(`/launches/${id}/report?lang=${lang}&force=1`); qc.setQueryData(['launch-report', id, lang, basis], fresh); } catch (e) { setErr(e instanceof ApiError ? String(e.body?.reason ?? e.code) : t('error')); } finally { setBusy(false); } }} className="ml-1 rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><RefreshCw size={13} className={busy ? 'animate-spin' : ''} /></button>}
       </p>
+      {(err || r.failed) && <p role="alert" className="mt-2 max-w-[75ch] break-words text-xs leading-relaxed text-danger">{t('report_failed')}：{err ?? r.failed!.reason}{r.verdict !== 'too_early' && <span className="text-fg-subtle"> · {t('report_failed_hint')}</span>}</p>}
       <p className="mt-5 max-w-[65ch] text-base leading-relaxed text-fg">{r.summary}</p>
       {r.next && <div className="mt-8 border-y border-border-strong py-5"><h2 className="text-sm font-semibold text-fg-muted">{t('one_thing')}</h2><p className="mt-2 max-w-[60ch] text-xl font-medium leading-snug text-fg-display">{r.next}</p></div>}
       <Group title={t('hurts')} items={r.hurts} />

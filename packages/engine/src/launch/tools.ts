@@ -51,9 +51,9 @@ export const JOBS_TOOLS: JobsTool[] = [
     input: { product: z.string().describe('发布 id 或产品名'), refresh: z.boolean().optional().describe('强制重新归纳结论（会等它写完，可能要几分钟）') },
     run: async ({ product, refresh }, { api }) => {
       const l = await launchOf(api, product);
-      const r = await api<ReportView & { refreshing?: boolean }>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 600_000 });
+      const r = await api<ReportView>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 600_000 });
       const eng = await api<EngineeringView>(`/launches/${l.id}/engineering`);
-      return (r.refreshing ? '（这是上一版结论；有新的使用，新的一版正在后台归纳，几分钟后再取）\n\n' : '') + reportText(l, r, eng);
+      return reportText(l, r, eng);
     },
   },
   {

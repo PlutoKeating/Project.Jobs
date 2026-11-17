@@ -1,7 +1,7 @@
 // 一页人话：这个产品在城里过得怎么样。每句结论都指回当时那个人、那一步、那句话（点开就是画面）。
 // 数字是这座城里实际发生的人数（模拟），不是对真实市场的预测。技术信号与专家检查在工程附录里，不出现在这一页。
 import { logger, z, type PersonaSpec, langOf } from '@pux/core';
-import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, mailbox, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
+import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, launches, mailbox, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
 import { gateway } from '@pux/llm';
 import { launchFunnel, launchVersionList, type Funnel, type LaunchRow } from './launch.ts';
 
@@ -13,17 +13,25 @@ export interface LaunchReport {
   verdict: 'works' | 'mixed' | 'not_yet' | 'too_early'; headline: string; summary: string;
   hurts: Cited[]; delights: Cited[]; who_stays: Cited[]; who_leaves: Cited[]; why_not_opened: Cited[]; next: string;
   funnel: Funnel; people_used: number; simulated: true;
-  /** 这是上一版结论，新的正在后台归纳 */
+  /** 这是上一版结论（或还没归纳出来时的过渡页），新的正在后台归纳 */
   refreshing?: boolean;
+  /** 最近一次归纳没有成功：原因（给人看的一句）与时间。有它时 refreshing 为 false */
+  failed?: { reason: string; at: string };
 }
 
-/** 正在归纳的结论：同一个产品同一种语言只归纳一份，期间的请求都等它（或先拿上一版） */
-const inflight = new Map<string, Promise<LaunchReport>>();
+/**
+ * 正在归纳的结论：同一个产品同一种语言、同一轮发布只归纳一份，期间的请求都等它（或先拿上一版）。
+ * 键里带着「这一轮发布」（launches.created_at，清零时会更新）：清零之前开始的归纳与失败记录不影响清零之后
+ */
+const inflight = new Map<string, { basis: string; job: Promise<LaunchReport> }>();
 /** 一页结论的输入很长（上百条痕迹），模型要想两三分钟，比默认的 180 秒超时更久 */
 const REPORT_TIMEOUT_MS = 480_000;
-/** 后台重写失败后，这么久之内不再自动重试（上一版照常给），免得轮询把失败的调用一遍遍发出去 */
+/** 一次归纳最多等这么久（含换模型重试）；过了就算失败，不让一个卡住的调用把后面的读取和「重新归纳」一直挡着 */
+const JOB_DEADLINE_MS = 12 * 60_000;
+/** 后台重写失败后，这么久之内不再自动重试（照常给上一版并标明失败），免得轮询把失败的调用一遍遍发出去 */
 const RETRY_AFTER_FAIL_MS = 10 * 60_000;
-const failedAt = new Map<string, number>();
+const failures = new Map<string, { at: number; reason: string }>();
+const roundOf = (l: LaunchRow) => `${l.id}:${new Date(l.created_at).getTime()}`;
 
 const Item = z.object({ text: z.string(), refs: z.array(z.string()) });
 const ReportSchema = z.object({
@@ -61,46 +69,76 @@ export async function gatherMoments(l: LaunchRow): Promise<{ moments: Moment[]; 
   return { moments: moments.slice(-140), passersby, sessions: ss.length, people };
 }
 
-/** 一页结论：素材没变就读缓存；变了就重新归纳（有上一版时先返回上一版并标 refreshing） */
+/**
+ * 一页结论。还没有人用完时不调模型，按此刻的人数现写（不缓存，人数永远是最新的）。
+ * 有人用完之后由模型归纳：素材没变就读缓存；变了就重新归纳，有上一版时先返回上一版并标 refreshing。
+ * 还没有任何一版模型写的结论时，返回一页过渡（「N 人用过，正在归纳」），不拿「还没有人点开」顶替。
+ * 归纳失败时照常给上一版（或过渡页），并在 failed 里说明原因；强制重写失败时抛出错误
+ */
 export async function launchReport(l: LaunchRow, lang: 'zh' | 'en' = 'zh', opts: { force?: boolean } = {}): Promise<LaunchReport> {
   const db = getDb();
   const funnel = await launchFunnel(l.id);
   const { moments, passersby, sessions: nSess } = await gatherMoments(l);
   const used = new Set(moments.filter((m) => m.session_id).map((m) => m.persona_id)).size;
+  const now = { generated_at: new Date().toISOString(), funnel, people_used: used, simulated: true as const };
+  if (nSess === 0) return { ...earlyReport(l, lang, funnel, passersby), ...now };
   // 什么时候重新归纳：有人用完了、有了新评论，或者路过没点开的人明显变多了。只是多几个人刷到广告不重算（那只改人数，人数每次都取最新）
   const basis = `${nSess}:${funnel.reviews}:${moments.length}:${Math.floor(passersby.length / 10)}:${funnel.reached > 0 ? 1 : 0}:${funnel.opened > 0 ? 1 : 0}`;
-  const [cached] = await db.select().from(launchReports).where(and(eq(launchReports.launch_id, l.id), eq(launchReports.lang, lang)));
+  const [row] = await db.select().from(launchReports).where(and(eq(launchReports.launch_id, l.id), eq(launchReports.lang, lang)));
+  // 只认这一轮发布里由模型写的结论（清零前留下的、还没有人用完时的过渡页都不算）
+  const cached = row && (row.data as LaunchReport).verdict !== 'too_early' ? row : undefined;
   if (cached && cached.basis === basis && !opts.force) return { ...(cached.data as LaunchReport), funnel, people_used: used };
-  const key = `${l.id}:${lang}`;
-  const stale = cached && !opts.force ? { ...(cached.data as LaunchReport), funnel, people_used: used } : undefined;
-  let job = inflight.get(key);
-  if (!job) {
-    if (stale && Date.now() - (failedAt.get(key) ?? 0) < RETRY_AFTER_FAIL_MS) return stale;
-    job = writeReport(l, lang, { funnel, moments, passersby, nSess, used, basis })
-      .then((r) => { failedAt.delete(key); return r; }, (e) => { failedAt.set(key, Date.now()); throw e; })
-      .finally(() => inflight.delete(key));
-    inflight.set(key, job);
-    job.catch((e) => logger.warn({ launch: l.id, lang, err: String((e as Error).message).slice(0, 200) }, '归纳一页结论失败'));
+  const key = `${roundOf(l)}:${lang}`;
+  const fail = failures.get(key);
+  const prev = (failed: boolean): LaunchReport => (cached ? { ...(cached.data as LaunchReport), funnel, people_used: used } : { ...interimReport(l, lang, funnel, used, nSess, failed), ...now });
+  let run = inflight.get(key);
+  if (!run || (opts.force && run.basis !== basis)) {
+    // 刚失败过：不自动重试，照常给上一版并说明（强制重写时照样再试）
+    if (!run && !opts.force && fail && Date.now() - fail.at < RETRY_AFTER_FAIL_MS) return { ...prev(true), refreshing: false, failed: { reason: fail.reason, at: new Date(fail.at).toISOString() } };
+    const job = withDeadline(writeReport(l, lang, { funnel, moments, passersby, nSess, used, basis }), JOB_DEADLINE_MS)
+      .then((r) => { failures.delete(key); return r; }, (e) => { failures.set(key, { at: Date.now(), reason: reasonOf(e) }); throw e; })
+      .finally(() => { if (inflight.get(key)?.job === job) inflight.delete(key); });
+    run = { basis, job };
+    inflight.set(key, run);
+    job.catch((e) => logger.warn({ launch: l.id, lang, err: String((e as Error).message).slice(0, 300) }, '归纳一页结论失败'));
   }
-  // 有上一版时先给上一版，新的在后台写（要几分钟）；强制重写或从没写过时才等
-  return stale ? { ...stale, refreshing: true } : job;
+  // 强制重写时等它写完（失败就把原因告诉调用方）；否则先给上一版或过渡页，新的在后台写（要几分钟）
+  return opts.force ? run.job : { ...prev(false), refreshing: true };
+}
+
+const withDeadline = <T,>(p: Promise<T>, ms: number) => new Promise<T>((res, rej) => { const t = setTimeout(() => rej(new Error(`归纳超过 ${Math.round(ms / 60_000)} 分钟没有完成`)), ms); p.then((v) => { clearTimeout(t); res(v); }, (e) => { clearTimeout(t); rej(e); }); });
+
+/** 失败原因：模型那边的报错原文（截短）；网页在前面加「归纳没有成功」 */
+const reasonOf = (e: unknown) => String((e as Error)?.message ?? e).replace(/\s+/g, ' ').slice(0, 200);
+
+/** 还没有人用完：只说此刻的人数和看到的人为什么没点开（每次按最新人数现写） */
+function earlyReport(l: LaunchRow, lang: 'zh' | 'en', funnel: Funnel, passersby: Passerby[]): Omit<LaunchReport, 'generated_at' | 'funnel' | 'people_used' | 'simulated'> {
+  const zh = lang === 'zh';
+  // 有人已经打开、只是还没用完时，不能说「没有人点开」
+  const using = funnel.opened > 0;
+  const headline = zh ? (using ? '有人正在用，还没有人用完' : funnel.reached ? '看到的人还没有谁点开' : '还没有人看到它') : (using ? 'People are using it; nobody has finished yet' : funnel.reached ? 'People saw it, nobody opened it yet' : 'Nobody has seen it yet');
+  const summary = zh
+    ? (using ? `${funnel.reached} 个人看到过，${funnel.opened} 个人打开了，还在用。等他们用完再来看。` : funnel.reached ? `${funnel.reached} 个人看到过，${funnel.noticed} 个人注意到了，还没有人点开。` : '城里的人还没遇到它。可以把宣发强度调高，或者把手机递给几个人试试。')
+    : (using ? `${funnel.reached} people saw it and ${funnel.opened} opened it; they are still using it. Check back when they finish.` : funnel.reached ? `${funnel.reached} people saw it, ${funnel.noticed} noticed, none opened it yet.` : 'Nobody in town has come across it yet. Raise the promotion, or hand it to a few people.');
+  return { launch_id: l.id, lang, basis: '', verdict: 'too_early', headline, summary, hurts: [], delights: [], who_stays: [], who_leaves: [], why_not_opened: passersby.filter((x) => x.reaction === 'not_for_me').slice(0, 3).map((x) => ({ text: x.thought, moments: [], passersby: [x] })), next: '' };
+}
+
+/** 已经有人用完、但还没有任何一版模型写的结论：过渡页，只说事实，结论正在归纳 */
+function interimReport(l: LaunchRow, lang: 'zh' | 'en', funnel: Funnel, used: number, nSess: number, failed: boolean): Omit<LaunchReport, 'generated_at' | 'funnel' | 'people_used' | 'simulated'> {
+  const zh = lang === 'zh';
+  return {
+    launch_id: l.id, lang, basis: '', verdict: 'too_early',
+    headline: zh ? `${used} 个人用过了，${failed ? '结论还没归纳出来' : '结论正在归纳'}` : `${used} people have used it; ${failed ? 'no verdict yet' : 'writing the verdict'}`,
+    summary: (zh ? `${funnel.reached} 个人看到过，${funnel.opened} 个人打开过，${nSess} 次使用已经结束。` : `${funnel.reached} people saw it, ${funnel.opened} opened it, and ${nSess} uses have finished. `)
+      + (failed ? '' : zh ? '归纳要几分钟，写好后这里会自动换成结论。' : 'Writing the verdict takes a few minutes; it replaces this page when done.'),
+    hurts: [], delights: [], who_stays: [], who_leaves: [], why_not_opened: [], next: '',
+  };
 }
 
 async function writeReport(l: LaunchRow, lang: 'zh' | 'en', g: { funnel: Funnel; moments: Moment[]; passersby: Passerby[]; nSess: number; used: number; basis: string }): Promise<LaunchReport> {
   const db = getDb(); const zh = lang === 'zh';
   const { funnel, moments, passersby, nSess, used, basis } = g;
   const base ={ launch_id: l.id, lang, generated_at: new Date().toISOString(), basis, funnel, people_used: used, simulated: true as const };
-  if (nSess === 0) {
-    // 还没有人打开过：只说「为什么没点开」
-    // 有人已经打开、只是还没用完时，不能说「没有人点开」
-    const using = funnel.opened > 0;
-    const headline = zh ? (using ? '有人正在用，还没有人用完' : funnel.reached ? '看到的人还没有谁点开' : '还没有人看到它') : (using ? 'People are using it; nobody has finished yet' : funnel.reached ? 'People saw it, nobody opened it yet' : 'Nobody has seen it yet');
-    const summary = zh
-      ? (using ? `${funnel.reached} 个人看到过，${funnel.opened} 个人打开了，还在用。等他们用完再来看。` : funnel.reached ? `${funnel.reached} 个人看到过，${funnel.noticed} 个人注意到了，还没有人点开。` : '城里的人还没遇到它。可以把宣发强度调高，或者把手机递给几个人试试。')
-      : (using ? `${funnel.reached} people saw it and ${funnel.opened} opened it; they are still using it. Check back when they finish.` : funnel.reached ? `${funnel.reached} people saw it, ${funnel.noticed} noticed, none opened it yet.` : 'Nobody in town has come across it yet. Raise the promotion, or hand it to a few people.');
-    const rep: LaunchReport = { ...base, verdict: 'too_early', headline, summary, hurts: [], delights: [], who_stays: [], who_leaves: [], why_not_opened: passersby.filter((x) => x.reaction === 'not_for_me').slice(0, 3).map((x) => ({ text: x.thought, moments: [], passersby: [x] })), next: '' };
-    await save(l.id, lang, basis, rep); return rep;
-  }
   const iss = (await db.select().from(issues).where(and(eq(issues.app_version_id, l.app_version_id), eq(issues.track, 'experience')))).filter((i) => !['rejected', 'folded'].includes(i.status));
   const sys = zh
     ? `你在替一位独立开发者看他的产品「${l.name}」（${l.tagline}）发布到一座模拟小城之后发生了什么。下面是城里的人真实留下的痕迹：使用时的想法（m 编号）、路过没点开的人的想法（x 编号）、归并后的问题、漏斗人数。请写一页给他看的结论。
@@ -145,6 +183,9 @@ ${iss.slice(0, 20).map((i) => `- [${i.severity}] ${zh ? i.title : (i.title_en ??
   const mById = new Map(moments.map((m) => [m.ref, m])); const xById = new Map(passersby.map((x) => [x.ref, x]));
   const cite = (it: z.infer<typeof Item>): Cited => ({ text: it.text.trim(), moments: it.refs.map((x) => mById.get(x.trim())).filter((x): x is Moment => !!x).slice(0, 4), passersby: it.refs.map((x) => xById.get(x.trim())).filter((x): x is Passerby => !!x).slice(0, 4) });
   const keep = (xs: z.infer<typeof Item>[]) => xs.map(cite).filter((c) => c.text && (c.moments.length || c.passersby.length)).slice(0, 3);
+  // 归纳期间产品被清零或下线了：这份结论属于上一轮，不写回去
+  const [cur] = await db.select({ created_at: launches.created_at }).from(launches).where(eq(launches.id, l.id));
+  if (!cur || new Date(cur.created_at).getTime() !== new Date(l.created_at).getTime()) throw new Error(zh ? '归纳期间产品被清零或下线了' : 'The product was reset or taken offline while writing');
   const d = r.data;
   const rep: LaunchReport = { ...base, verdict: d.verdict, headline: d.headline.trim(), summary: d.summary.trim(), hurts: keep(d.hurts), delights: keep(d.delights), who_stays: keep(d.who_stays), who_leaves: keep(d.who_leaves), why_not_opened: keep(d.why_not_opened), next: d.next.trim() };
   await save(l.id, lang, basis, rep);

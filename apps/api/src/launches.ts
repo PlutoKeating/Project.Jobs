@@ -62,7 +62,9 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
   app.get('/api/v1/launches/:id/report', async (q, r) => {
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
     const qq = q.query as { lang?: string; force?: string };
-    return E.launchReport(l, qq.lang === 'en' ? 'en' : 'zh', { force: qq.force === '1' });
+    // 强制重写失败时说清原因（模型那边的报错），网页上显示出来
+    try { return await E.launchReport(l, qq.lang === 'en' ? 'en' : 'zh', { force: qq.force === '1' }); }
+    catch (e) { if (qq.force !== '1') throw e; return r.code(502).send({ error: 'report_failed', reason: String((e as Error).message).slice(0, 300) }); }
   });
 
   app.get('/api/v1/launches/:id/engineering', async (q, r) => {

@@ -21,7 +21,7 @@
 | `GET /launches` | 已发布的产品：`id`、`name`、`tagline`、`description`、`url`、`landing_url`、`form`、`shots`（商店页截图的证据 id）、`ad_text`、`intensity`、`audience`、`status`（`live` / `paused` / `ended`）、`funnel`、`spend`（`usd`、`tokens`） |
 | `POST /launches`（管理员） | 发布。必填 `name`、`tagline`、`url`；可选 `landing_url`、`description`、`ad_text`、`intensity`（0–1，默认 0.3）、`audience`、`form`（`web` 电脑和手机都能开 / `h5` 只在手机上开）。返回同上的一行 |
 | `GET /launches/:id` | 上面的一行，加上 `uses`（每次使用：谁、在哪、什么时候、什么设备、怎么遇到的、是否受邀、第几次、结局、离开时的原话）、`passersby`（注意到了没点开的人和当时的想法）、`reviews`（商店评论）、`posts`（公开动态）。`:id` 也可以写产品名 |
-| `GET /launches/:id/report?lang=zh\|en[&force=1]` | 一页结论：`verdict`（`works` / `mixed` / `not_yet` / `too_early`）、`headline`、`summary`、`hurts`、`delights`、`who_stays`、`who_leaves`、`why_not_opened`、`next`、`funnel`、`people_used`。每一条是 `{ text, moments[], passersby[] }`：`moments` 带当事人、原话、`session_id`、`step_idx`、`screenshot_ev`。有人用完、有了新评论或路过的人明显变多时重新归纳，否则读缓存（人数始终是最新的）。重新归纳要几分钟：有上一版时先返回上一版并带 `refreshing: true`，新的在后台写（同一产品同一语言只写一份；失败后 10 分钟内不自动重试，照常给上一版）；从没写过或 `force=1` 时等它写完 |
+| `GET /launches/:id/report?lang=zh\|en[&force=1]` | 一页结论：`verdict`（`works` / `mixed` / `not_yet` / `too_early`）、`headline`、`summary`、`hurts`、`delights`、`who_stays`、`who_leaves`、`why_not_opened`、`next`、`funnel`、`people_used`。每一条是 `{ text, moments[], passersby[] }`：`moments` 带当事人、原话、`session_id`、`step_idx`、`screenshot_ev`。有人用完、有了新评论或路过的人明显变多时重新归纳，否则读缓存（人数始终是最新的）。还没有人用完时不调模型，按此刻的人数现写（`too_early`，不缓存）。有人用完之后由模型归纳，要几分钟：有上一版时先返回上一版并带 `refreshing: true`，新的在后台写；还没有任何一版时返回过渡页（`too_early`，「N 个人用过了，结论正在归纳」，带 `refreshing: true`），不再拿「还没有人点开」顶替。同一产品同一语言、同一轮发布只写一份，一次最多 12 分钟；清零之前开始的归纳不会写回清零之后。失败后 10 分钟内不自动重试，照常给上一版（或过渡页），并带 `failed: { reason, at }`（模型那边的报错）。`force=1`（管理员在网页上点「重新归纳」）等它写完，失败时返回 502 `{ error: 'report_failed', reason }` |
 | `GET /launches/:id/versions` | 版本点：`[{ n, note, at }]`，发布那一刻是第 1 版 |
 | `POST /launches/:id/versions`（管理员） | 标记新版本（「我改好了，线上已经是新版本」）：`{ note? }`，返回 `{ n, note, at }`。之后开始的使用算新版本；产品地址不变时不用重新发布 |
 | `GET /launches/:id/engineering` | `version`：最新的版本点和它之后开始的使用次数 `{ n, note, at, sessions, finished }`（还没标过新版本时为 `null`）；`experienced`：虚拟人亲身遇到的问题（严重度、受影响人数、是否已复现、复现步骤；标过新版本时还有 `sessions_since_version`：这个问题在最新版本之后开始的使用里出现了几次。问题清单每累计几次使用重新归并一次，最新的使用可能还没算进去）；`appendix`：工程附录（无障碍扫描、接口与脚本错误、专家检查等用户看不到的技术信号，带修改建议）；`mail`：验证邮件的仪器读数（没有邮件时为 `null`）`{ mails, sessions, opened, median_delay_s, max_delay_s, switches, forgot, mistyped }`：收到几封、点开几封、从居民填好邮箱到信到达的中位与最慢秒数、在产品和邮箱之间切了几次、几次切回来记不清验证码、几次输入的码与邮件里的不一致 |
@@ -133,7 +133,7 @@
 | `publish_product` | 管理员 | 发布：`name`、`tagline`、`url`（Jobs 服务能打开的真实地址），可选 `landing_url`、`description`、`ad_text`、`intensity`、`form` |
 | `list_products` | 访客 | 已发布的产品和漏斗人数 |
 | `product_status` | 访客 | 一个产品此刻的状况：漏斗、此刻在用的人（单独列在最前，带 `persona_id`；排队的只给人数）、用过的人、路过的人怎么想 |
-| `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录（含验证邮件的仪器读数）。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
+| `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录（含验证邮件的仪器读数）。正在后台重写、或归纳没有成功（带原因）时写在标题下面。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
 | `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`want`），返回 `session_ids` |
 | `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，最多 `max_minutes`（默认 5，最多 15）分钟；客户端带了 `progressToken` 时推送进度 |
 | `mark_new_version` | 管理员 | 标记新版本（`note`），见 `POST /launches/:id/versions` |
