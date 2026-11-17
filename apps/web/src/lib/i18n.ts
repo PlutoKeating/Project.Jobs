@@ -10,6 +10,9 @@ export const useLang = () => useSyncExternalStore((f) => { subs.add(f); return (
 const D = {
   'nav.world': ['城', 'City'], 'nav.products': ['产品', 'Products'], 'nav.people': ['人', 'People'], 'nav.human': ['接管', 'Takeover'],
   'close': ['关闭', 'Close'],
+  'gh_title': ['交给 coding agent', 'Hand to a coding agent'], 'gh_repo': ['仓库', 'Repository'], 'gh_token': ['GitHub 细粒度令牌（只给这个仓库的 Issues 读写）', 'Fine-grained GitHub token (Issues read and write on this repository only)'], 'gh_token_keep': ['令牌已保存（留空不改）', 'Token saved (leave empty to keep)'], 'gh_auto': ['issue 关闭后自动标新版本、请 {n} 人验证', 'When an issue closes, mark a new version and invite {n} people'], 'gh_change': ['更改', 'Change'], 'gh_remove': ['移除', 'Remove'], 'gh_issue': ['开 GitHub issue', 'Open a GitHub issue'], 'gh_open': ['开着', 'open'], 'gh_closed': ['已关闭', 'closed'],
+  'fix_copy': ['复制修复任务', 'Copy fix task'], 'fix_copied': ['已复制，贴给 coding agent', 'Copied; paste it to your coding agent'], 'triage': ['分诊', 'Triage'], 'triage_open': ['待处理', 'Open'], 'triage_confirmed': ['确认要改', 'Will fix'], 'triage_known': ['已知，暂不改', 'Known, not now'], 'triage_rejected': ['不是问题', 'Not an issue'],
+  'save': ['保存', 'Save'],
   'chat_open': ['问 Jobs', 'Ask Jobs'], 'chat_title': ['Jobs', 'Jobs'], 'chat_hint': ['直接说话：看产品怎么样、请人试、追问居民、把问题交给 coding agent。', 'Just ask: how a product is doing, invite people, ask residents, hand an issue to a coding agent.'],
   'chat_eg1': ['城里现在怎么样？', "What's happening in town?"], 'chat_eg2': ['我的产品最该改的一件事是什么？', 'What is the one thing to fix in my product?'], 'chat_eg3': ['找三个不太会用手机的老人来试试', 'Find three older people who struggle with phones to try it'],
   'chat_placeholder': ['跟 Jobs 说…', 'Message Jobs…'], 'chat_to_resident': ['跟{name}说…', 'Message {name}…'], 'chat_with_resident': ['在跟居民聊', 'talking with a resident'], 'chat_end_resident': ['结束', 'End'],

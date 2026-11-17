@@ -108,9 +108,9 @@ export function PersonPage() {
 
   return (
     <article>
-      <header className="flex flex-wrap items-start gap-6">
-        <Avatar id={id} size={136} ring={!!live?.session} className="!rounded-xl" />
-        <div className="min-w-0 flex-1">
+      <header className="flex flex-wrap items-start gap-x-6 gap-y-4">
+        <Avatar id={id} size={136} ring={!!live?.session} className="!h-20 !w-20 !rounded-xl sm:!h-[136px] sm:!w-[136px]" />
+        <div className="min-w-0 flex-1 basis-56">
           <h1 className="text-3xl font-semibold">{id0.name}</h1>
           <p className="mt-1 text-fg-muted">{id0.age} · {id0.gender} · {id0.region} · {id0.occupation}</p>
           <div className="mt-3 flex flex-wrap gap-1.5"><span className="chip">{L(d.segment)}</span><span className="chip">{L(d.kind)}</span>{d.target_user && <span className="chip border-secondary text-secondary-fg">{t('target_user')}</span>}{id0.income_band && <span className="chip">{id0.income_band}</span>}</div>
@@ -122,7 +122,7 @@ export function PersonPage() {
             </Link>
           )}
         </div>
-        <dl className="tabular grid grid-cols-3 gap-6 text-right">
+        <dl className="tabular grid w-full grid-cols-3 gap-6 sm:w-auto sm:text-right">
           <div><dt className="text-xs text-fg-muted">{t('nav.products')}</dt><dd className="text-2xl font-semibold text-fg-display">{apps.size}</dd></div>
           <div><dt className="text-xs text-fg-muted">{t('sessions')}</dt><dd className="text-2xl font-semibold text-fg-display">{d.sessions.length}</dd></div>
           <div><dt className="text-xs text-fg-muted">{t('completion')}</dt><dd className="text-2xl font-semibold text-fg-display">{okRate === null ? '—' : `${Math.round(okRate * 100)}%`}</dd></div>

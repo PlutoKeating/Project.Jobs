@@ -1,9 +1,10 @@
 // 一个产品在城里过得怎么样：一页人话（每句都能点开看是谁说的）、人数、宣发、口碑；技术信号单独放在工程附录
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate, useParams, useSearch } from '@tanstack/react-router';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { copyText } from '../lib/clipboard.ts';
 import { ArrowRight, ArrowUpRight, ChevronDown, Minus, Pause, Play, Plus, PowerOff, RefreshCw, RotateCcw, Square, Star } from 'lucide-react';
-import { ApiError, del, evidenceUrl, get, post, queryClient, useEngineering, useLaunch, useLaunchReport, useMe } from '../lib/api.ts';
+import { ApiError, del, evidenceUrl, get, post, put, queryClient, useEngineering, useLaunch, useLaunchReport, useMe } from '../lib/api.ts';
 import { useLabel, useT } from '../lib/i18n.ts';
 import type { Audience, Cited, Launch, LaunchDetail, LaunchReport, LaunchStatus, Use } from '../lib/types.ts';
 import { Avatar, Button, ErrorState, PersonLink, Seg, Sev, Skeleton } from '../components/ui.tsx';
@@ -293,16 +294,76 @@ function VoicesTab({ d }: { d: LaunchDetail }) {
   );
 }
 
+interface IssueRowLite { id: string; status: string; github: { url: string; state: string } | null }
+interface GithubSettings { repo: string | null; auto_verify: boolean; invite_n: number; has_token: boolean }
+
+/** 交给 coding agent：这个产品的 GitHub 仓库与令牌（开 issue、关闭后自动验证） */
+function GithubBlock({ id }: { id: string }) {
+  const { t } = useT();
+  const q = useQuery({ queryKey: ['launch-github', id], queryFn: () => get<GithubSettings>(`/launches/${id}/github`) });
+  const [repo, setRepo] = useState(''); const [token, setToken] = useState(''); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false); const [edit, setEdit] = useState(false);
+  useEffect(() => { if (q.data?.repo) setRepo(q.data.repo); }, [q.data?.repo]);
+  if (!q.data) return null;
+  const g = q.data;
+  const save = async (body: Record<string, unknown>) => { setBusy(true); setErr(null); try { await put(`/launches/${id}/github`, body); setToken(''); setEdit(false); void q.refetch(); } catch (e) { setErr(e instanceof ApiError ? String(e.body?.reason ?? e.code) : String(e)); } finally { setBusy(false); } };
+  return (
+    <section className="rounded-md border border-border p-4">
+      <h2 className="text-sm font-semibold text-fg-display">{t('gh_title')}</h2>
+      {g.repo && !edit ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+          <a href={`https://github.com/${g.repo}`} target="_blank" rel="noreferrer" className="font-mono text-link hover:underline">{g.repo}</a>
+          <label className="flex items-center gap-1.5 text-xs text-fg-muted"><input type="checkbox" checked={g.auto_verify} onChange={(e) => void save({ auto_verify: e.target.checked })} />{t('gh_auto', { n: g.invite_n })}</label>
+          <Button size="sm" variant="ghost" onClick={() => setEdit(true)}>{t('gh_change')}</Button>
+          <Button size="sm" variant="ghost" onClick={async () => { await del(`/launches/${id}/github`); void q.refetch(); }}>{t('gh_remove')}</Button>
+        </div>
+      ) : (
+        <form className="mt-2 flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void save({ repo, ...(token ? { token } : {}) }); }}>
+          <input value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/name" aria-label={t('gh_repo')} className="h-8 w-full rounded-md border border-border bg-bg-elevated px-2 font-mono text-sm text-fg sm:w-48" />
+          <input value={token} onChange={(e) => setToken(e.target.value)} type="password" placeholder={g.has_token ? t('gh_token_keep') : t('gh_token')} aria-label={t('gh_token')} className="h-8 w-full min-w-0 rounded-md border border-border bg-bg-elevated px-2 text-sm text-fg sm:w-auto sm:flex-1" />
+          <Button size="sm" disabled={busy || !repo || (!token && !g.has_token)}>{busy ? '…' : t('save')}</Button>
+          {edit && <Button size="sm" variant="ghost" type="button" onClick={() => setEdit(false)}>{t('cancel')}</Button>}
+        </form>
+      )}
+      {err && <p role="alert" className="mt-2 break-words text-xs text-danger">{err}</p>}
+    </section>
+  );
+}
+
+/** 一个亲历问题下面的几个动作：复制修复任务、开 GitHub issue、分诊 */
+function IssueActions({ issue, row, hasRepo, onChange }: { issue: { id: string }; row?: IssueRowLite; hasRepo: boolean; onChange: () => void }) {
+  const { t } = useT(); const me = useMe();
+  const [msg, setMsg] = useState<string | null>(null);
+  const copyFix = async () => { try { const o = await get<{ text: string }>(`/issues/${issue.id}/fix-task`); await copyText(o.text); setMsg(t('fix_copied')); } catch (e) { setMsg(String((e as Error).message)); } setTimeout(() => setMsg(null), 2500); };
+  const open = async () => { try { const o = await post<{ url: string }>(`/issues/${issue.id}/github`); window.open(o.url, '_blank', 'noreferrer'); onChange(); } catch (e) { setMsg(e instanceof ApiError ? String(e.body?.reason ?? e.code) : String(e)); } };
+  return (
+    <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <Button size="sm" variant="ghost" onClick={() => void copyFix()}>{t('fix_copy')}</Button>
+      {row?.github ? <a href={row.github.url} target="_blank" rel="noreferrer" className="inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-xs text-link hover:bg-surface-hover">GitHub · {row.github.state === 'open' ? t('gh_open') : t('gh_closed')}<ArrowUpRight size={12} /></a>
+        : me.data?.admin && hasRepo && <Button size="sm" variant="ghost" onClick={() => void open()}>{t('gh_issue')}</Button>}
+      {me.data?.admin && (
+        <select aria-label={t('triage')} value={row?.status ?? 'open'} onChange={async (e) => { await post(`/issues/${issue.id}/triage`, { status: e.target.value }); onChange(); }} className="h-7 rounded-md border border-border bg-bg-elevated px-1.5 text-xs text-fg-muted">
+          {(['open', 'confirmed', 'known', 'rejected'] as const).map((k) => <option key={k} value={k}>{t(`triage_${k}`)}</option>)}
+        </select>
+      )}
+      {msg && <span className="text-xs text-fg-muted">{msg}</span>}
+    </div>
+  );
+}
+
 function EngineeringTab({ id }: { id: string }) {
-  const { t, lang } = useT(); const L = useLabel();
+  const { t, lang } = useT(); const L = useLabel(); const me = useMe();
   const q = useEngineering(id, true);
+  const rows = useQuery({ queryKey: ['launch-issues', id], queryFn: () => get<IssueRowLite[]>(`/launches/${id}/issues?track=all`) });
+  const gh = useQuery({ enabled: !!me.data?.admin, queryKey: ['launch-github', id], queryFn: () => get<GithubSettings>(`/launches/${id}/github`) });
+  const refresh = () => { void rows.refetch(); void q.refetch(); };
   if (q.isError) return <ErrorState onRetry={() => void q.refetch()} />;
   if (!q.data) return <Skeleton className="h-40 w-full" />;
   const { experienced, appendix } = q.data;
   const title = (i: { title: string; title_en?: string | null }) => (lang === 'en' && i.title_en ? i.title_en : i.title);
-  if (!experienced.length && !appendix.length) return <p className="text-sm text-fg-subtle">{t('no_issues')}</p>;
+  if (!experienced.length && !appendix.length) return <div className="space-y-6">{me.data?.admin && <GithubBlock id={id} />}<p className="text-sm text-fg-subtle">{t('no_issues')}</p></div>;
   return (
     <div className="space-y-10">
+      {me.data?.admin && <GithubBlock id={id} />}
       {experienced.length > 0 && (
         <section>
           <h2 className="mb-3 text-lg font-semibold">{t('experienced')}</h2>
@@ -315,6 +376,7 @@ function EngineeringTab({ id }: { id: string }) {
                   <p className="tabular mt-0.5 text-xs text-fg-subtle">{[t('n_people', { n: i.people }), i.reproduced && t('reproduced'), i.where].filter(Boolean).join(' · ')}</p>
                   {i.description && <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-fg-muted">{i.description}</p>}
                   {i.steps.length > 0 && <ol className="mt-2 list-decimal space-y-0.5 pl-5 font-mono text-xs text-fg-muted">{i.steps.map((s, k) => <li key={k}>{s}</li>)}</ol>}
+                  <IssueActions issue={i} row={rows.data?.find((r) => r.id === i.id)} hasRepo={!!gh.data?.repo} onChange={refresh} />
                 </div>
               </li>
             ))}

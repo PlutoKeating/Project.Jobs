@@ -132,7 +132,7 @@ export function ChatPanel() {
     <>
       {!open && (
         <button type="button" onClick={() => setOpen(true)} aria-label={t('chat_open')} title={t('chat_open')}
-          className="fixed bottom-5 right-5 z-40 flex h-12 w-12 items-center justify-center rounded-full border border-border-strong bg-surface text-fg-display shadow-lg transition-colors hover:bg-surface-hover">
+          className="fixed bottom-4 right-4 z-40 flex h-11 w-11 items-center sm:bottom-5 sm:right-5 sm:h-12 sm:w-12 justify-center rounded-full border border-border-strong bg-surface text-fg-display shadow-lg transition-colors hover:bg-surface-hover">
           <MessageCircle size={20} />
         </button>
       )}
