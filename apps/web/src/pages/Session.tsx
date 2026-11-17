@@ -6,6 +6,7 @@ import { evidenceUrl, get, post, useSession } from '../lib/api.ts';
 import { MailList, type MailBrief } from '../components/Mail.tsx';
 import { useLabel, useT } from '../lib/i18n.ts';
 import type { StepRow } from '../lib/types.ts';
+import { isQueued, isUsing } from '../lib/live.ts';
 import { Avatar, Button, ErrorState, Section, Skeleton, Stat } from '../components/ui.tsx';
 
 const moodColor = (m: number) => (m < -0.15 ? `color-mix(in srgb, var(--color-danger) ${Math.min(100, 35 + -m * 80)}%, var(--color-surface))` : m > 0.15 ? `color-mix(in srgb, var(--color-success) ${Math.min(100, 35 + m * 80)}%, var(--color-surface))` : 'var(--color-border-strong)');
@@ -21,11 +22,11 @@ function MoodStrip({ steps }: { steps: StepRow[] }) {
   );
 }
 
-function Step({ s, events }: { s: StepRow; events: { text: string; source: string }[] }) {
+function Step({ s, events, anchor = true }: { s: StepRow; events: { text: string; source: string }[]; anchor?: boolean }) {
   const { t } = useT(); const L = useLabel();
   const err = s.result?.error;
   return (
-    <li id={`s${s.idx}`} className="grid scroll-mt-24 gap-5 border-t border-border py-6 md:grid-cols-[minmax(0,22rem)_1fr]">
+    <li id={anchor ? `s${s.idx}` : undefined} className="grid scroll-mt-24 gap-5 border-t border-border py-6 md:grid-cols-[minmax(0,22rem)_1fr]">
       <div>{s.screenshot_ev ? <a href={evidenceUrl(s.screenshot_ev)} target="_blank" rel="noreferrer"><img src={evidenceUrl(s.screenshot_ev)} alt="" loading="lazy" className="w-full rounded-md border border-border object-cover object-top transition-opacity hover:opacity-90" /></a> : <div className="aspect-video rounded-md bg-surface" />}</div>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-fg-subtle">
@@ -63,7 +64,8 @@ export function SessionPage() {
   const post0 = d.interviews.find((i) => i.kind === 'post_session');
   const qa = d.interviews.flatMap((i) => i.qa);
   const judgeKeys = [...new Set(d.judgments.flatMap((j) => Object.keys(j.scores)))];
-  const finished = !['running', 'waiting_human', 'planned'].includes(s.status);
+  const finished = !isUsing(s.status) && !isQueued(s.status);
+  const latest = isUsing(s.status) ? d.steps[d.steps.length - 1] : undefined;
 
   return (
     <article>
@@ -88,6 +90,15 @@ export function SessionPage() {
         {s.summary?.objective?.real_seconds !== undefined && <Stat label={<Timer size={13} aria-label="time" />} value={`${Math.round(s.summary.objective.real_seconds / 60)}′`} />}
       </div>
       {d.steps.length > 0 && <div className="mt-6"><MoodStrip steps={d.steps} /></div>}
+      {isUsing(s.status) && (
+        <section className="mt-6 rounded-lg border border-border bg-bg-elevated px-4">
+          <h2 className="flex items-center justify-between gap-3 pt-3 text-sm font-semibold">
+            <span className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('live_now')} · {t('latest_step')}</span>
+            {latest && <a href={`#s${latest.idx}`} className="text-xs font-normal text-link hover:text-accent">{t('jump_latest')}</a>}
+          </h2>
+          {latest ? <ol className="[&>li]:border-t-0"><Step s={latest} anchor={false} events={d.events.filter((e) => e.step_idx === latest.idx)} /></ol> : <p className="py-4 text-sm text-fg-subtle">{t('no_steps_yet')}</p>}
+        </section>
+      )}
 
       <div className="grid gap-x-12 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <Section title={t('timeline')}>

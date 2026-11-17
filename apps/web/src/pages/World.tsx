@@ -9,23 +9,19 @@ import { CityCanvas, toScreen } from '../components/city/CityCanvas.tsx';
 import { Avatar, Button, Seg } from '../components/ui.tsx';
 import { useLiveFunnel } from './Products.tsx';
 import { useOverview } from '../lib/api.ts';
-
-const placeName = (town: TownLayout | undefined, id: string | undefined, lang: string) => {
-  if (!id) return '';
-  const p = town?.places.find((x) => x.id === id);
-  return p ? (lang === 'zh' ? p.name.zh : p.name.en) : id === 'street' ? (lang === 'zh' ? '街上' : 'Street') : id;
-};
+import { placeName, usingNow } from '../lib/live.ts';
+import { UsingRow } from '../components/UsingNow.tsx';
 
 function PersonCard({ p, town, onClose }: { p: PersonaLive; town?: TownLayout; onClose: () => void }) {
   const { t, lang } = useT(); const L = useLabel();
   const [q, setQ] = useState(''); const [ans, setAns] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   useEffect(() => { setAns(null); setQ(''); }, [p.id]);
   const s = p.session;
-  const live = s && !s.replay && s.status !== 'replay' && ['running', 'waiting_human'].includes(s.status);
+  const live = usingNow(p);
   return (
     <article className="animate-reveal border-b border-border p-5">
       <div className="flex items-start gap-3">
-        <Avatar id={p.id} size={56} ring={!!s} />
+        <Avatar id={p.id} size={56} ring={live} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2"><h2 className="truncate text-lg font-semibold">{p.name}</h2>{p.target_user && <span className="h-1.5 w-1.5 rounded-full bg-secondary" title={t('target_user')} />}</div>
           <p className="truncate text-xs text-fg-muted">{p.age} · {p.occupation}</p>
@@ -37,7 +33,7 @@ function PersonCard({ p, town, onClose }: { p: PersonaLive; town?: TownLayout; o
       {s && (
         <div className="mt-4 overflow-hidden rounded-lg border border-border bg-bg-elevated">
           <div className="flex items-center justify-between gap-2 px-3 py-2 text-xs">
-            <span className="flex items-center gap-2 text-fg-display"><span className={`h-1.5 w-1.5 rounded-full ${live ? 'bg-accent live-dot' : 'bg-secondary'}`} />{t('using')} <b className="font-semibold">{s.app}</b></span>
+            <span className="flex items-center gap-2 text-fg-display"><span className={`h-1.5 w-1.5 rounded-full ${live ? 'bg-accent live-dot' : 'bg-secondary'}`} />{live ? t('using') : s.replay ? t('replay') : L(s.status)} <b className="font-semibold">{s.app}</b></span>
             <span className="tabular text-fg-subtle">{t('step', { n: s.step_idx + 1 })}{s.steps_total ? ` / ${s.steps_total}` : ''}{s.sim_clock ? ` · ${s.sim_clock}` : ''}</span>
           </div>
           {s.screenshot_ev && <Link to="/sessions/$id" params={{ id: s.id }}><img src={evidenceUrl(s.screenshot_ev)} alt="" className="max-h-56 w-full border-y border-border bg-bg object-cover object-top" /></Link>}
@@ -71,13 +67,13 @@ function PersonCard({ p, town, onClose }: { p: PersonaLive; town?: TownLayout; o
 }
 
 /** 「此刻」看板：行按状态排序、原地重排，变化的行亮一下 */
-function Board({ people, town, selected, onPick, filter }: { people: PersonaLive[]; town?: TownLayout; selected?: string | null; onPick: (id: string) => void; filter: 'using' | 'all' }) {
+function Board({ people, town, selected, onPick }: { people: PersonaLive[]; town?: TownLayout; selected?: string | null; onPick: (id: string) => void }) {
   const { t, lang } = useT();
   const prev = useRef(new Map<string, string>());
   const rows = useMemo(() => {
-    const rank = (p: PersonaLive) => (p.session ? 0 : p.mode === 'travel' ? 1 : 2);
-    return people.filter((p) => filter === 'all' || p.session).sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
-  }, [people, filter]);
+    const rank = (p: PersonaLive) => (usingNow(p) ? 0 : p.mode === 'travel' ? 1 : 2);
+    return [...people].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
+  }, [people]);
   const flashes = new Set<string>();
   for (const p of rows) { const sig = `${p.session?.app ?? ''}|${p.session?.step_idx ?? ''}|${p.activity}|${p.place_id}`; if (prev.current.has(p.id) && prev.current.get(p.id) !== sig) flashes.add(p.id); prev.current.set(p.id, sig); }
   if (!rows.length) return <p className="px-5 py-10 text-center text-sm text-fg-subtle">{t('nobody_using')}</p>;
@@ -88,8 +84,8 @@ function Board({ people, town, selected, onPick, filter }: { people: PersonaLive
           <button onClick={() => onPick(p.id)} className={`grid w-full grid-cols-[2rem_1fr_auto] items-center gap-3 px-5 py-2.5 text-left transition-colors hover:bg-surface-hover ${selected === p.id ? 'bg-surface-hover' : ''}`}>
             <Avatar id={p.id} size={32} />
             <span className="min-w-0">
-              <span className="flex items-center gap-2"><span className="truncate text-sm font-medium text-fg-display">{p.name}</span>{p.session && <span className="truncate rounded-xs bg-accent-soft px-1.5 text-xs font-medium text-accent">{p.session.app}</span>}</span>
-              <span className="block truncate text-xs text-fg-muted">{p.session?.monologue ?? p.activity}</span>
+              <span className="flex items-center gap-2"><span className="truncate text-sm font-medium text-fg-display">{p.name}</span>{usingNow(p) && <span className="truncate rounded-xs bg-accent-soft px-1.5 text-xs font-medium text-accent">{p.session!.app}</span>}</span>
+              <span className="block truncate text-xs text-fg-muted">{(usingNow(p) && p.session!.monologue) || p.activity}</span>
             </span>
             <span className="max-w-[7rem] truncate text-right text-xs text-fg-subtle">{placeName(town, p.place_id, lang)}</span>
           </button>
@@ -99,28 +95,44 @@ function Board({ people, town, selected, onPick, filter }: { people: PersonaLive
   );
 }
 
-function ProductRow({ launch }: { launch: Launch }) {
-  const { t } = useT();
-  const l = useLiveFunnel(launch); const f = l.funnel;
+/** 「此刻 · 按产品」：每个上线中的产品下面列出此刻正在用它的人（排队的不算）；点人在城里找到他 */
+function ByProduct({ people, onPick }: { people: PersonaLive[]; onPick: (id: string) => void }) {
+  const { t } = useT(); const q = useLaunches();
+  const launches = (q.data ?? []).filter((l) => l.status !== 'ended');
+  const using = people.filter(usingNow);
+  const known = new Set(launches.map((l) => l.app_id));
+  // 不属于任何上线中产品的使用（例如已结束的发布还没用完的人）按软件名归到一起
+  const other = new Map<string, PersonaLive[]>();
+  for (const p of using) if (!known.has(p.session!.app_id)) other.set(p.session!.app, [...(other.get(p.session!.app) ?? []), p]);
+  if (!launches.length && !other.size) return <p className="px-5 py-10 text-center text-sm text-fg-subtle">{t('nobody_using')}</p>;
+  const rows = launches.map((l) => ({ l, who: using.filter((p) => p.session!.app_id === l.app_id) })).sort((a, b) => b.who.length - a.who.length);
   return (
-    <li>
-      <Link to="/products/$id" params={{ id: l.id }} className="group grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 px-5 py-2.5 transition-colors hover:bg-surface-hover">
-        <span className="flex min-w-0 items-center gap-2"><span className="truncate text-sm font-medium text-fg-display group-hover:text-accent">{l.name}</span>{f.using_now > 0 && <span className="inline-flex shrink-0 items-center gap-1 text-xs text-accent"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{f.using_now}</span>}</span>
-        <span className="tabular text-xs text-fg-muted" title={`${t('f_opened')} / ${t('f_reached')}`}><span className="text-sm text-fg-display">{f.opened}</span> / {f.reached}</span>
-      </Link>
-    </li>
+    <div>
+      {rows.map(({ l, who }) => <ProductGroup key={l.id} launch={l} who={who} onPick={onPick} />)}
+      {[...other].map(([app, who]) => (
+        <section key={app} className="border-b border-border">
+          <h3 className="flex items-center gap-2 px-5 pb-1 pt-3 text-sm font-medium text-fg-display">{app}<span className="tabular text-xs text-accent">{who.length}</span></h3>
+          <ul>{who.map((p) => <UsingRow key={p.id} p={p} shot={false} onPick={onPick} />)}</ul>
+        </section>
+      ))}
+    </div>
   );
 }
 
-/** 城里此刻有哪些产品，各有多少人打开过 / 看到过 */
-function ProductsNow() {
-  const { t } = useT(); const q = useLaunches();
-  const live = (q.data ?? []).filter((l) => l.status !== 'ended');
-  if (!live.length) return null;
+function ProductGroup({ launch, who, onPick }: { launch: Launch; who: PersonaLive[]; onPick: (id: string) => void }) {
+  const { t } = useT();
+  const l = useLiveFunnel(launch); const f = l.funnel;
   return (
-    <section className="border-b border-border pb-2">
-      <h2 className="px-5 pb-1 pt-4 text-sm font-semibold">{t('nav.products')}</h2>
-      <ul>{live.map((l) => <ProductRow key={l.id} launch={l} />)}</ul>
+    <section className="border-b border-border">
+      <Link to="/products/$id" params={{ id: l.id }} className="group grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-3 px-5 pb-2 pt-3 transition-colors hover:bg-surface-hover">
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate text-sm font-semibold text-fg-display group-hover:text-accent">{l.name}</span>
+          {who.length > 0 ? <span className="inline-flex shrink-0 items-center gap-1 text-xs text-accent"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('using_n', { n: who.length })}</span>
+            : <span className="shrink-0 text-xs text-fg-subtle">{t('nobody_using_this')}</span>}
+        </span>
+        <span className="tabular text-xs text-fg-muted" title={`${t('f_opened')} / ${t('f_reached')}`}><span className="text-sm text-fg-display">{f.opened}</span> / {f.reached}</span>
+      </Link>
+      {who.length > 0 && <ul className="pb-1">{who.map((p) => <UsingRow key={p.id} p={p} shot={false} onPick={onPick} />)}</ul>}
     </section>
   );
 }
@@ -140,7 +152,7 @@ function PlacePanel({ id, town, people, onPick, onClose, admin }: { id: string; 
         <div><h2 className="text-lg font-semibold">{placeName(town, id, lang)}</h2><p className="text-xs text-fg-muted">{L(pl?.kind)} · {t('n_people', { n: here.length })}</p></div>
         <button onClick={onClose} aria-label="close" className="rounded-xs p-1 text-fg-subtle hover:bg-surface-hover hover:text-fg"><X size={16} /></button>
       </div>
-      {here.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{here.map((p) => <button key={p.id} onClick={() => onPick(p.id)} title={p.name} className="rounded-md transition-transform hover:-translate-y-0.5"><Avatar id={p.id} size={36} ring={!!p.session} /></button>)}</div>}
+      {here.length > 0 && <div className="mt-3 flex flex-wrap gap-2">{here.map((p) => <button key={p.id} onClick={() => onPick(p.id)} title={p.name} className="rounded-md transition-transform hover:-translate-y-0.5"><Avatar id={p.id} size={36} ring={usingNow(p)} /></button>)}</div>}
       {admin && (
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
           <Megaphone size={14} className="mr-1 text-fg-subtle" aria-label={t('event')} />
@@ -178,14 +190,15 @@ export function WorldPage() {
   const nav = useNavigate();
   const [sel, setSel] = useState<string | null>(search.focus ?? null);
   const [place, setPlace] = useState<string | null>(search.place ?? null);
-  const [filter, setFilter] = useState<'using' | 'all'>('all');
+  const [filter, setFilter] = useState<'product' | 'all'>('product');
   useEffect(() => { if (search.focus) { setSel(search.focus); setPlace(null); } }, [search.focus]);
   useEffect(() => { if (search.place) { setPlace(search.place); setSel(null); } }, [search.place]);
   const people = useMemo(() => (snap?.personas ?? []).filter((p) => p.visible), [snap]);
   const selected = people.find((p) => p.id === sel);
-  const usingN = people.filter((p) => p.session).length;
+  const usingN = (snap?.personas ?? []).filter(usingNow).length;
   const now = Date.now();
-  const pick = (id: string) => { setSel(id); setPlace(null); void nav({ to: '/', search: { focus: id }, replace: true }); };
+  const side = useRef<HTMLDivElement>(null);
+  const pick = (id: string) => { setSel(id); setPlace(null); side.current?.scrollTo({ top: 0, behavior: 'smooth' }); void nav({ to: '/', search: { focus: id }, replace: true }); };
 
   return (
     <div className="flex min-h-0 shrink-0 flex-col overflow-hidden lg:flex-row" style={{ height: 'calc(100dvh - var(--ds-header-height))' }}>
@@ -205,14 +218,15 @@ export function WorldPage() {
                 {people.map((p) => {
                   const pos = toScreen(v, p.x, p.y - 3.8);
                   const bubble = p.say && now - p.say.at < 10_000 ? p.say : null;
-                  const tag = p.id === sel || p.session;
+                  const shown = usingNow(p) || !!p.session?.replay;
+                  const tag = p.id === sel || shown;
                   if (!bubble && !tag) return null;
                   return (
                     <div key={p.id} className="absolute transition-[left,top] duration-1000 ease-linear" style={pos}>
                       {bubble && v.s >= 3 && (
                         <div key={bubble.at} className={`bubble absolute bottom-6 left-0 w-max max-w-[15rem] -translate-x-1/2 rounded-lg px-2.5 py-1.5 text-xs leading-snug shadow-md ${bubble.tone === 'angry' ? 'bg-danger text-bg' : bubble.tone === 'confused' ? 'bg-warning text-bg' : bubble.tone === 'happy' ? 'bg-success text-bg' : 'bg-fg text-bg'}`}>{bubble.text}</div>
                       )}
-                      {tag && <span className="absolute bottom-0 left-0 -translate-x-1/2 whitespace-nowrap rounded-xs bg-bg/85 px-1.5 text-xs text-fg-display">{p.name}{p.session && <span className="ml-1 text-accent">· {p.session.app}</span>}</span>}
+                      {tag && <span className="absolute bottom-0 left-0 -translate-x-1/2 whitespace-nowrap rounded-xs bg-bg/85 px-1.5 text-xs text-fg-display">{p.name}{shown && <span className="ml-1 text-accent">· {p.session!.app}</span>}</span>}
                     </div>
                   );
                 })}
@@ -222,15 +236,14 @@ export function WorldPage() {
         {me?.admin && <ClockControls />}
       </div>
       <aside className="flex max-h-[60dvh] min-h-0 w-full shrink-0 flex-col lg:h-full border-t border-border bg-bg lg:max-h-none lg:w-[400px] lg:border-l lg:border-t-0">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div ref={side} className="min-h-0 flex-1 overflow-y-auto">
           {selected && <PersonCard p={selected} town={town} onClose={() => { setSel(null); void nav({ to: '/', search: {}, replace: true }); }} />}
           {place && !selected && <PlacePanel id={place} town={town} people={people} onPick={pick} onClose={() => setPlace(null)} admin={!!me?.admin} />}
-          {!selected && !place && <ProductsNow />}
           <div className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-border bg-bg/95 px-5 py-3 backdrop-blur">
             <h2 className="flex items-center gap-2 text-sm font-semibold">{t('now')}{usingN > 0 && <span className="tabular rounded-xs bg-accent px-1.5 text-xs text-accent-fg">{usingN}</span>}</h2>
-            <Seg size="sm" value={filter} onChange={setFilter} options={[{ value: 'using', label: t('using') }, { value: 'all', label: t('everyone') }]} />
+            <Seg size="sm" value={filter} onChange={setFilter} options={[{ value: 'product', label: t('by_product') }, { value: 'all', label: t('everyone') }]} />
           </div>
-          <Board people={people} town={town} selected={sel} onPick={pick} filter={filter} />
+          {filter === 'product' ? <ByProduct people={snap?.personas ?? []} onPick={pick} /> : <Board people={people} town={town} selected={sel} onPick={pick} />}
         </div>
       </aside>
     </div>

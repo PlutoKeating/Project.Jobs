@@ -8,6 +8,8 @@ import { useLabel, useT } from '../lib/i18n.ts';
 import type { Audience, Cited, Launch, LaunchDetail, LaunchReport, LaunchStatus, Use } from '../lib/types.ts';
 import { Avatar, Button, ErrorState, PersonLink, Seg, Sev, Skeleton } from '../components/ui.tsx';
 import { FUNNEL_STEPS, useLiveFunnel, type FunnelNums } from './Products.tsx';
+import { isQueued, isUsing, useUsingNow } from '../lib/live.ts';
+import { UsingNowPanel } from '../components/UsingNow.tsx';
 
 type Tab = 'verdict' | 'people' | 'voices' | 'engineering';
 const SEGMENTS = ['office_worker', 'student', 'teen', 'senior', 'professional', 'service_worker', 'blue_collar', 'freelancer', 'homemaker', 'job_seeker'] as const;
@@ -192,7 +194,7 @@ function VerdictTab({ id, basis, admin }: { id: string; basis: number; admin: bo
 
 function UseRow({ u }: { u: Use }) {
   const { t } = useT(); const L = useLabel();
-  const running = ['running', 'waiting_human', 'planned'].includes(u.status);
+  const running = isUsing(u.status); const queued = isQueued(u.status);
   return (
     <li className="border-t border-border">
       <Link to="/sessions/$id" params={{ id: u.session_id }} className="group grid grid-cols-[2.25rem_minmax(0,1fr)_auto] gap-x-3 py-3.5">
@@ -202,7 +204,7 @@ function UseRow({ u }: { u: Use }) {
           <span className="mt-0.5 block truncate text-xs text-fg-subtle">{[u.where, u.when, u.device && L(u.device), u.invited ? L('ch_invite') : u.channel && L(`ch_${u.channel}`), u.visit > 1 && t('visit_n', { n: u.visit })].filter(Boolean).join(' · ')}</span>
           {u.end_reason && <span className="mt-1.5 line-clamp-2 block text-sm leading-relaxed text-fg-muted">{u.end_reason}</span>}
         </span>
-        <span className={`text-xs ${running ? 'text-accent' : u.outcome === 'success' ? 'text-success' : u.outcome ? 'text-danger' : 'text-fg-muted'}`}>{L(running ? 'running' : u.outcome ?? u.status)}</span>
+        <span className={`text-xs ${running ? 'text-accent' : queued ? 'text-fg-subtle' : u.outcome === 'success' ? 'text-success' : u.outcome ? 'text-danger' : 'text-fg-muted'}`}>{running ? t('using') : queued ? t('queued') : L(u.outcome ?? u.status)}</span>
       </Link>
     </li>
   );
@@ -212,11 +214,13 @@ function PeopleTab({ d }: { d: LaunchDetail }) {
   const { t } = useT(); const L = useLabel();
   const [all, setAll] = useState(false);
   const passers = all ? d.passersby : d.passersby.slice(0, 12);
+  const rank = (u: Use) => (isUsing(u.status) ? 0 : isQueued(u.status) ? 2 : 1);
+  const uses = [...d.uses].sort((a, b) => rank(a) - rank(b));
   return (
     <div className="space-y-10">
       <section>
         <h2 className="mb-3 flex items-baseline gap-2 text-lg font-semibold">{t('used_it')}<span className="tabular text-sm font-normal text-fg-subtle">{d.uses.length}</span></h2>
-        {d.uses.length ? <ul className="border-b border-border">{d.uses.map((u) => <UseRow key={u.session_id} u={u} />)}</ul> : <p className="text-sm text-fg-subtle">{t('empty_sessions')}</p>}
+        {uses.length ? <ul className="border-b border-border">{uses.map((u) => <UseRow key={u.session_id} u={u} />)}</ul> : <p className="text-sm text-fg-subtle">{t('empty_sessions')}</p>}
       </section>
       {d.passersby.length > 0 && (
         <section>
@@ -408,7 +412,8 @@ export function LaunchPage() {
 
 function Loaded({ d: raw, tab, admin, lang, t, onTab, onStatus }: { d: LaunchDetail; tab: Tab; admin: boolean; lang: string; t: ReturnType<typeof useT>['t']; onTab: (t: Tab) => void; onStatus: (s: LaunchStatus) => Promise<void> }) {
   const d = useLiveFunnel(raw); const f = d.funnel;
-  const finished = d.uses.filter((u) => !['running', 'waiting_human', 'planned'].includes(u.status)).length;
+  const finished = d.uses.filter((u) => !isUsing(u.status) && !isQueued(u.status)).length;
+  const now = useUsingNow(d.app_id); const queued = d.uses.filter((u) => isQueued(u.status)).length;
   return (
     <article>
       <header className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
@@ -433,12 +438,13 @@ function Loaded({ d: raw, tab, admin, lang, t, onTab, onStatus }: { d: LaunchDet
       <div className="mt-8 grid gap-x-12 lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[auto_1fr]">
         <aside className="lg:col-start-2 lg:row-start-1">
           <Block title={<span className="flex items-center gap-2">{t('funnel')}<span className="chip font-normal" title={t('simulated_hint')}>{t('simulated')}</span></span>}
-            aside={f.using_now > 0 && <span className="inline-flex items-center gap-1.5 text-xs text-accent"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('using_n', { n: f.using_now })}</span>}>
+            aside={now.length > 0 && <a href="#now" className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('using_n', { n: now.length })}</a>}>
             <FunnelBars f={f} />
           </Block>
         </aside>
 
         <div className="min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          <div className="mb-8"><UsingNowPanel people={now} queued={queued} status={d.status} /></div>
           <div className="mb-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-5 lg:border-t-0 lg:pt-0">
             <Seg value={tab === 'engineering' ? ('' as Tab) : tab} onChange={onTab} options={[{ value: 'verdict', label: t('verdict') }, { value: 'people', label: t('nav.people') }, { value: 'voices', label: t('voices') }]} />
             <button role="tab" aria-selected={tab === 'engineering'} onClick={() => onTab('engineering')} className={`rounded-md px-2.5 py-1 text-sm transition-colors ${tab === 'engineering' ? 'bg-surface-hover text-fg-display' : 'text-fg-subtle hover:text-fg'}`}>{t('engineering')}</button>

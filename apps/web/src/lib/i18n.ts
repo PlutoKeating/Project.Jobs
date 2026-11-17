@@ -36,6 +36,8 @@ const D = {
   'now': ['此刻', 'Right now'], 'using': ['正在用', 'Using'], 'thinking': ['在想', 'Thinking'], 'doing': ['在做', 'Doing'], 
   'action': ['操作', 'Action'], 'step': ['第 {n} 步', 'Step {n}'], 'open_person': ['看这个人', 'Open profile'], 'open_session': ['看这次使用', 'Open session'], 'replay': ['回放', 'Replay'],
   'nobody_using': ['此刻没人在用软件', 'No one is using an app right now'], 'everyone': ['所有人', 'Everyone'],
+  'using_now_title': ['此刻在用', 'Using it now'], 'nobody_using_this': ['此刻没人在用', 'No one is using it right now'], 'queued_n': ['另有 {n} 人排队', '{n} more queued'], 'queued_hint': ['已经决定打开、还没轮到的人（同时在用的人数有上限），不算在用', 'Decided to open it but not started yet (only a few use products at once); not counted as using'],
+  'needs_you': ['等人帮忙', 'Needs you'], 'by_product': ['按产品', 'By product'], 'queued': ['排队中', 'Queued'], 'live_now': ['正在进行', 'In progress'], 'latest_step': ['最新一步', 'Latest step'], 'jump_latest': ['跳到最新', 'Jump to latest'], 'no_steps_yet': ['刚开始，第一步还没出来', 'Just started; no step yet'],
   'sessions': ['次使用', 'sessions'], 'memories': ['记忆', 'Memories'], 'history': ['用过的软件', 'Apps used'], 'today': ['今天的日程', 'Today'], 'profile': ['画像', 'Profile'],
   'family': ['家人', 'Family'], 'story': ['经历', 'Story'], 'values': ['在意', 'Values'], 'motivations': ['想要', 'Wants'], 'beliefs': ['相信', 'Believes'],
   'digital_literacy': ['数字素养', 'Digital literacy'], 'ai_familiarity': ['AI 熟悉度', 'AI familiarity'], 'trust_in_ai': ['信任 AI', 'Trusts AI'], 'privacy': ['隐私敏感', 'Privacy'], 'price': ['价格敏感', 'Price'], 'patience': ['耐心', 'Patience'],

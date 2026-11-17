@@ -66,7 +66,7 @@ export interface PersonaDetail {
 }
 
 // ---- 发布 ----
-export interface Funnel { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; sessions: number; reviews: number; rating: number | null; by_channel?: Record<string, { reached: number; opened: number }> }
+export interface Funnel { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; queued?: number; sessions: number; reviews: number; rating: number | null; by_channel?: Record<string, { reached: number; opened: number }> }
 export interface Audience { locales?: string[]; age_min?: number; age_max?: number; segments?: string[]; tags?: string[] }
 export type LaunchStatus = 'live' | 'paused' | 'ended';
 export interface Launch { id: string; app_id: string; name: string; tagline: string; description: string | null; url: string; landing_url: string | null; form: string; shots: string[]; ad_text: string | null; intensity: number; audience: Audience; status: LaunchStatus; created_at: string; funnel: Funnel; spend: { usd: number; tokens: number } }

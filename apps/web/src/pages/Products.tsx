@@ -6,7 +6,8 @@ import { useT } from '../lib/i18n.ts';
 import { useLiveLaunches } from '../lib/stream.ts';
 import type { Funnel, Launch, LaunchLive } from '../lib/types.ts';
 import { openPublish } from '../components/Publish.tsx';
-import { Button, Empty, ErrorState, PageHead, Skeleton } from '../components/ui.tsx';
+import { useUsingNow } from '../lib/live.ts';
+import { Avatar, Button, Empty, ErrorState, PageHead, Skeleton } from '../components/ui.tsx';
 
 export const FUNNEL_STEPS = ['reached', 'noticed', 'interested', 'opened', 'came_back'] as const;
 export type FunnelNums = Pick<Funnel, (typeof FUNNEL_STEPS)[number] | 'using_now'>;
@@ -19,14 +20,14 @@ export function useLiveFunnel<T extends { id: string; funnel: Funnel; intensity:
 
 function Row({ launch }: { launch: Launch }) {
   const { t } = useT();
-  const l = useLiveFunnel(launch); const f = l.funnel;
+  const l = useLiveFunnel(launch); const f = l.funnel; const who = useUsingNow(l.app_id);
   return (
     <li className="border-t border-border">
       <Link to="/products/$id" params={{ id: l.id }} className="group grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-6 gap-y-2 py-4 md:grid-cols-[minmax(0,1fr)_repeat(5,4.75rem)_4rem]">
         <span className="min-w-0">
           <span className="flex items-center gap-2">
             <span className="truncate text-base font-semibold text-fg-display group-hover:text-accent">{l.name}</span>
-            {f.using_now > 0 && <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-accent"><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('using_n', { n: f.using_now })}</span>}
+            {who.length > 0 && <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-accent" title={who.map((p) => p.name).join('、')}><span className="h-1.5 w-1.5 rounded-full bg-accent live-dot" />{t('using_n', { n: who.length })}<span className="hidden -space-x-1.5 sm:flex">{who.slice(0, 5).map((p) => <Avatar key={p.id} id={p.id} size={18} className="ring-2 ring-bg" />)}</span></span>}
             {l.status !== 'live' && <span className="chip shrink-0">{t(l.status === 'paused' ? 'st_paused' : 'st_ended')}</span>}
           </span>
           <span className="mt-0.5 block truncate text-sm text-fg-muted">{l.tagline}</span>
