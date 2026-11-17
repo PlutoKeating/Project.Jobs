@@ -197,6 +197,7 @@ export class SessionRunner {
       const takeover = await this.browser.takeoverUrl();
       const tid = newId('human');
       await db.insert(humanTasks).values({ id: tid, session_id: this.sess.id, study_id: this.study.id, reason: zh ? '页面出现人机验证（验证码）' : 'Captcha detected', url: obs.url, cdp_url: takeover });
+      void import('../launch/notice.ts').then((m) => m.emitNotice({ kind: 'human', task_id: tid, session_id: this.sess.id, reason: zh ? '页面出现人机验证（验证码）' : 'Captcha detected', ts: Date.now() }));
       await db.update(sessions).set({ status: 'waiting_human' }).where(eq(sessions.id, this.sess.id));
       return { done: false, needsHuman: { reason: 'ENV_CAPTCHA', takeover, task_id: tid } };
     }

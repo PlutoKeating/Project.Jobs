@@ -140,6 +140,7 @@ async function synthTrack(studyId: string, opts: { cleanReplay: boolean; lang: '
     for (const [i, e] of evIds.entries()) await linkEvidence(e, 'issue', issueId, i === 0 ? 'primary' : 'supporting');
     if (replay) await linkEvidence(replay.evidence_id, 'issue', issueId, replay.reproduced ? 'supporting' : 'counter');
     const isNew = !existing;
+    if (isNew && !folded && track === 'experience') { const { launches } = await import('@pux/db'); const [l] = await db.select({ id: launches.id }).from(launches).where(eq(launches.study_id, studyId)); if (l) (await import('../launch/notice.ts')).emitNotice({ kind: 'issue_new', launch_id: l.id, issue_id: issueId, severity: row.severity, title: g.title, ts: Date.now() }); }
     await touch(study.app_version_id, 'issue', fp, sessIds[0], { label: g.title, newIssue: isNew });
     created.push(issueId);
   }

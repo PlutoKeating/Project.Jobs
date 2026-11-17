@@ -9,6 +9,7 @@ import { synthesizeIssues } from '../evaluation/issues.ts';
 import { addIntention, audienceMatch, decide, exposureChance, notices, recordExposure, whatTheySee, type Channel, type Seen } from './exposure.ts';
 import { listLaunches, storeListing, type LaunchRow } from './launch.ts';
 import { afterUse, startUsage } from './usage.ts';
+import { emitNotice } from './notice.ts';
 
 export interface Citizen { id: string; spec: PersonaSpec; place_id: string; place_kind: string; phone: number; in_session: boolean; asleep: boolean; attention: number }
 export interface EngineHooks { say?: (personaId: string, text: string, tone: 'neutral' | 'happy' | 'confused' | 'angry') => void; log?: (msg: string) => void }
@@ -155,6 +156,8 @@ export class LaunchEngine {
     await evaluateSessionPost(job.sessionId).catch((e) => logger.warn({ err: String(e).slice(0, 200) }, '评估失败'));
     const a = await afterUse(job.sessionId).catch((e) => { logger.warn({ err: String(e).slice(0, 200) }, '用完之后的处理失败'); return undefined; });
     if (a && (a.review || a.post || a.told)) log(`  ↳ ${a.review ? '写了评论 ' : ''}${a.post ? '发了动态 ' : ''}${a.told ? `跟${a.told}说了` : ''}`);
+    const [sr] = await getDb().select({ persona_id: sessions.persona_id, outcome: sessions.outcome, plan: sessions.plan_reason }).from(sessions).where(eq(sessions.id, job.sessionId));
+    if (sr) emitNotice({ kind: 'session_end', launch_id: job.launchId, session_id: job.sessionId, persona_id: sr.persona_id, outcome: sr.outcome, invited: !!(sr.plan as { invited?: boolean } | null)?.invited, ts: Date.now() });
     // 攒够几次使用就把问题重新归并一次
     const n = (this.sinceSynth.get(job.studyId) ?? 0) + 1; this.sinceSynth.set(job.studyId, n);
     if ((n >= 3 || (!this.queue.some((q) => q.studyId === job.studyId) && this.running.size <= 1)) && !this.synthBusy.has(job.studyId)) {

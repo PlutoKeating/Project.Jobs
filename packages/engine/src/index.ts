@@ -35,4 +35,5 @@ export * from './launch/lifecycle.ts';
 export * from './launch/report.ts';
 export * from './launch/issues.ts';
 export * from './launch/github.ts';
+export * from './launch/notice.ts';
 export * from './mail/index.ts';

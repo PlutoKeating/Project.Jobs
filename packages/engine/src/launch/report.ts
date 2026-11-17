@@ -193,6 +193,7 @@ ${iss.slice(0, 20).map((i) => `- [${i.severity}] ${zh ? i.title : (i.title_en ??
 }
 
 async function save(launchId: string, lang: string, basis: string, data: LaunchReport) {
+  if (lang === 'zh' && data.verdict !== 'too_early') void import('./notice.ts').then((m) => m.emitNotice({ kind: 'report', launch_id: launchId, headline: data.headline, verdict: data.verdict, people_used: data.people_used, ts: Date.now() }));
   await getDb().insert(launchReports).values({ launch_id: launchId, lang, basis, data }).onConflictDoUpdate({ target: [launchReports.launch_id, launchReports.lang], set: { basis, data, created_at: new Date() } });
 }
 
