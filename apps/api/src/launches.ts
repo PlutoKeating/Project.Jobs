@@ -34,6 +34,7 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
     if (!requireAdmin(q, r)) return;
     const b = (q.body ?? {}) as Partial<E.PublishInput>;
     if (!b.name || !b.tagline || !b.url) return r.code(400).send({ error: 'name, tagline and url are required' });
+    if (b.intensity !== undefined && !(b.intensity >= 0 && b.intensity <= 1)) return r.code(400).send({ error: 'intensity must be between 0 and 1 (0.7 means 70%)' });
     try { return await view(await E.publishProduct(b as E.PublishInput)); } catch (e) { return r.code(400).send({ error: String((e as Error).message) }); }
   });
 
@@ -87,6 +88,7 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
     if (!requireAdmin(q, r)) return;
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
     const b = (q.body ?? {}) as { intensity?: number; audience?: E.LaunchRow['audience']; status?: 'live' | 'paused' | 'ended'; ad_text?: string; tagline?: string; description?: string; landing_url?: string };
+    if (b.intensity !== undefined && !(b.intensity >= 0 && b.intensity <= 1)) return r.code(400).send({ error: 'intensity must be between 0 and 1 (0.7 means 70%)' });   // 以前超出范围的值被悄悄截成 1，70 会变成「全城铺开」
     const out = await E.setPromotion(l.id, { intensity: b.intensity, audience: b.audience ?? undefined, status: b.status, ad_text: b.ad_text, tagline: b.tagline?.trim() || undefined, description: b.description, landing_url: b.landing_url, source: q.headers['user-agent']?.toString().slice(0, 40) });
     return out ? view(out) : r.code(404).send({ error: 'not_found' });
   });

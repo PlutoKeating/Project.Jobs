@@ -15,7 +15,7 @@ const documented = new Set(readFileSync(configPath('..', 'docs', 'research', 'RE
 
 describe('出门与吃喝玩乐（PersonaSpec.leisure）', () => {
   it('随包居民与手写人物都带着这一层，并通过校验', () => {
-    expect(specs.length).toBe(185 + 14);
+    expect(specs.length).toBe(228 + 14);
     for (const s of specs) expect(s.leisure, s.id).toBeDefined();
   });
 
