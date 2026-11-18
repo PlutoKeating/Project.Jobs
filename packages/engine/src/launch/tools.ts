@@ -3,7 +3,7 @@
 // 所以权限检查只在接口那一层。这里不碰数据库，也不依赖 MCP SDK。
 import { z } from '@pux/core';
 import { MORE_TOOLS } from './tools-more.ts';
-import { funnelLine, reportText, type EngineeringView, type LaunchView, type ReportView } from './text.ts';
+import { cleanReason, funnelLine, reportText, type EngineeringView, type LaunchView, type ReportView } from './text.ts';
 
 export type ToolApi = <T = unknown>(path: string, opts?: { method?: string; body?: unknown; timeoutMs?: number }) => Promise<T>;
 export interface ToolCtx { api: ToolApi; signal?: AbortSignal; progress?: (done: number, total: number, message: string) => Promise<void> }
@@ -22,7 +22,7 @@ interface Use { session_id: string; persona_id: string; name: string; occupation
 type Detail = LaunchView & { uses: Use[]; passersby: { name: string; channel: string; reaction: string; thought: string | null }[] };
 const ACTIVE = new Set(['planned', 'running']);
 const sleep = (ms: number, signal?: AbortSignal) => new Promise<void>((res) => { const t = setTimeout(res, ms); signal?.addEventListener('abort', () => { clearTimeout(t); res(); }, { once: true }); });
-const useLine = (u: Use) => `  · ${u.name}（${u.age} 岁，${u.occupation}）${u.where ? `在「${u.where}」` : ''}${u.invited ? '【受邀】' : ''}：${u.status === 'running' ? '正在用' : u.status === 'planned' ? '排队中（决定要用了，还没轮到，不算在用）' : u.status === 'waiting_human' ? '卡在需要人介入的地方（例如验证码），在网页的「接管」里处理' : `${u.outcome ?? u.status}${u.end_reason ? ` — ${u.end_reason.slice(0, 80)}` : ''}`}  [persona_id=${u.persona_id}]`;
+const useLine = (u: Use) => `  · ${u.name}（${u.age} 岁，${u.occupation}）${u.where ? `在「${u.where}」` : ''}${u.invited ? '【受邀】' : ''}：${u.status === 'running' ? '正在用' : u.status === 'planned' ? '排队中（决定要用了，还没轮到，不算在用）' : u.status === 'waiting_human' ? '卡在需要人介入的地方（例如验证码），在网页的「接管」里处理' : `${u.outcome ?? u.status}${cleanReason(u.end_reason) ? ` — ${cleanReason(u.end_reason).slice(0, 80)}` : ''}`}  [persona_id=${u.persona_id}]`;
 const launchOf = (api: ToolApi, product: unknown) => api<LaunchView>(`/launches/${encodeURIComponent(String(product))}`);
 
 const BASE_TOOLS: JobsTool[] = [

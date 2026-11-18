@@ -253,6 +253,7 @@ export class BrowserSession implements Executor {
       extracted = { elements: [], captcha: false, text: '', scroll: { y: 0, max_y: 0 }, notifications: [], hidden: false, dialogsInDom: 1 };
     } else {
       await this.page.waitForLoadState('domcontentloaded', { timeout: 8000 }).catch(() => {});
+      await this.settleRender();
       extracted = await this.page.evaluate(EXTRACT_SCRIPT).catch(async () => { await sleep(800); return this.page.evaluate(EXTRACT_SCRIPT); }).catch(() => ({ elements: [], captcha: false, text: '', scroll: { y: 0, max_y: 0 }, notifications: [], hidden: false, dialogsInDom: 0 })) as typeof extracted;
     }
     const elements: UIElement[] = extracted.elements;
@@ -626,6 +627,22 @@ export class BrowserSession implements Executor {
     const d = this.pendingDialog; this.pendingDialog = undefined;
     if (!d) return;
     if (accept) await d.accept(promptText).catch(() => {}); else await d.dismiss().catch(() => {});
+  }
+
+  /** 截屏前等页面真的画出东西：单页应用在 domcontentloaded 时常常还是空壳，字体也可能没到。
+   *  最多等 4 秒，等到有可见文字（或图片/画布）且字体就绪就放行；一直是空的就如实拍下空白 */
+  private async settleRender() {
+    const t0 = Date.now();
+    await this.page.evaluate(() => (document.fonts && document.fonts.ready ? Promise.race([document.fonts.ready, new Promise((r) => setTimeout(r, 1500))]) : null)).catch(() => {});
+    while (Date.now() - t0 < 4000) {
+      const painted = await this.page.evaluate(() => {
+        const b = document.body; if (!b) return false;
+        if ((b.innerText || '').trim().length > 12) return true;
+        return !!b.querySelector('img,canvas,video,svg') && b.getBoundingClientRect().height > 100;
+      }).catch(() => true);
+      if (painted) { await sleep(120); return; }
+      await sleep(250);
+    }
   }
 
   /** 选中下拉框里的一项：先找页面里画出的列表项，再找原生 <option>；成功返回 true，找不到返回 false 让调用方照常点击 */

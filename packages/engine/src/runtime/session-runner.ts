@@ -243,6 +243,10 @@ export class SessionRunner {
       this.prevStepId = stepId; this.stepIdx++;
       await db.update(sessions).set({ steps_count: this.stepIdx }).where(eq(sessions.id, this.sess.id));
     };
+    // 嘴上说「没用、不看了」却选了「办成了」：按放弃算，成功与放弃的标准要前后一致
+    const saidNever = /没用|没意思|不看了|不想看|算了|不需要|用不上|不适合我|没兴趣|不感兴趣|not useful|useless|never mind|not interested|no use|not for me|won'?t (look|use)/i.test(`${mind.end_reason} ${mind.monologue}`)
+      && !/(办成|搞定|成功|完成|got it|done it|worked)/i.test(mind.end_reason ?? '');
+    if (mind.decision === 'done' && saidNever) { await finishStep(); return this.end('gave_up', mind.end_reason || mind.monologue); }
     if (mind.decision === 'done') {
       await finishStep();
       const tc = taskCompleted(this.signals, this.obsLog);

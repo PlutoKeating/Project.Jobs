@@ -3,6 +3,7 @@
 import { logger, z, type PersonaSpec, langOf } from '@pux/core';
 import { and, eq, exposures, getDb, inArray, interviews, issues, launchReports, launches, mailbox, observations, personas, posts, sessions, steps, storeReviews } from '@pux/db';
 import { gateway } from '@pux/llm';
+import { cleanReason } from './text.ts';
 import { launchFunnel, launchVersionList, type Funnel, type LaunchRow } from './launch.ts';
 
 export interface Moment { ref: string; session_id: string; step_idx: number; persona_id: string; persona: string; who: string; quote: string; screenshot_ev?: string; kind: 'first_look' | 'stuck' | 'left' | 'done' | 'said_after' | 'review' | 'post' }
@@ -50,7 +51,7 @@ export async function gatherMoments(l: LaunchRow): Promise<{ moments: Moment[]; 
   const ps = ids.length ? await db.select({ id: personas.id, spec: personas.spec }).from(personas).where(and(inArray(personas.id, ids), eq(personas.active, true))) : [];
   const people = new Map(ps.map((p) => [p.id, p.spec as PersonaSpec]));
   const moments: Moment[] = []; let n = 0;
-  const add = (m: Omit<Moment, 'ref' | 'persona' | 'who'>) => { const p = people.get(m.persona_id); if (!p || !m.quote.trim()) return; moments.push({ ...m, ref: `m${++n}`, persona: p.identity.name, who: brief(p, langOf(p.locale) === 'zh'), quote: m.quote.trim().slice(0, 220) }); };
+  const add = (m: Omit<Moment, 'ref' | 'persona' | 'who'>) => { const p = people.get(m.persona_id); if (!p || !m.quote.trim()) return; moments.push({ ...m, ref: `m${++n}`, persona: p.identity.name, who: brief(p, langOf(p.locale) === 'zh'), quote: cleanReason(m.quote).slice(0, 220) }); };
   for (const s of ss.slice(-60)) {
     const st = await db.select().from(steps).where(eq(steps.session_id, s.id)).orderBy(steps.idx);
     const obs = await db.select({ step_idx: observations.step_idx, data: observations.data }).from(observations).where(eq(observations.session_id, s.id));
@@ -59,7 +60,7 @@ export async function gatherMoments(l: LaunchRow): Promise<{ moments: Moment[]; 
     add({ session_id: s.id, step_idx: 0, persona_id: s.persona_id, quote: st[0].monologue ?? '', screenshot_ev: shot(0), kind: 'first_look' });
     for (let i = 0; i < st.length - 1; i++) if (st[i].expectation_violated) add({ session_id: s.id, step_idx: st[i + 1].idx, persona_id: s.persona_id, quote: st[i + 1].monologue ?? '', screenshot_ev: shot(st[i + 1].idx), kind: 'stuck' });
     const last = st[st.length - 1];
-    add({ session_id: s.id, step_idx: last.idx, persona_id: s.persona_id, quote: s.outcome === 'success' ? (last.monologue ?? '') : `${last.monologue ?? ''}${s.end_reason ? `（${s.end_reason.slice(0, 80)}）` : ''}`, screenshot_ev: shot(last.idx), kind: s.outcome === 'success' ? 'done' : 'left' });
+    add({ session_id: s.id, step_idx: last.idx, persona_id: s.persona_id, quote: s.outcome === 'success' ? cleanReason(last.monologue) : `${cleanReason(last.monologue)}${cleanReason(s.end_reason) ? `（${cleanReason(s.end_reason).slice(0, 80)}）` : ''}`, screenshot_ev: shot(last.idx), kind: s.outcome === 'success' ? 'done' : 'left' });
     const [iv] = await db.select().from(interviews).where(and(eq(interviews.session_id, s.id), eq(interviews.kind, 'post_session')));
     for (const qa of (iv?.qa ?? []).slice(1, 4)) add({ session_id: s.id, step_idx: last.idx, persona_id: s.persona_id, quote: qa.a, screenshot_ev: shot(last.idx), kind: 'said_after' });
   }
@@ -152,6 +153,10 @@ async function writeReport(l: LaunchRow, lang: 'zh' | 'en', g: { funnel: Funnel;
 - headline：一句话结论，不超过 22 个字。verdict：works（多数人用得下去）、mixed（有人行有人不行）、not_yet（多数人用不下去）。
 - summary：两三句话说清现在的状况。next：如果只改一件事，改哪件（一句话，具体到哪个地方）。
 - 痕迹里如果有人说屏幕「模糊」「看不清某一块」，那是他当时没细看，不是产品的毛病，不要写进结论。
+- 人数只能照抄下面「漏斗」里给的数字（受邀的人和自己遇到的人分开写），不要自己数、也不要写和它对不上的人数。
+- 居民说的话是他当时的感受，不是事实：「按钮被截掉了」「页面卡住了」这类说法，只有「归并后的问题」里出现过、或者有好几个人各自独立提到，才能当成产品的毛病写；否则写成「有人觉得……」。
+- 因为赶时间、饿了、要出门、被别的事叫走而离开的，是他的处境，不是对产品的评价，不要拿来当产品的毛病。
+- 受邀试用的人是被请来的：如果请来的人和产品的对象明显不对口（语言不通、完全用不上），要在 summary 里说清，不要把他们的反应当成目标用户的反应。
 样本很小时要老实说（例如「目前只有 3 个人用过」）。
 所有字段都用中文写，即使痕迹里有别的语言。`
     : `You're looking, on behalf of an indie developer, at what happened after their product "${l.name}" (${l.tagline}) was released into a simulated town. Below are traces people actually left: thoughts while using it (m refs), thoughts of people who saw it and didn't open it (x refs), merged issues, funnel counts. Write the one page they should read.
@@ -165,10 +170,14 @@ Rules:
 - headline: one sentence, at most 12 words. verdict: works / mixed / not_yet.
 - summary: two or three sentences on where things stand. next: if only one thing gets fixed, which (one concrete sentence).
 - If a trace mentions the screen being blurry or an area hard to make out, that person simply wasn't looking closely; it is not a product flaw, leave it out.
+- Quote head-counts only exactly as given in the funnel below (invited and self-found people are counted separately); never count yourself or write numbers that disagree with it.
+- What a resident says is a feeling, not a fact: claims like "the button is cut off" or "the page froze" count as product flaws only if they appear in the merged issues or several people raise them independently; otherwise write "some felt…".
+- Leaving because of hurry, hunger, errands or being called away is their situation, not a verdict on the product; don't list it as a flaw.
+- Invited people were asked to try it: if they clearly don't match the product's audience (language, no use for it), say so in the summary and don't treat their reaction as the target users'.
 Say so plainly when the sample is tiny.
 Write every field in English, even when the traces are in another language.`;
   const kindZh: Record<string, string> = { first_look: '第一眼', stuck: '卡住', left: '走了', done: '办成了', said_after: '用完后说', review: '商店评论', post: '公开动态' };
-  const user = `${zh ? '漏斗（人数）' : 'Funnel (people)'}：${JSON.stringify({ saw: funnel.reached, noticed: funnel.noticed, interested: funnel.interested, opened: funnel.opened, came_back: funnel.came_back, rating: funnel.rating, reviews: funnel.reviews })}
+  const user = `${zh ? '漏斗（人数）' : 'Funnel (people)'}：${JSON.stringify({ saw_naturally: funnel.reached, noticed: funnel.noticed, interested: funnel.interested, opened_on_their_own: funnel.natural_opened, invited_and_tried: funnel.invited, opened_in_total: funnel.opened, finished_using: funnel.finished, found_it_good: funnel.liked, came_back: funnel.came_back, rating: funnel.rating, reviews: funnel.reviews })}
 ${zh ? '用过的人数' : 'People who used it'}：${used}（${nSess} ${zh ? '次使用' : 'sessions'}）
 
 ${zh ? '使用时留下的痕迹' : 'Traces from use'}：

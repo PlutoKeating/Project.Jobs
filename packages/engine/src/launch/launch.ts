@@ -95,25 +95,36 @@ export async function listLaunches(opts: { liveOnly?: boolean } = {}): Promise<L
 
 /** 此刻在用：使用已经开始、还没结束（running，或卡在需要人介入的地方）。排队（planned）不算；开始超过 3 小时还没结束的是中断后留下的残留，也不算（与世界服务的实时跟踪一致） */
 export const usingNow = (s: { status: string; started_at: Date | null }) => (s.status === 'running' || s.status === 'waiting_human') && !!s.started_at && Date.now() - s.started_at.getTime() < 3 * 3600_000;
-export interface Funnel { reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; queued: number; sessions: number; reviews: number; rating: number | null; by_channel: Record<string, { reached: number; opened: number }> }
+export interface Funnel { invited: number; natural_opened: number; finished: number; liked: number; reached: number; noticed: number; interested: number; opened: number; came_back: number; using_now: number; queued: number; sessions: number; reviews: number; rating: number | null; by_channel: Record<string, { reached: number; opened: number }> }
 
 /** 漏斗（按人去重）：看到 → 注意到 → 有兴趣 → 打开过 → 回来再用。数字是这座城里实际发生的人数，不是对真实市场的预测 */
 export async function launchFunnel(launchId: string): Promise<Funnel> {
   const db = getDb();
   const l = (await db.select().from(launches).where(eq(launches.id, launchId)))[0];
   const ex = await db.select().from(exposures).where(eq(exposures.launch_id, launchId));
-  const ss = l ? await db.select({ id: sessions.id, persona_id: sessions.persona_id, status: sessions.status, started_at: sessions.started_at, ctx: sessions.world_context }).from(sessions).where(eq(sessions.study_id, l.study_id)) : [];
+  const ss = l ? await db.select({ id: sessions.id, persona_id: sessions.persona_id, status: sessions.status, outcome: sessions.outcome, started_at: sessions.started_at, ctx: sessions.world_context, plan: sessions.plan_reason, summary: sessions.summary }).from(sessions).where(and(eq(sessions.study_id, l.study_id))) : [];
   const uniq = (xs: string[]) => new Set(xs).size;
-  const opened = new Set(ss.map((s) => s.persona_id));
+  const live = ss.filter((s) => s.status !== 'cancelled');   // 被取消的受邀使用不算人数
+  const invitedOf = (s: { plan: unknown }) => !!(s.plan as { invited?: boolean } | null)?.invited;
+  const opened = new Set(live.map((s) => s.persona_id));
+  const naturalOpened = new Set(live.filter((s) => !invitedOf(s)).map((s) => s.persona_id));
   const days = new Map<string, Set<number>>();
-  for (const s of ss) { const d = (s.ctx as { day?: number } | null)?.day ?? 0; days.set(s.persona_id, (days.get(s.persona_id) ?? new Set()).add(d)); }
+  for (const s of live) { const d = (s.ctx as { day?: number } | null)?.day ?? 0; days.set(s.persona_id, (days.get(s.persona_id) ?? new Set()).add(d)); }
   const rv = await db.select().from(storeReviews).where(eq(storeReviews.launch_id, launchId));
   const by: Funnel['by_channel'] = {};
   for (const e of ex) { by[e.channel] ??= { reached: 0, opened: 0 }; by[e.channel].reached++; if (e.reaction === 'opened') by[e.channel].opened++; }
+  // 受邀的人是被「递了手机」的，不是自己遇到的：看到、注意到、有兴趣这三层只算自然遇到的人，受邀的单独数，否则四层数字会被抹成同一个数
+  const nat = ex.filter((e) => e.channel !== 'invite');
+  // 「觉得还挺好用」：用完的人里办成了事、打算再来、或打了 4 星以上的
+  const done = live.filter((s) => ['finished', 'evaluated'].includes(s.status));
+  const rated4 = new Set(rv.filter((r) => r.rating >= 4).map((r) => r.persona_id));
+  const likes = (s: (typeof done)[number]) => s.outcome === 'success' || ['soon', 'habit'].includes((s.summary as { memory?: { come_back?: string } } | null)?.memory?.come_back ?? '') || rated4.has(s.persona_id);
+  const liked = new Set(done.filter(likes).map((s) => s.persona_id));
   return {
-    reached: uniq([...ex.map((e) => e.persona_id), ...opened]), noticed: uniq([...ex.filter((e) => e.reaction !== 'unnoticed').map((e) => e.persona_id), ...opened]),
-    interested: uniq([...ex.filter((e) => ['curious_later', 'opened'].includes(e.reaction)).map((e) => e.persona_id), ...opened]), opened: opened.size,
-    came_back: [...days.values()].filter((d) => d.size >= 2).length, using_now: ss.filter(usingNow).length, queued: ss.filter((s) => s.status === 'planned').length, sessions: ss.length,
+    invited: uniq(live.filter(invitedOf).map((s) => s.persona_id)), natural_opened: naturalOpened.size, finished: uniq(done.map((s) => s.persona_id)), liked: liked.size,
+    reached: uniq([...nat.map((e) => e.persona_id), ...naturalOpened]), noticed: uniq([...nat.filter((e) => e.reaction !== 'unnoticed').map((e) => e.persona_id), ...naturalOpened]),
+    interested: uniq([...nat.filter((e) => ['curious_later', 'opened'].includes(e.reaction)).map((e) => e.persona_id), ...naturalOpened]), opened: opened.size,
+    came_back: [...days.values()].filter((d) => d.size >= 2).length, using_now: live.filter(usingNow).length, queued: live.filter((s) => s.status === 'planned').length, sessions: live.length,
     reviews: rv.length, rating: rv.length ? Math.round((rv.reduce((a, r) => a + r.rating, 0) / rv.length) * 10) / 10 : null, by_channel: by,
   };
 }
