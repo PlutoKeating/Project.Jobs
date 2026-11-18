@@ -31,6 +31,9 @@ export type Track = 'experience' | 'engineering';
 export async function synthesizeIssues(studyId: string, opts: { cleanReplay: boolean; lang: 'zh' | 'en' }) {
   const a = await synthTrack(studyId, opts, 'experience');
   const b = await synthTrack(studyId, opts, 'engineering');
+  // 每次合成之后都合并一遍同一件事的重复条目（发布主线不会走批次收尾）
+  const [st] = await getDb().select({ av: studies.app_version_id }).from(studies).where(eq(studies.id, studyId));
+  if (st) await dedupeIssues(st.av).catch((e) => logger.debug({ e: String(e).slice(0, 120) }, '问题去重失败'));
   return [...a, ...b];
 }
 
@@ -83,7 +86,8 @@ async function synthTrack(studyId: string, opts: { cleanReplay: boolean; lang: '
     // ② 干净重放（选第一个带步骤的候选）
     let replay: { reproduced: boolean; repro_path_id: string; evidence_id: string } | undefined;
     const rc = members.find((m) => m.step_idx !== null && m.step_idx !== undefined && ['uap_error', 'expectation_violation', 'abandon', 'stall', 'repeat'].includes(m.source));
-    if (opts.cleanReplay && track === 'experience' && rc && !g.noise) {
+    // 「放弃、停滞、重复」是人（或模拟器）自己的决定，重放不出来也不能当证据；只有确定性的失败（点了没反应、报错）才做重放，其余不声称「已复现」
+    if (opts.cleanReplay && track === 'experience' && rc && !g.noise && ['uap_error', 'expectation_violation'].includes(rc.source)) {
       try {
         const s = sById.get(rc.session_id)!; const p = await getPersona(s.persona_id, s.persona_version);
         const path = await buildReproPath(rc.session_id, rc.step_idx!);
@@ -230,8 +234,11 @@ export async function dedupeIssues(appVersionId: string) {
     const a = all[i]; if (removed.has(a.id)) continue;
     const ea = a.embedding as unknown as number[] | null; if (!ea?.length) continue;
     for (let j = i + 1; j < all.length; j++) {
-      const b = all[j]; if (removed.has(b.id) || b.category !== a.category || b.track !== a.track) continue;
-      const eb = b.embedding as unknown as number[] | null; if (!eb?.length || cosine(ea, eb) < 0.86) continue;
+      const b = all[j]; if (removed.has(b.id) || b.track !== a.track) continue;
+      const eb = b.embedding as unknown as number[] | null; if (!eb?.length) continue;
+      // 同一件事常被归到不同类别（「页面无法向下滑动」和「向下滑动卡住」）：同页面的放宽到 0.78
+      const sim = cosine(ea, eb); const samePage = !!a.url_pattern && a.url_pattern === b.url_pattern;
+      if (!(b.category === a.category ? sim >= 0.86 : false) && !(samePage && sim >= 0.78)) continue;
       a.session_ids = [...new Set([...(a.session_ids ?? []), ...(b.session_ids ?? [])])];
       a.affected_segments = [...new Set([...(a.affected_segments ?? []), ...(b.affected_segments ?? [])])];
       a.affected_personas = [...new Set([...(a.affected_personas ?? []), ...(b.affected_personas ?? [])])];

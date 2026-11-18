@@ -50,6 +50,8 @@ export async function cleanReplay(path: { start_url: string; steps: ReproStep[] 
       const sameError = !target.orig_error || last.error?.code === target.orig_error;
       const sameEffect = target.orig_status === 'success' && !target.orig_error ? (last.effects.url_changed === target.orig_effects?.url_changed) : true;
       reproduced = sameStatus && sameError && sameEffect;
+      // 滚动、等待、按键、悬停、拖动这类动作「没反应」可能只是模拟器自己的问题，用同一套执行器重放一遍等于自己验证自己：不算复现
+      if (['scroll', 'wait', 'key', 'hover', 'drag', 'look_closer'].includes(target.verb)) reproduced = false;
     }
   } catch (e) { log.push({ i: -1, verb: 'error', status: String((e as Error).message).slice(0, 120) }); }
   const shot = await b.page.screenshot({ type: 'jpeg', quality: 60 }).catch(() => null);
