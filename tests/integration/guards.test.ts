@@ -1,6 +1,7 @@
 // 集成测试：滚动、下拉框、首屏等待在真实 Chromium 里的表现（需要本机 Chromium、MinIO、Postgres）
-// 运行：PUX_INTEGRATION=1 pnpm test tests/integration/guards.test.ts
+// 本机依赖服务（Postgres）在线时默认运行；不在线就跳过。PUX_INTEGRATION=0 强制跳过，=1 强制运行。
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { newId, Rng, type ActionRequest } from '@pux/core';
 import { BrowserSession } from '@pux/executor';
@@ -10,7 +11,9 @@ const LONG = `<!doctype html><html><head><meta charset="utf-8"></head><body styl
 <script>document.getElementById('sel').onchange=e=>{document.getElementById('out').textContent='picked='+e.target.value};</script></body></html>`;
 const SLOW = `<!doctype html><html><head><meta charset="utf-8"></head><body><div id="app"></div><script>setTimeout(()=>{document.getElementById('app').innerHTML='<h1>终于画出来了</h1><p>这是一个延迟渲染的页面，里面有足够多的文字。</p>'},1800)</script></body></html>`;
 
-const run = process.env.PUX_INTEGRATION === '1' ? describe : describe.skip;
+const up = await new Promise<boolean>((res) => { const c = connect({ host: '127.0.0.1', port: 55432 }); const done = (v: boolean) => { c.destroy(); res(v); }; c.once('connect', () => done(true)); c.once('error', () => done(false)); setTimeout(() => done(false), 800); });
+const enabled = process.env.PUX_INTEGRATION === '1' || (process.env.PUX_INTEGRATION !== '0' && up);
+const run = enabled ? describe : describe.skip;
 run('护栏与首屏（集成）', () => {
   let server: ReturnType<typeof createServer>; let base = ''; let s: BrowserSession;
   const req = (verb: ActionRequest['verb'], extra: Partial<ActionRequest> = {}): ActionRequest => ({ action_id: newId('act'), session_id: 'it', step_idx: 0, verb, intent_text: verb, success: { any_of: [{ kind: 'viewport_changed' }], within_ms: 1500 }, motor: { precision: 1, typing_cps: 20, typo_rate: 0, one_handed: false, double_tap_risk: 0 }, timeout_ms: 15000, ...extra });
