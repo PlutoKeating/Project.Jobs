@@ -37,6 +37,11 @@ export class LaunchEngine {
       const k = `${e.launch_id}|${e.persona_id}`; const r = this.rel.get(k) ?? { seen: 0, rejected: false, opened: false };
       r.seen++; if (e.reaction === 'not_for_me') r.rejected = true; if (e.reaction === 'opened') r.opened = true; this.rel.set(k, r);
     }
+    // 上次停下时正在进行的使用：进程没了，它们永远不会结束，却会一直显示「在用」、让 wait_for_people 白等。标为中断（不算人数），受邀的可以重新请
+    for (const l of await listLaunches({ liveOnly: true })) {
+      const orphans = await getDb().update(sessions).set({ status: 'cancelled', outcome: 'cancelled', end_reason: '世界服务重启，这次使用被中断了', ended_at: new Date() }).where(and(eq(sessions.study_id, l.study_id), inArray(sessions.status, ['running', 'waiting_human']))).returning({ id: sessions.id });
+      if (orphans.length) logger.warn({ launch: l.id, sessions: orphans.length }, '世界服务重启：把上次中断的使用标为取消');
+    }
     // 上次停下时排着队、还没开始的使用，接着跑
     for (const l of await listLaunches({ liveOnly: true })) for (const s of await getDb().select({ id: sessions.id }).from(sessions).where(and(eq(sessions.study_id, l.study_id), eq(sessions.status, 'planned')))) if (!this.queue.some((q) => q.sessionId === s.id) && !this.running.has(s.id)) this.queue.push({ sessionId: s.id, launchId: l.id, studyId: l.study_id });
   }
