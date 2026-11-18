@@ -56,7 +56,10 @@ const BASE_TOOLS: JobsTool[] = [
     input: { product: z.string().describe('发布 id 或产品名'), refresh: z.boolean().optional().describe('强制重新归纳结论（会等它写完，可能要几分钟）') },
     run: async ({ product, refresh }, { api, signal }) => {
       const l = await launchOf(api, product);
-      let r = await api<ReportView>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 600_000 });
+      // 重写要几分钟，而经公网中转的请求超过约 100 秒就会被 Cloudflare 切断（524）：最多等 80 秒，没写完就说明还在后台写（服务端的任务不会因为这边不等了而停）
+      let r: ReportView;
+      try { r = await api<ReportView>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 80_000 }); }
+      catch (e) { if (!/timeout|abort/i.test(String((e as Error).message))) throw e; return `「${l.name}」的结论正在后台重写（要几分钟），这次先不等。过几分钟再调一次 product_report（不带 refresh）就能拿到新版。`; }
       // 有新的使用、新的一版在后台写：最多等 1 分钟拿新版，别让调用方拿着旧结论自己猜什么时候完整
       for (let i = 0; r.refreshing && i < 6 && !signal?.aborted; i++) { await sleep(10_000, signal); r = await api<ReportView>(`/launches/${l.id}/report`, { timeoutMs: 120_000 }); }
       const eng = await api<EngineeringView>(`/launches/${l.id}/engineering`);
