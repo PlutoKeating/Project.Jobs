@@ -348,13 +348,15 @@ sub(SUBJ.cmdInvite, async (d) => {
   const busy = new Set(roster.filter((r) => !!live.get(r.id)?.session).map((r) => r.id));
   // 同一份请求在几分钟内重复到达（连接中途断了、调用方重试）：返回上一次的结果，不再多请一批人
   const key = JSON.stringify([c.launch_id, c.n, c.segment, c.locale, c.query, c.min_age, c.max_age, c.persona_ids, c.want]);
-  const prev = recentInvites.get(key); if (prev && Date.now() - prev.at < 180_000) return { ...prev.out, notes: [...(prev.out.notes as string[] ?? []), '这是一份刚刚处理过的相同请求，没有重复邀请，返回的是上一次的结果'] };
+  const prev = recentInvites.get(key); if (prev && Date.now() - prev.at < 600_000) return { ...prev.out, notes: [...(prev.out.notes as string[] ?? []), '这是一份刚刚处理过的相同请求，没有重复邀请，返回的是上一次的结果'] };
   // 这个产品上已经有排队或进行中的使用的人，不再重复请
   const active = new Set((await getDb().select({ p: sessions.persona_id }).from(sessions).where(and(eq(sessions.study_id, l.study_id), inArray(sessions.status, ['planned', 'running', 'waiting_human'])))).map((x) => x.p));
   for (const id of active) busy.add(id);
   const pick = Engine.pickInvitees(roster.map((r) => ({ id: r.id, segment: r.segment, spec: r.spec })), c, { used, busy, productLocale: Engine.productLocale(l), shuffle: (xs) => [...xs].sort(() => Math.random() - 0.5) });
   const r = await Engine.inviteToLaunch(l, pick.picks.map((x) => ({ id: x.id, spec: x.spec })), { want: c.want });
   await engine.enqueue(r.ids, l);
+  // 每次邀请都留一条日志：谁请的、条件、请到谁、没请成谁。以后「请了 2 个怎么冒出 14 个」直接查这里
+  logger.info({ launch: l.id, product: l.name, filter: { n: c.n, segment: c.segment, locale: c.locale, query: c.query, min_age: c.min_age, max_age: c.max_age, persona_ids: c.persona_ids, want: c.want?.slice(0, 40) }, invited: r.invited.map((x) => x.name), skipped: r.skipped.map((x) => x.name), matched: pick.matched }, '邀请');
   const out = { invited: r.ids.length, session_ids: r.ids, people: r.invited, skipped: r.skipped, matched: pick.matched, notes: pick.notes };
   recentInvites.set(key, { at: Date.now(), out });
   return out;
