@@ -86,8 +86,8 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
   app.post('/api/v1/launches/:id/promotion', async (q, r) => {
     if (!requireAdmin(q, r)) return;
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
-    const b = (q.body ?? {}) as { intensity?: number; audience?: E.LaunchRow['audience']; status?: 'live' | 'paused' | 'ended'; ad_text?: string; tagline?: string };
-    const out = await E.setPromotion(l.id, { intensity: b.intensity, audience: b.audience ?? undefined, status: b.status, ad_text: b.ad_text, tagline: b.tagline });
+    const b = (q.body ?? {}) as { intensity?: number; audience?: E.LaunchRow['audience']; status?: 'live' | 'paused' | 'ended'; ad_text?: string; tagline?: string; description?: string; landing_url?: string };
+    const out = await E.setPromotion(l.id, { intensity: b.intensity, audience: b.audience ?? undefined, status: b.status, ad_text: b.ad_text, tagline: b.tagline?.trim() || undefined, description: b.description, landing_url: b.landing_url, source: q.headers['user-agent']?.toString().slice(0, 40) });
     return out ? view(out) : r.code(404).send({ error: 'not_found' });
   });
 
@@ -120,6 +120,12 @@ export function launchRoutes(app: FastifyInstance, bus: Bus | undefined) {
     if (!requireAdmin(q, r)) return;
     const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
     try { return await request(SUBJ.cmdInvite, { ...(q.body as object), launch_id: l.id }, 180_000); } catch (e) { return r.code(503).send({ error: String((e as Error).message), hint: 'world service not running' }); }
+  });
+
+  app.post('/api/v1/launches/:id/cancel', async (q, r) => {
+    if (!requireAdmin(q, r)) return;
+    const l = await E.getLaunch((q.params as P).id); if (!l) return r.code(404).send({ error: 'not_found' });
+    try { return await request(SUBJ.cmdCancelSessions, { ...(q.body as object), launch_id: l.id }, 60_000); } catch (e) { return r.code(503).send({ error: String((e as Error).message), hint: 'world service not running' }); }
   });
 
   // ---- 城里的人看到的应用商店与动态 ----

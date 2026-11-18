@@ -629,7 +629,7 @@ export const worldKv = pgTable('world_kv', {
 // ============================================================
 // 发布（阶段③）：把产品发布到世界里，人们自己决定看不看、用不用、跟谁说
 // ============================================================
-export interface AudienceRow { locales?: string[]; age_min?: number; age_max?: number; segments?: string[]; tags?: string[] }
+export interface AudienceRow { locales?: string[]; age_min?: number; age_max?: number; segments?: string[]; tags?: string[]; occupations?: string[] }
 
 export const launches = pgTable('launches', {
   id: text('id').primaryKey(),

@@ -7,7 +7,11 @@ export interface VersionView { n: number; note: string | null; at: string; sessi
 export interface EngineeringView { version?: VersionView | null; experienced: { id: string; severity: string; title: string; description: string; where: string | null; people: number; sessions?: number; sessions_since_version?: number | null; reproduced: boolean | null; steps: string[] }[]; appendix: { id: string; severity: string; category: string; title: string; description: string; recommendation: string | null; where: string | null }[]; mail?: { mails: number; sessions: number; opened: number; median_delay_s: number | null; max_delay_s: number | null; switches: number; forgot: number; mistyped: number } | null }
 
 const pct = (v: number) => `${Math.round(v * 100)}%`;
-export const funnelLine = (f: FunnelView) => `自然遇到：看到 ${f.reached} 人 → 注意到 ${f.noticed} → 有兴趣 ${f.interested} → 自己点开 ${f.natural_opened ?? f.opened}${f.invited ? ` ｜ 受邀 ${f.invited} 人` : ''} ｜ 一共打开过 ${f.opened} 人${f.finished ? `，其中用完 ${f.finished} 人、觉得好用 ${f.liked ?? 0} 人（${Math.round(((f.liked ?? 0) / f.finished) * 100)}%）` : ''} ｜ 回来再用 ${f.came_back}${f.using_now || f.queued ? `（此刻 ${f.using_now} 人在用${f.queued ? `，${f.queued} 人排队` : ''}）` : ''}${f.rating ? ` · 评分 ${f.rating}（${f.reviews} 条）` : ''}`;
+export const funnelLine = (f: FunnelView) => {
+  const head = f.invited ? `自然遇到：看到 ${f.reached} 人 → 注意到 ${f.noticed} → 有兴趣 ${f.interested} → 自己点开 ${f.natural_opened ?? 0} ｜ 受邀 ${f.invited} 人 ｜ 一共打开过 ${f.opened} 人` : `看到 ${f.reached} 人 → 注意到 ${f.noticed} → 有兴趣 ${f.interested} → 打开过 ${f.opened}`;
+  const good = f.finished ? `（用完 ${f.finished} 人，觉得好用 ${f.liked ?? 0} 人，${Math.round(((f.liked ?? 0) / f.finished) * 100)}%）` : '';
+  return `${head}${good} → 回来再用 ${f.came_back}${f.using_now || f.queued ? `（此刻 ${f.using_now} 人在用${f.queued ? `，${f.queued} 人排队` : ''}）` : ''}${f.rating ? ` · 评分 ${f.rating}（${f.reviews} 条）` : ''}`;
+};
 
 /** 把一页结论排成纯文本（终端和 coding agent 都读这一份） */
 export function reportText(l: LaunchView, r: ReportView, eng?: EngineeringView): string {
@@ -18,7 +22,7 @@ export function reportText(l: LaunchView, r: ReportView, eng?: EngineeringView):
     `${l.name} — ${l.tagline}`, `${r.headline}  [${verdict}]`,
     ...(r.failed ? [`（归纳没有成功：${r.failed.reason}${r.verdict === 'too_early' ? '' : '。下面是上一版'}）`] : r.refreshing ? ['（有新的使用，新的一版正在后台归纳，几分钟后再取）'] : []),
     '', r.summary, '',
-    `漏斗（这座城里实际发生的人数，模拟）：${funnelLine(r.funnel)}`, `宣发强度 ${pct(l.intensity)} · 已花费约 $${l.spend.usd}`,
+    `漏斗（这座城里实际发生的人数，模拟）：${funnelLine(r.funnel)}`, `宣发强度 ${pct(l.intensity)} · 模型费用约 $${l.spend.usd}（居民思考和使用花的，不是宣发花费；宣发是免费的旋钮）`,
     sec('最让人难受的地方', r.hurts), sec('让人高兴的地方', r.delights), sec('会留下的人', r.who_stays), sec('会走的人', r.who_leaves), sec('看到了却没点开', r.why_not_opened),
     r.next ? `\n如果只改一件事：${r.next}` : '',
   ];

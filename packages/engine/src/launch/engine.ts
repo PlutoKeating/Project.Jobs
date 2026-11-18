@@ -1,7 +1,7 @@
 // 发布引擎：世界每往前走一段时间，已发布的产品就可能出现在某些人面前；注意到的人自己决定要不要点开；
 // 点开的人排队使用（一次使用 = 一个浏览器会话）；用完之后评估、留下评论和口碑。由世界服务驱动（见 apps/world）。
 import { logger, Rng, type PersonaSpec, langOf } from '@pux/core';
-import { and, desc, eq, exposures, getDb, gt, intentions, posts, sessions } from '@pux/db';
+import { and, desc, eq, exposures, getDb, gt, inArray, intentions, posts, sessions } from '@pux/db';
 import { dayIndex, liveContextFor, type LiveContext } from '@pux/jobsworld';
 import { evaluateSessionPost, runSessionInline } from '../control/study.ts';
 import { SessionRunner } from '../runtime/session-runner.ts';
@@ -139,6 +139,16 @@ export class LaunchEngine {
   /** 把手机递给一批人之后，把这些使用排进队列 */
   enqueue(sessionIds: string[], l: LaunchRow) { if (this.cancelled.has(l.study_id)) return; for (const id of sessionIds) this.queue.push({ sessionId: id, launchId: l.id, studyId: l.study_id }); this.pump(); }
 
+  /** 取消排队中或正在进行的使用（受邀的、自己点开的都行）。排队的直接作废，进行中的在当前这一步做完后停下，都不整理记忆、不评估 */
+  async cancelSessions(ids: string[]): Promise<number> {
+    if (!ids.length) return 0;
+    const db = getDb(); const set = new Set(ids);
+    this.queue = this.queue.filter((q) => !set.has(q.sessionId));
+    for (const id of ids) SessionRunner.get(id)?.cancel();
+    await db.update(sessions).set({ status: 'cancelled', outcome: 'cancelled', end_reason: '被取消了', ended_at: new Date() }).where(and(inArray(sessions.id, ids), inArray(sessions.status, ['planned', 'running'])));
+    return ids.length;
+  }
+
   private pump() {
     const max = this.opts.concurrency ?? 3;
     while (this.running.size < max && this.queue.length) {
@@ -152,7 +162,7 @@ export class LaunchEngine {
     const ep = this.epoch.get(job.studyId) ?? 0;
     const outcome = await runSessionInline(job.sessionId, () => {});
     log(`■ ${job.sessionId} 结局：${outcome}`);
-    if (this.stale(job.studyId, ep)) return;         // 产品被清零或下线：不评估、不留口碑
+    if (this.stale(job.studyId, ep) || outcome === 'cancelled') return;         // 产品被清零或下线、或这次使用被取消：不评估、不留口碑
     await evaluateSessionPost(job.sessionId).catch((e) => logger.warn({ err: String(e).slice(0, 200) }, '评估失败'));
     const a = await afterUse(job.sessionId).catch((e) => { logger.warn({ err: String(e).slice(0, 200) }, '用完之后的处理失败'); return undefined; });
     if (a && (a.review || a.post || a.told)) log(`  ↳ ${a.review ? '写了评论 ' : ''}${a.post ? '发了动态 ' : ''}${a.told ? `跟${a.told}说了` : ''}`);

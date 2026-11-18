@@ -71,9 +71,11 @@ export async function publishProduct(raw: PublishInput): Promise<LaunchRow> {
 }
 
 /** 上帝视角的宣发旋钮：强度（悄悄上线 → 全城铺开）和投给谁；也可以暂停或结束 */
-export async function setPromotion(id: string, patch: { intensity?: number; audience?: AudienceRow; status?: 'live' | 'paused' | 'ended'; ad_text?: string; tagline?: string }) {
+export async function setPromotion(id: string, patch: { intensity?: number; audience?: AudienceRow; status?: 'live' | 'paused' | 'ended'; ad_text?: string; tagline?: string; description?: string; landing_url?: string; source?: string }) {
   const set: Partial<LaunchRow> = {};
-  if (patch.intensity !== undefined) set.intensity = clamp01(patch.intensity);
+  if (patch.intensity !== undefined) { set.intensity = clamp01(patch.intensity); const [cur] = await getDb().select({ i: launches.intensity }).from(launches).where(eq(launches.id, id)); logger.info({ launch: id, from: cur?.i, to: set.intensity, by: patch.source ?? 'api' }, '宣发强度改动'); }
+  if (patch.description !== undefined) set.description = patch.description;
+  if (patch.landing_url !== undefined) set.landing_url = patch.landing_url ? reachableUrl(patch.landing_url.trim()) : null;
   if (patch.audience !== undefined) set.audience = patch.audience;
   if (patch.status) set.status = patch.status;
   if (patch.ad_text !== undefined) set.ad_text = patch.ad_text;

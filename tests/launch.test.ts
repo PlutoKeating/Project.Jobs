@@ -84,3 +84,36 @@ describe('命令行与 MCP 的输出', () => {
     expect(txt.indexOf('虚拟人亲身遇到的问题')).toBeGreaterThan(0); expect(txt.indexOf('工程附录')).toBeGreaterThan(txt.indexOf('虚拟人亲身遇到的问题')); expect(txt).toContain('复现：click "新建" → type "标题"');
   });
 });
+
+describe('邀请、标记与漏斗的新规则', () => {
+  const mk = (id: string, locale: string, occupation: string, age: number, segment = 'student', kind = 'adult') => ({ id, segment, spec: { kind, locale, identity: { name: id, age, occupation, region: '上海', life_story: '' } } as never });
+  const roster = [mk('a', 'zh-CN', '大学生', 20), mk('b', 'zh-CN', '程序员', 28, 'professional'), mk('c', 'en-US', 'nurse', 40, 'professional'), mk('d', 'zh-CN', '大学生', 21), mk('k', 'zh-CN', '小学生', 9, 'teen', 'child')];
+  const o = { used: new Set<string>(), busy: new Set<string>(), productLocale: 'zh-CN', shuffle: <T,>(xs: T[]) => xs };
+  it('默认按产品的语言挑人，不请说别的语言的人，也不请孩子', async () => {
+    const { pickInvitees } = await import('../packages/engine/src/launch/invite.ts');
+    const r = pickInvitees(roster, { n: 10 }, o);
+    expect(r.picks.map((p) => p.id).sort()).toEqual(['a', 'b', 'd']);
+  });
+  it('按职业关键词和年龄挑，没用过的优先，不够时说清楚', async () => {
+    const { pickInvitees } = await import('../packages/engine/src/launch/invite.ts');
+    const r = pickInvitees(roster, { n: 3, query: '大学生' }, { ...o, used: new Set(['a']) });
+    expect(r.picks.map((p) => p.id)).toEqual(['d', 'a']);
+    expect(r.notes.join()).toMatch(/只有 2 人/);
+    expect(pickInvitees(roster, { n: 3, max_age: 25, query: '程序员' }, o).picks).toHaveLength(0);
+  });
+  it('产品语言按汉字占比判断', async () => {
+    const { productLocale } = await import('../packages/engine/src/launch/invite.ts');
+    expect(productLocale({ name: '学习空间', tagline: '把实验做在网页里' })).toBe('zh-CN');
+    expect(productLocale({ name: 'Notes', tagline: 'Write fast' })).toBe('en-US');
+  });
+  it('内部标记不会出现在给人看的文字里', async () => {
+    const { cleanReason } = await import('../packages/engine/src/launch/text.ts');
+    expect(cleanReason('页面不动了（SIM_LOOP: scroll::）')).toBe('页面不动了');
+    expect(cleanReason('SIM_LOOP: scroll::')).toBe('');
+  });
+  it('漏斗：受邀的人单独数，用完的人里算「觉得好用」', () => {
+    const l = funnelLine({ reached: 5, noticed: 3, interested: 2, opened: 9, natural_opened: 2, invited: 7, finished: 8, liked: 4, came_back: 0, using_now: 0, sessions: 9, reviews: 0, rating: null });
+    expect(l).toContain('受邀 7 人');
+    expect(l).toContain('觉得好用 4 人，50%');
+  });
+});

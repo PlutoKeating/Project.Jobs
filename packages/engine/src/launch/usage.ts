@@ -32,17 +32,18 @@ export async function startUsage(l: LaunchRow, p: PersonaSpec, o: { channel: Cha
 }
 
 /** 定向邀请：把手机递给一批人（「试试这个？」）。受邀的使用单独标注，不算自然流量 */
-export async function inviteToLaunch(l: LaunchRow, people: { id: string; spec: PersonaSpec }[], opts: { want?: string } = {}): Promise<string[]> {
-  const out: string[] = [];
+export async function inviteToLaunch(l: LaunchRow, people: { id: string; spec: PersonaSpec }[], opts: { want?: string } = {}): Promise<{ ids: string[]; invited: { id: string; name: string; session_id: string }[]; skipped: { id: string; name: string; reason: string }[] }> {
+  const out: string[] = []; const invited: { id: string; name: string; session_id: string }[] = []; const skipped: { id: string; name: string; reason: string }[] = [];
   for (const p of people) {
     const ctx = await nextFreeContext(p.id).catch(() => undefined);
-    if (!ctx) continue;
+    if (!ctx) { skipped.push({ id: p.id, name: p.spec.identity.name, reason: '今明两天里找不到他有空拿手机的时候（睡觉、开车、上班或上课）' }); continue; }
     const lang = langOf(p.spec.locale);
     const found = whatTheySee(l, 'invite', lang);
     const exp = await recordExposure({ launch_id: l.id, persona_id: p.id, channel: 'invite', world_min: absMinute(ctx.date, ctx.minute), place_id: ctx.place_id, reaction: 'opened', thought: lang === 'zh' ? '（有人请我试试）' : '(someone asked me to try it)' });
-    out.push(await startUsage(l, p.spec, { channel: 'invite', want: opts.want ?? '', found, ctx, invited: true, exposureId: exp }));
+    const sid = await startUsage(l, p.spec, { channel: 'invite', want: opts.want ?? '', found, ctx, invited: true, exposureId: exp });
+    out.push(sid); invited.push({ id: p.id, name: p.spec.identity.name, session_id: sid });
   }
-  return out;
+  return { ids: out, invited, skipped };
 }
 
 /**

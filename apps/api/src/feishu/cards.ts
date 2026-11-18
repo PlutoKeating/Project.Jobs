@@ -68,7 +68,7 @@ export function boardCard(b: BoardView): Card {
   ].filter(Boolean).join('\n');
   return {
     schema: '2.0', config: { update_multi: true, summary: summary(`${b.name}：${f.opened} 人打开过`) }, header: header(b.name, b.status === 'live' ? 'turquoise' : 'grey', `${status} · 宣发 ${Math.round(b.intensity * 100)}%${b.version && b.version > 1 ? ` · 第 ${b.version} 版` : ''}`),
-    body: { elements: [md(lines), md(`人数是城里实际发生的（模拟）· 已花费约 $${b.spend} · 更新于 ${b.updated}`, undefined, true), buttons([
+    body: { elements: [md(lines), md(`人数是城里实际发生的（模拟）· 模型费用约 $${b.spend} · 更新于 ${b.updated}`, undefined, true), buttons([
       { text: '看结论', value: { a: 'ask', q: `给我看「${b.name}」的一页结论，先说最该改的一件事` } },
       { text: '请 3 人试', value: { a: 'ask', q: `请 3 个人现在试试「${b.name}」，用完告诉我` } },
       { text: '问题清单', value: { a: 'ask', q: `「${b.name}」现在有哪些问题？` } },

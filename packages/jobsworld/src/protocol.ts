@@ -16,6 +16,7 @@ export const SUBJ = {
   cmdPublish: 'jw.cmd.publish', // 发布一个产品（游戏里 /jw publish 用；网页与命令行走 HTTP）
   cmdPromote: 'jw.cmd.promote', // 调宣发强度 / 暂停 / 结束
   cmdInvite: 'jw.cmd.invite',   // 把手机递给一批人
+  cmdCancelSessions: 'jw.cmd.cancel_sessions', // 取消受邀或排队中的使用
   cmdLifecycle: 'jw.cmd.lifecycle', // 清零 / 下线一个产品（世界服务先作废进行中的使用，再清库）
   detail: 'jw.detail',          // 请求/应答：人物详情（游戏面板用）
   ask: 'jw.ask',                // 请求/应答：Session 结束后的追问访谈
@@ -89,7 +90,9 @@ export interface LaunchesMsg { launches: LaunchLive[]; ts: number }
 export interface PromoteCmd { launch_id: string; intensity?: number; status?: 'live' | 'paused' | 'ended' }
 export interface PublishCmd { url: string; name: string; tagline: string }
 export interface LifecycleCmd { launch_id: string; action: 'reset' | 'remove'; keep_history?: boolean }
-export interface InviteCmd { launch_id: string; persona_ids?: string[]; n?: number; segment?: string; locale?: string; want?: string }
+export interface InviteCmd { launch_id: string; persona_ids?: string[]; n?: number; segment?: string; locale?: string; want?: string; query?: string; min_age?: number; max_age?: number }
+/** 取消还没开始（排队中）或正在进行的使用 */
+export interface CancelSessionsCmd { launch_id: string; session_ids?: string[]; all_queued?: boolean }
 
 /** 跟居民聊天：history 是这段聊天之前的来回（开发者说的是 user，居民说的是 resident） */
 export interface ChatCmd { persona_id: string; message: string; history?: { role: 'user' | 'resident'; text: string }[]; lang?: 'zh' | 'en' }

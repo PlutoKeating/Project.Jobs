@@ -100,7 +100,7 @@ claude mcp add --transport http jobs https://<your Jobs address>/mcp
 codex mcp add jobs --url https://<your Jobs address>/mcp
 ```
 
-MCP tools: `publish_product`, `list_products`, `product_status`, `product_report`, `invite_people`, `wait_for_people`, `mark_new_version`, `set_promotion`, `reset_product`, `remove_product`, `ask_person`. The admin passcode allows every tool; the viewer passcode only the read-only ones. The web page has the link and the command for each agent (the robot icon, top right). Jobs on another machine or in the cloud needs `JOBS_PUBLIC_URL` set to its https address behind a reverse proxy ([`docs/INSTALL.md`](docs/INSTALL.md)), and the product you publish has to be reachable from there: JobsWorld is for real products, not a demo on your laptop. On the same machine, `jobsworld mcp` (stdio) still works.
+MCP tools: `publish_product`, `list_products`, `product_status`, `product_report`, `invite_people`, `cancel_invites`, `wait_for_people`, `mark_new_version`, `set_promotion`, `reset_product`, `remove_product`, `ask_person`. The admin passcode allows every tool; the viewer passcode only the read-only ones. The web page has the link and the command for each agent (the robot icon, top right). Jobs on another machine or in the cloud needs `JOBS_PUBLIC_URL` set to its https address behind a reverse proxy ([`docs/INSTALL.md`](docs/INSTALL.md)), and the product you publish has to be reachable from there: JobsWorld is for real products, not a demo on your laptop. On the same machine, `jobsworld mcp` (stdio) still works.
 
 > [!TIP]
 > The installed command is `jobsworld`. A `jobs` alias exists for configs that execute it directly, but in a terminal `jobs` is a bash, zsh and fish builtin. Inside this repository, use `pnpm jobs`.

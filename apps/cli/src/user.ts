@@ -40,18 +40,28 @@ export function userCommands(program: Command) {
       console.log(o.json ? JSON.stringify({ launch: l, report: r, ...eng }, null, 2) : reportText(l, r, eng));
     }));
 
-  program.command('promote').argument('<product>').description('调宣发强度；--pause / --resume / --end').option('--intensity <0-1>').option('--pause').option('--resume').option('--end').option('--ad <text>', '换广告文案')
-    .action(run(async (ref: string, o: { intensity?: string; pause?: boolean; resume?: boolean; end?: boolean; ad?: string }) => {
+  program.command('promote').argument('<product>').description('调宣发强度；--pause / --resume / --end').option('--intensity <0-1>').option('--pause').option('--resume').option('--end').option('--ad <text>', '换广告文案').option('--tagline <text>', '改一句话介绍').option('--desc <text>', '改商店页介绍').option('--landing <url>', '改落地页').option('--who <occupations>', '投给谁：职业关键词，逗号分隔，如 大学生,工程师').option('--age <min-max>', '投给谁：年龄段，如 18-25')
+    .action(run(async (ref: string, o: { intensity?: string; pause?: boolean; resume?: boolean; end?: boolean; ad?: string; tagline?: string; desc?: string; landing?: string; who?: string; age?: string }) => {
       const l = await find(ref);
-      const out = await api<LaunchView>(`/launches/${l.id}/promotion`, { body: { intensity: o.intensity !== undefined ? Number(o.intensity) : undefined, status: o.end ? 'ended' : o.pause ? 'paused' : o.resume ? 'live' : undefined, ad_text: o.ad } });
+      const out = await api<LaunchView>(`/launches/${l.id}/promotion`, { body: { intensity: o.intensity !== undefined ? Number(o.intensity) : undefined, status: o.end ? 'ended' : o.pause ? 'paused' : o.resume ? 'live' : undefined, ad_text: o.ad, tagline: o.tagline, description: o.desc, landing_url: o.landing, audience: o.who || o.age ? { occupations: o.who?.split(',').map((x) => x.trim()).filter(Boolean), age_min: o.age ? Number(o.age.split('-')[0]) || undefined : undefined, age_max: o.age ? Number(o.age.split('-')[1]) || undefined : undefined } : undefined } });
       console.log(`「${out.name}」：${out.status}，宣发强度 ${Math.round(out.intensity * 100)}%`);
     }));
 
-  program.command('invite').argument('<product>').description('把手机递给城里的几个人，请他们现在就试试').option('-n <n>', '请几个人', '3').option('--segment <s>', '人群：office_worker / senior / student / teen / professional / blue_collar / service_worker / freelancer / homemaker / job_seeker').option('--locale <l>', 'zh-CN | en-US').option('--who <ids>', '指定人物 id，逗号分隔').option('--want <text>', '希望他们用它做的一件事（生活里的话）')
-    .action(run(async (ref: string, o: { n: string; segment?: string; locale?: string; who?: string; want?: string }) => {
+  program.command('invite').argument('<product>').description('把手机递给城里的几个人，请他们现在就试试').option('-n <n>', '请几个人', '3').option('--segment <s>', '人群：office_worker / senior / student / teen / professional / blue_collar / service_worker / freelancer / homemaker / job_seeker').option('--locale <l>', 'zh-CN | en-US').option('--who <ids>', '指定人物 id，逗号分隔').option('--want <text>', '希望他们用它做的一件事（生活里的话）').option('--query <kw>', '名字、职业、地区里的关键词，如 大学生').option('--min-age <n>').option('--max-age <n>')
+    .action(run(async (ref: string, o: { n: string; segment?: string; locale?: string; who?: string; want?: string; query?: string; minAge?: string; maxAge?: string }) => {
       const l = await find(ref);
-      const out = await api<{ invited: number }>(`/launches/${l.id}/invite`, { body: { n: Number(o.n), segment: o.segment, locale: o.locale, persona_ids: o.who?.split(','), want: o.want } });
-      console.log(`已请 ${out.invited} 个人试用「${l.name}」。几分钟后：jobsworld status ${l.id}`);
+      const out = await api<{ invited: number; matched?: number; people?: { name: string }[]; skipped?: { name: string; reason: string }[]; notes?: string[] }>(`/launches/${l.id}/invite`, { body: { n: Number(o.n), segment: o.segment, locale: o.locale, persona_ids: o.who?.split(','), want: o.want, query: o.query, min_age: o.minAge ? Number(o.minAge) : undefined, max_age: o.maxAge ? Number(o.maxAge) : undefined } });
+      console.log(`已请 ${out.invited} 个人试用「${l.name}」（符合条件共 ${out.matched ?? '?'} 人）。几分钟后：jobsworld status ${l.id}`);
+      if (out.people?.length) console.log(`  请到：${out.people.map((p) => p.name).join('、')}`);
+      for (const k of out.skipped ?? []) console.log(`  没请成：${k.name}（${k.reason}）`);
+      for (const n of out.notes ?? []) console.log(`  说明：${n}`);
+    }));
+
+  program.command('cancel').argument('<product>').description('取消排队中（或指定）的使用').option('--sessions <ids>', '指定使用 id，逗号分隔；不给就取消所有排队中的')
+    .action(run(async (ref: string, o: { sessions?: string }) => {
+      const l = await find(ref);
+      const out = await api<{ cancelled: number }>(`/launches/${l.id}/cancel`, { body: { session_ids: o.sessions?.split(','), all_queued: !o.sessions } });
+      console.log(`已取消 ${out.cancelled} 次使用。`);
     }));
 
   program.command('reset').argument('<product>', '发布 id 或产品名').description('清零：城里关于它的经历全部归零（使用、曝光、评论、动态、居民的记忆与信任、问题与结论），产品本身不动，此刻重新上线、花费归零')

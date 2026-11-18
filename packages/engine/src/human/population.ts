@@ -81,9 +81,18 @@ function zhChild(cfg: ZhCfg, rng: Rng, o: { parentAge: number; region: string; t
   return { key: o.key, locale: 'zh-CN', role: 'child', age, gender, education: age <= 17 ? '在读' : '本科', occupation: age <= 17 ? `${grade}学生` : '大学生', work_group: age <= 17 ? 'school_kid' : 'student', income_month: age >= 18 ? 1500 : 0, marital: '', region: o.region, city_tier: o.tier, life_event: age >= 15 && rng.bool(0.25) ? '正在备考，压力不小' : '', hobbies: hobbiesOf(rng, ['打手机游戏', '看动漫', '打篮球', '画画', '刷短视频', '踢足球', '看小说', '玩积木', '追星', '弹钢琴'], 2), source: 'census-zh' };
 }
 
-export function sampleHouseholdsZh(rng: Rng, nPeople: number): HouseholdPlan[] {
-  const cfg = zhConfig(); const out: HouseholdPlan[] = []; let n = 0;
+/** 补充特定人群时用：家庭里至少要有一位这样的人才收下（student 大学生与研究生；tech 程序员、工程师、产品、设计、运维、独立开发者） */
+export const FOCUS: Record<string, (m: Skeleton) => boolean> = {
+  student: (m) => m.work_group === 'student' && m.age >= 18,
+  tech: (m) => m.work_group === 'tech' || /工程师|程序|开发|产品经理|运维|算法|设计师/.test(m.occupation),
+};
+
+export function sampleHouseholdsZh(rng: Rng, nPeople: number, opts: { focus?: string } = {}): HouseholdPlan[] {
+  const cfg = zhConfig(); const out: HouseholdPlan[] = []; let n = 0; let tries = 0;
+  const want = opts.focus ? FOCUS[opts.focus] : undefined;
+  if (opts.focus && !want) throw new Error(`不认识的人群：${opts.focus}（可选：${Object.keys(FOCUS).join('、')}）`);
   while (n < nPeople) {
+    if (++tries > 50_000) throw new Error('抽不出足够的这类人群，检查 config/population/zh-CN.json 里的分布');
     const type = rng.weighted(cfg.household_types.map((t) => ({ item: t, weight: t.w })));
     const region = rng.weighted(cfg.regions.map((x) => ({ item: x, weight: x.w })));
     const id = `hh_zh_${shortHash(`${rng.seed}:${out.length}`, 6)}`;
@@ -103,6 +112,7 @@ export function sampleHouseholdsZh(rng: Rng, nPeople: number): HouseholdPlan[] {
     }
     const married = type.v.includes('couple') || type.v === 'three_generation';
     for (const p of members) p.marital = p.role === 'child' ? '未婚' : p.role === 'roommate' ? '未婚' : married && (p.role === 'head' || p.role === 'spouse') ? '已婚' : type.v === 'single_parent' ? '离异' : p.role === 'grandparent' ? (rng.bool(0.5) ? '丧偶' : '已婚') : p.age > 60 && rng.bool(0.4) ? '丧偶' : p.age > 34 && rng.bool(0.3) ? '离异' : '未婚';
+    if (want && !members.some(want)) continue;       // 补充特定人群：家里没有这样的人就不要
     out.push({ id, locale: 'zh-CN', type: type.v, region: region.v, city_tier: region.tier, members }); n += members.length;
   }
   return out;

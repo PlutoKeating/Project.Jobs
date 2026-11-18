@@ -4,7 +4,7 @@ import { closeDb, getDb, worldEvents, type NeedsRow } from '@pux/db';
 import {
   absMinute, actKindOf, agendaAt, agendaFor, allResidents, appearanceFor, completeAgenda, computeLayout, connectBus, decode, EVENT_EFFECT, kvPutJson, lastFinishedSession, latestPersonas,
   loadTown, needOverride, needsAt, OUTDOOR, personaMemoryList, personaSessions, phoneAffinity, placeForKind, residentOf, saveAgenda, saveNeeds, saveWorldClock, SUBJ, tickNeeds, tiesOf, toClock, toMin,
-  type InviteCmd, type LifecycleCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type PublishCmd, type ResidentRow,
+  type InviteCmd, type CancelSessionsCmd, type LifecycleCmd, type LaunchLive, type LaunchesMsg, type PromoteCmd, type PublishCmd, type ResidentRow,
   type Agenda, type ClockCmd, type EventCmd, type PersonaLive, type PersonaRow, type ReplayCmd, type ChatCmd, type SessionLive, type Snapshot, type WorldEvent,
 } from '@pux/jobsworld';
 import { modelsReady, setInstanceKind } from '@pux/llm';
@@ -341,12 +341,23 @@ sub(SUBJ.cmdPromote, async (d) => {
 sub(SUBJ.cmdInvite, async (d) => {
   if (!Engine || !engine) throw new Error('runner 未启用');
   const c = d as InviteCmd; const l = await Engine.getLaunch(c.launch_id); if (!l) throw new Error('没有这个发布');
-  // 把手机递给谁：指定的人，或者按人群/语言随机挑几位还没用过的
-  let pool = roster.filter((r) => r.spec.kind !== 'expert' && (c.persona_ids?.length ? c.persona_ids.includes(r.id) : (!c.segment || r.segment === c.segment) && (!c.locale || r.spec.locale === c.locale) && (r.spec.kind !== 'child')));
-  if (!c.persona_ids?.length) pool = pool.sort(() => Math.random() - 0.5).slice(0, Math.max(1, Math.min(20, c.n ?? 3)));
-  const ids = await Engine.inviteToLaunch(l, pool.map((r) => ({ id: r.id, spec: r.spec })), { want: c.want });
-  engine.enqueue(ids, l);
-  return { invited: ids.length, session_ids: ids };
+  // 把手机递给谁：指定的人，或者按条件（人群、语言、年龄、职业关键词）挑几位；默认说产品所用语言、没用过它、此刻有空的人优先
+  const { getDb, sessions, eq } = await import('@pux/db');
+  const used = new Set((await getDb().select({ p: sessions.persona_id }).from(sessions).where(eq(sessions.study_id, l.study_id))).map((x) => x.p));
+  const busy = new Set(roster.filter((r) => !!live.get(r.id)?.session).map((r) => r.id));
+  const pick = Engine.pickInvitees(roster.map((r) => ({ id: r.id, segment: r.segment, spec: r.spec })), c, { used, busy, productLocale: Engine.productLocale(l), shuffle: (xs) => [...xs].sort(() => Math.random() - 0.5) });
+  const r = await Engine.inviteToLaunch(l, pick.picks.map((x) => ({ id: x.id, spec: x.spec })), { want: c.want });
+  engine.enqueue(r.ids, l);
+  return { invited: r.ids.length, session_ids: r.ids, people: r.invited, skipped: r.skipped, matched: pick.matched, notes: pick.notes };
+});
+sub(SUBJ.cmdCancelSessions, async (d) => {
+  if (!Engine || !engine) throw new Error('runner 未启用');
+  const c = d as CancelSessionsCmd; const l = await Engine.getLaunch(c.launch_id); if (!l) throw new Error('没有这个发布');
+  const { getDb, sessions, eq, and, inArray } = await import('@pux/db');
+  const rows = await getDb().select({ id: sessions.id, status: sessions.status }).from(sessions).where(and(eq(sessions.study_id, l.study_id), inArray(sessions.status, ['planned', 'running'])));
+  const ids = rows.filter((r) => (c.session_ids?.length ? c.session_ids.includes(r.id) : !!c.all_queued && r.status === 'planned')).map((r) => r.id);
+  const n = await engine.cancelSessions(ids);
+  return { cancelled: n, session_ids: ids };
 });
 sub(SUBJ.cmdLifecycle, async (d) => {
   if (!Engine || !engine) throw new Error('runner 未启用');

@@ -16,7 +16,8 @@ export function audienceMatch(p: PersonaSpec, a: AudienceRow | null | undefined)
   if (!a || !Object.keys(a).length) return 1;
   const age = p.identity.age;
   const ok = (!a.locales?.length || a.locales.includes(p.locale)) && (a.age_min === undefined || age >= a.age_min) && (a.age_max === undefined || age <= a.age_max)
-    && (!a.segments?.length || a.segments.includes(p.segment)) && (!a.tags?.length || a.tags.some((t) => p.tags.includes(t)));
+    && (!a.segments?.length || a.segments.includes(p.segment)) && (!a.tags?.length || a.tags.some((t) => p.tags.includes(t)))
+    && (!a.occupations?.length || a.occupations.some((o) => p.identity.occupation.toLowerCase().includes(o.toLowerCase())));
   return ok ? 1 : 0.12;
 }
 

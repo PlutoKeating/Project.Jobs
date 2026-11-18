@@ -29,6 +29,7 @@ export * from './launch/launch.ts';
 export * from './launch/exposure.ts';
 export { funnelLine, reportText, type EngineeringView, type FunnelView, type LaunchView, type ReportView, type VersionView } from './launch/text.ts';
 export * from './launch/usage.ts';
+export * from './launch/invite.ts';
 export * from './launch/identity.ts';
 export * from './launch/engine.ts';
 export * from './launch/lifecycle.ts';

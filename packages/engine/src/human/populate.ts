@@ -90,11 +90,12 @@ function assemble(m: Skeleton, t: ReturnType<typeof deriveTraits>, n: z.infer<ty
  * 生成 n 个新居民（约一半中国、一半英语区），写入人物表并住进城里。
  * 人口学属性来自统计分布与数据集，数值由规则推导，模型只写叙事。
  */
-export async function generatePopulation(opts: { n: number; seed?: number; zhShare?: number; concurrency?: number; onProgress?: (msg: string) => void }) {
-  const rng = new Rng(opts.seed ?? 20261115); const say = opts.onProgress ?? (() => {});
+export async function generatePopulation(opts: { n: number; seed?: number; zhShare?: number; focus?: string; concurrency?: number; onProgress?: (msg: string) => void }) {
+  const rng = new Rng(opts.seed ?? (opts.focus ? Date.now() % 1_000_000_000 : 20261115));   // 补充人群用新的种子，不与已有居民重复
+  const say = opts.onProgress ?? (() => {});
   const nZh = Math.round(opts.n * (opts.zhShare ?? 0.5)); const nEn = opts.n - nZh;
   const plans: HouseholdPlan[] = [];
-  if (nZh > 0) plans.push(...sampleHouseholdsZh(rng, nZh));
+  if (nZh > 0) plans.push(...sampleHouseholdsZh(rng, nZh, { focus: opts.focus }));
   if (nEn > 0) {
     let rows = await fetchNemotronRows(Math.max(400, nEn * 5), rng); let source: Skeleton['source'] = 'nemotron-usa';
     if (rows.filter((r) => r.age >= 18).length < nEn) { say('Nemotron 数据集不可用，英语区改用内置分布表'); rows = fallbackRowsEn(rng, nEn * 3); source = 'fallback-en'; }
@@ -103,7 +104,7 @@ export async function generatePopulation(opts: { n: number; seed?: number; zhSha
   const skeletons = plans.flatMap((h) => h.members);
   say(`家庭 ${plans.length} 户，共 ${skeletons.length} 人；边际分布：${JSON.stringify(marginals(skeletons))}`);
   const traits = new Map(skeletons.map((m) => [m.key, deriveTraits(m, new Rng(parseInt(shortHash(m.key, 7), 16)))]));
-  const usedNames = new Set<string>(); const records: ResidentRecord[] = []; const failed: string[] = [];
+  const usedNames = new Set<string>((await getDb().select({ s: personas.spec }).from(personas).where(eq(personas.active, true))).map((r) => (r.s as PersonaSpec).identity.name)); const records: ResidentRecord[] = []; const failed: string[] = [];
   const queue = [...plans];
   const work = async () => {
     for (;;) {

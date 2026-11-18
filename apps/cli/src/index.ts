@@ -83,8 +83,8 @@ persona.command('leisure').description('给还没有「出门与吃喝玩乐」�
 persona.command('list').action(wrap(async () => { const rows = await getDb().select().from(personas).where(eq(personas.active, true)); console.table(rows.map((r) => ({ id: r.id, version: r.version, kind: r.kind, locale: r.locale, segment: r.segment, name: (r.spec as { identity: { name: string } }).identity.name, frozen: r.frozen }))); }));
 const world = program.command('world').description('世界：居民的生成、导入导出、入住；场景模板导入');
 world.command('import').action(wrap(async () => out(await E.importWorldTemplates())));
-world.command('populate').description('生成新居民：统计骨架（中国普查口径 + Nemotron-Personas-USA）→ 规则推导能力与性格 → 模型按家庭写叙事 → 住进城里').option('-n <n>', '人数', '184').option('--seed <s>').option('--zh-share <x>', '中国人群占比', '0.5').option('--concurrency <c>', '并发', '5')
-  .action(wrap(async (o: { n: string; seed?: string; zhShare: string; concurrency: string }) => out(await E.generatePopulation({ n: Number(o.n), seed: o.seed ? Number(o.seed) : undefined, zhShare: Number(o.zhShare), concurrency: Number(o.concurrency), onProgress: (m) => console.log(m) }))));
+world.command('populate').description('生成新居民：统计骨架（中国普查口径 + Nemotron-Personas-USA）→ 规则推导能力与性格 → 模型按家庭写叙事 → 住进城里').option('-n <n>', '人数', '184').option('--seed <s>').option('--zh-share <x>', '中国人群占比', '0.5').option('--concurrency <c>', '并发', '5').option('--focus <group>', '补充特定人群（中国区）：student 大学生与研究生 / tech 程序员与工程师；配合 --zh-share 1')
+  .action(wrap(async (o: { n: string; seed?: string; zhShare: string; concurrency: string; focus?: string }) => out(await E.generatePopulation({ focus: o.focus, n: Number(o.n), seed: o.seed ? Number(o.seed) : undefined, zhShare: Number(o.zhShare), concurrency: Number(o.concurrency), onProgress: (m) => console.log(m) }))));
 world.command('settle').description('让已有的人物（手写的与之前生成的）也住进城里').action(wrap(async () => out(await E.settleExisting())));
 world.command('export-residents').description('把生成的居民导出为随包自带的数据文件 config/population/residents.jsonl').action(wrap(async () => out(await E.exportResidents())));
 world.command('import-residents').description('导入随包自带的居民').action(wrap(async () => out(await E.importResidents())));

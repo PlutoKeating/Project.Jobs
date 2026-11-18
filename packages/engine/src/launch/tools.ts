@@ -29,7 +29,7 @@ const BASE_TOOLS: JobsTool[] = [
   {
     name: 'publish_product', admin: true, label: '发布产品',
     description: '把一个产品发布到 JobsWorld（一座住着约两百位虚拟居民的城）。发布后，城里的人会在应用商店、广告、朋友口中遇到它，自己决定看不看、用不用。产品地址必须是 Jobs 服务能打开的真实地址：Jobs 在云端时，localhost 和内网地址都打不开，请先把产品部署到公网（预览环境也可以）。同一个产品改了代码不要重复发布，用 mark_new_version 标一下新版本。返回发布的 id。',
-    input: { name: z.string().describe('产品名'), tagline: z.string().describe('一句话介绍（商店页和广告上显示的那句话）'), url: z.string().describe('产品地址，例如 https://my-app.example.com/'), landing_url: z.string().optional().describe('官网或落地页地址（可选）'), description: z.string().optional().describe('商店页上的介绍（可选）'), ad_text: z.string().optional().describe('广告文案（可选，不填用一句话介绍）'), intensity: z.number().min(0).max(1).optional().describe('宣发强度 0–1：0.1 悄悄上线，0.5 正常投放，1 全城铺开。默认 0.3'), form: z.enum(['web', 'h5']).optional().describe('web：电脑和手机都能开；h5：只在手机上开') },
+    input: { name: z.string().describe('产品名'), tagline: z.string().describe('一句话介绍（商店页和广告上显示的那句话）'), url: z.string().describe('产品地址，例如 https://my-app.example.com/'), landing_url: z.string().optional().describe('官网或落地页地址（可选）'), description: z.string().optional().describe('商店页上的介绍（可选）'), ad_text: z.string().optional().describe('广告文案（可选，不填用一句话介绍）'), intensity: z.number().min(0).max(1).optional().describe('宣发强度 0–1：0.1 悄悄上线，0.5 正常投放，1 全城铺开。默认 0.3'), form: z.enum(['web', 'h5']).optional().describe('web：电脑和手机都能开；h5：只在手机上开'), audience: z.object({ locales: z.array(z.enum(['zh-CN', 'en-US'])).optional(), age_min: z.number().optional(), age_max: z.number().optional(), segments: z.array(z.string()).optional().describe('人群：office_worker、senior、student、teen、professional、blue_collar、service_worker、freelancer、homemaker、job_seeker'), occupations: z.array(z.string()).optional().describe('职业关键词，例如「大学生」「工程师」「研究生」；职业里含这个词的人算投放对象') }).optional().describe('投给谁（可选）：广告和宣发主要触达这些人，其余的人也可能自然遇到，只是少得多；不填就是所有人') },
     run: async (a, { api }) => { const l = await api<LaunchView>('/launches', { body: a }); return `已发布「${l.name}」，id=${l.id}。\n城里的人接下来会陆续遇到它（需要一些时间）。用 product_status 看进展；想马上得到反馈，用 invite_people 把手机递给几个人，再用 wait_for_people 等他们用完。`; },
   },
   {
@@ -47,7 +47,7 @@ const BASE_TOOLS: JobsTool[] = [
       const now = d.uses.filter((u) => u.status === 'running' || u.status === 'waiting_human');
       const queued = d.uses.filter((u) => u.status === 'planned').length;
       const past = d.uses.filter((u) => !['running', 'waiting_human', 'planned'].includes(u.status));
-      return `${d.name}（${d.status}，宣发 ${Math.round(d.intensity * 100)}%，已花费约 $${d.spend.usd}）\n${funnelLine(d.funnel)}\n\n此刻在用：\n${now.map(useLine).join('\n') || '  此刻没人在用'}${queued ? `\n  （另有 ${queued} 人排队，还没开始）` : ''}\n\n用过的人：\n${past.slice(0, 15).map(useLine).join('\n') || '  还没有人用完过'}\n\n看到了没点开的人：\n${pass || '  —'}`;
+      return `${d.name}（${d.status}，宣发 ${Math.round(d.intensity * 100)}%，模型费用约 $${d.spend.usd}（居民思考和使用花的，不是宣发花费））\n${funnelLine(d.funnel)}\n\n此刻在用：\n${now.map(useLine).join('\n') || '  此刻没人在用'}${queued ? `\n  （另有 ${queued} 人排队，还没开始：同时最多跑几个使用，前面的用完才轮到；等太久可以用 cancel_invites 撤掉）` : ''}\n\n用过的人：\n${past.slice(0, 15).map(useLine).join('\n') || '  还没有人用完过'}\n\n看到了没点开的人：\n${pass || '  —'}`;
     },
   },
   {
@@ -62,23 +62,44 @@ const BASE_TOOLS: JobsTool[] = [
     },
   },
   {
-    name: 'set_promotion', admin: true, label: '调宣发', description: '调节宣发：强度（0–1）、暂停、恢复或结束一次发布。',
-    input: { product: z.string(), intensity: z.number().min(0).max(1).optional(), status: z.enum(['live', 'paused', 'ended']).optional(), ad_text: z.string().optional() },
-    run: async ({ product, ...patch }, { api }) => { const l = await launchOf(api, product); const o = await api<LaunchView>(`/launches/${l.id}/promotion`, { body: patch }); return `「${o.name}」现在：${o.status}，宣发强度 ${Math.round(o.intensity * 100)}%。`; },
+    name: 'set_promotion', admin: true, label: '调宣发 / 改商店页',
+    description: '调节宣发（强度 0–1、暂停、恢复、结束、投给谁），也可以修改已发布产品的商店页信息：一句话介绍 tagline、商店页介绍 description、落地页 landing_url、广告文案 ad_text（发布后写错了不用删了重发）。只传要改的字段，没传的保持原样，不会被改动。',
+    input: { product: z.string(), intensity: z.number().min(0).max(1).optional().describe('只有明确要改强度时才传'), status: z.enum(['live', 'paused', 'ended']).optional(), ad_text: z.string().optional(), tagline: z.string().optional(), description: z.string().optional(), landing_url: z.string().optional(), audience: z.object({ locales: z.array(z.enum(['zh-CN', 'en-US'])).optional(), age_min: z.number().optional(), age_max: z.number().optional(), segments: z.array(z.string()).optional().describe('人群：office_worker、senior、student、teen、professional、blue_collar、service_worker、freelancer、homemaker、job_seeker'), occupations: z.array(z.string()).optional().describe('职业关键词，例如「大学生」「工程师」「研究生」；职业里含这个词的人算投放对象') }).optional().describe('投给谁（可选）：广告和宣发主要触达这些人，其余的人也可能自然遇到，只是少得多；不填就是所有人') },
+    run: async ({ product, ...patch }, { api }) => {
+      const l = await launchOf(api, product); const o = await api<LaunchView & { audience?: Record<string, unknown> }>(`/launches/${l.id}/promotion`, { body: patch });
+      const changed = Object.keys(patch).filter((k) => patch[k] !== undefined).join('、') || '（没有传要改的字段）';
+      const aud = o.audience && Object.keys(o.audience).length ? `；投给：${JSON.stringify(o.audience)}` : '；投给所有人';
+      return `「${o.name}」现在：${o.status}，宣发强度 ${Math.round(o.intensity * 100)}%${aud}。这次改了：${changed}。`;
+    },
   },
   {
     name: 'invite_people', admin: true, label: '把手机递给人',
     description: '把手机递给城里的几个人，请他们现在就试试这个产品（不等他们自己遇到）。受邀的使用会单独标注。可以指定人群和语言。之后用 wait_for_people 等他们用完，再用 product_report 取回结论。',
-    input: { product: z.string(), n: z.number().int().min(1).max(20).optional().describe('请几个人，默认 3'), segment: z.string().optional().describe('人群：office_worker、senior、student、teen、professional、blue_collar、service_worker、freelancer、homemaker、job_seeker'), locale: z.enum(['zh-CN', 'en-US']).optional(), want: z.string().optional().describe('（可选）希望他们用它做的一件事，用生活里的话说，例如「记一下今天花了多少钱」'), persona_ids: z.array(z.string()).optional().describe('（可选）指定请谁：find_people 找到的 persona_id；给了就不再按人群挑') },
-    run: async ({ product, ...b }, { api }) => { const l = await launchOf(api, product); const o = await api<{ invited: number; session_ids?: string[] }>(`/launches/${l.id}/invite`, { body: b }); return `已请 ${o.invited} 个人试用「${l.name}」。每个人大约需要几分钟。${o.session_ids?.length ? `\nsession_ids：${o.session_ids.join(', ')}（交给 wait_for_people 就能等到他们用完）` : ''}`; },
+    input: { product: z.string(), n: z.number().int().min(1).max(20).optional().describe('请几个人，默认 3'), segment: z.string().optional().describe('人群：office_worker、senior、student、teen、professional、blue_collar、service_worker、freelancer、homemaker、job_seeker'), locale: z.enum(['zh-CN', 'en-US']).optional().describe('语言。不填时按产品的语言挑（中文产品只请说中文的人）'), query: z.string().optional().describe('名字、职业、地区、经历里的关键词，例如「大学生」「工程师」「研究生」'), min_age: z.number().optional(), max_age: z.number().optional(), want: z.string().optional().describe('（可选）希望他们用它做的一件事，用生活里的话说，例如「记一下今天花了多少钱」'), persona_ids: z.array(z.string()).optional().describe('（可选）指定请谁：find_people 找到的 persona_id；给了就不再按人群挑') },
+    run: async ({ product, ...b }, { api }) => {
+      const l = await launchOf(api, product);
+      const o = await api<{ invited: number; session_ids?: string[]; people?: { id: string; name: string; session_id: string }[]; skipped?: { name: string; reason: string }[]; matched?: number; notes?: string[] }>(`/launches/${l.id}/invite`, { body: b });
+      const lines = [`已请 ${o.invited} 个人试用「${l.name}」（符合条件的共 ${o.matched ?? '?'} 人）。每个人大约需要几分钟。`];
+      if (o.people?.length) lines.push(`请到的人：${o.people.map((p) => `${p.name}[persona_id=${p.id}]`).join('、')}`);
+      if (o.skipped?.length) lines.push(`没请成：${o.skipped.map((p) => `${p.name}（${p.reason}）`).join('；')}`);
+      for (const n of o.notes ?? []) lines.push(`说明：${n}`);
+      if (o.session_ids?.length) lines.push(`session_ids：${o.session_ids.join(', ')}（交给 wait_for_people 等他们用完；想撤掉用 cancel_invites）`);
+      return lines.join('\n');
+    },
+  },
+  {
+    name: 'cancel_invites', admin: true, label: '取消试用',
+    description: '取消还没开始（排队中）或正在进行的使用，卡住时用。不指定 session_ids 就取消这个产品所有排队中的使用。被取消的使用不算人数、不留评论和口碑。',
+    input: { product: z.string(), session_ids: z.array(z.string()).optional().describe('要取消的使用（product_status、invite_people 里的 session_id）') },
+    run: async ({ product, session_ids }, { api }) => { const l = await launchOf(api, product); const o = await api<{ cancelled: number }>(`/launches/${l.id}/cancel`, { body: { session_ids, all_queued: !(Array.isArray(session_ids) && session_ids.length) } }); return `已取消 ${o.cancelled} 次使用。`; },
   },
   {
     name: 'wait_for_people', admin: false, label: '等人用完',
-    description: '等受邀试用的人用完（不用反复调 product_status）。默认等这个产品所有还没用完的受邀使用；也可以只等 invite_people 返回的那几个 session。最多等 max_minutes 分钟，到时还没用完就返回当前进度，可以再调一次接着等。',
-    input: { product: z.string().describe('发布 id 或产品名'), session_ids: z.array(z.string()).optional().describe('只等这几次使用（invite_people 返回的 session_ids）'), max_minutes: z.number().min(0.5).max(15).optional().describe('最多等几分钟，默认 5') },
+    description: '等受邀试用的人用完（不用反复调 product_status）。默认等这个产品所有还没用完的受邀使用；也可以只等 invite_people 返回的那几个 session。一次最多等 3 分钟（默认 2 分钟，避免连接被中途断掉），到时还没用完就返回当前进度和每个人用到哪了，再调一次接着等；断了也不丢：随时可以用 product_status 看进度。',
+    input: { product: z.string().describe('发布 id 或产品名'), session_ids: z.array(z.string()).optional().describe('只等这几次使用（invite_people 返回的 session_ids）'), max_minutes: z.number().min(0.2).max(3).optional().describe('最多等几分钟，默认 2，最多 3') },
     run: async ({ product, session_ids, max_minutes }, { api, signal, progress }) => {
       const ids = Array.isArray(session_ids) && session_ids.length ? new Set(session_ids.map(String)) : null;
-      const deadline = Date.now() + Number(max_minutes ?? 5) * 60_000;
+      const deadline = Date.now() + Math.min(3, Number(max_minutes ?? 2)) * 60_000;
       let watch: Set<string> | null = ids;
       for (;;) {
         const d = await api<Detail>(`/launches/${encodeURIComponent(String(product))}`);
@@ -90,7 +111,7 @@ const BASE_TOOLS: JobsTool[] = [
         if (!mine.length) return `「${d.name}」现在没有正在进行的受邀使用。先用 invite_people 请几个人。`;
         await progress?.(mine.length - pending.length, mine.length, `${mine.length - pending.length}/${mine.length} 人用完`);
         if (!pending.length || Date.now() >= deadline || signal?.aborted) {
-          const head = !pending.length ? `${mine.length} 次使用都结束了${stuck.length ? `（其中 ${stuck.length} 次在等人介入）` : ''}。接下来用 product_report 取回结论和问题清单。` : `等了 ${max_minutes ?? 5} 分钟，还有 ${pending.length} 人没用完（${mine.length - pending.length}/${mine.length}）。可以再调一次 wait_for_people 接着等。`;
+          const head = !pending.length ? `${mine.length} 次使用都结束了${stuck.length ? `（其中 ${stuck.length} 次在等人介入）` : ''}。接下来用 product_report 取回结论和问题清单。` : `等了 ${Math.min(3, Number(max_minutes ?? 2))} 分钟，还有 ${pending.length} 人没用完（${mine.length - pending.length}/${mine.length}）。可以再调一次 wait_for_people 接着等。`;
           return `${d.name}：${head}\n${mine.map(useLine).join('\n')}`;
         }
         await sleep(10_000, signal);
