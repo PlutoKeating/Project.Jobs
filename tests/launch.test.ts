@@ -64,7 +64,7 @@ describe('命令行与 MCP 的输出', () => {
     const base = { verdict: 'too_early', headline: '1 个人用过了，结论还没归纳出来', summary: 's', hurts: [], delights: [], who_stays: [], who_leaves: [], why_not_opened: [], next: '', funnel: f, people_used: 1 };
     expect(reportText(l, { ...base, failed: { reason: 'fetch failed', at: 'x' } })).toContain('（归纳没有成功：fetch failed）');
     expect(reportText(l, { ...base, verdict: 'mixed', failed: { reason: 'fetch failed', at: 'x' } })).toContain('下面是上一版');
-    expect(reportText(l, { ...base, refreshing: true })).toContain('正在后台归纳');
+    expect(reportText(l, { ...base, refreshing: true })).toContain('新的一版还在归纳');
   });
   it('排队的人不算在用：单独给人数', () => {
     expect(funnelLine({ ...f, using_now: 0, queued: 2 })).toBe('看到 159 人 → 注意到 27 → 有兴趣 3 → 打开过 3 → 回来再用 0（此刻 0 人在用，2 人排队）');

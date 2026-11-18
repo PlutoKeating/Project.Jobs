@@ -35,7 +35,7 @@ export async function startUsage(l: LaunchRow, p: PersonaSpec, o: { channel: Cha
 export async function inviteToLaunch(l: LaunchRow, people: { id: string; spec: PersonaSpec }[], opts: { want?: string } = {}): Promise<{ ids: string[]; invited: { id: string; name: string; session_id: string }[]; skipped: { id: string; name: string; reason: string }[] }> {
   const out: string[] = []; const invited: { id: string; name: string; session_id: string }[] = []; const skipped: { id: string; name: string; reason: string }[] = [];
   for (const p of people) {
-    const ctx = await nextFreeContext(p.id).catch(() => undefined);
+    const ctx = await nextFreeContext(p.id, { comfortable: true }).catch(() => undefined);
     if (!ctx) { skipped.push({ id: p.id, name: p.spec.identity.name, reason: '今明两天里找不到他有空拿手机的时候（睡觉、开车、上班或上课）' }); continue; }
     const lang = langOf(p.spec.locale);
     const found = whatTheySee(l, 'invite', lang);

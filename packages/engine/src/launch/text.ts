@@ -20,7 +20,7 @@ export function reportText(l: LaunchView, r: ReportView, eng?: EngineeringView):
   const sec = (title: string, xs: Cited[]) => (xs.length ? `\n${title}\n${xs.map((c, i) => `  ${i + 1}. ${c.text}\n${quotes(c)}`).join('\n')}` : '');
   const lines = [
     `${l.name} — ${l.tagline}`, `${r.headline}  [${verdict}]`,
-    ...(r.failed ? [`（归纳没有成功：${r.failed.reason}${r.verdict === 'too_early' ? '' : '。下面是上一版'}）`] : r.refreshing ? ['（有新的使用，新的一版正在后台归纳，几分钟后再取）'] : []),
+    ...(r.failed ? [`（归纳没有成功：${r.failed.reason}${r.verdict === 'too_early' ? '' : '。下面是上一版'}）`] : r.refreshing ? [`（这是上一版结论：之后又有新的使用，新的一版还在归纳；基于 ${r.people_used} 人。再调一次 product_report 就会拿到新版，没写好之前这一版不含最新的使用）`] : []),
     '', r.summary, '',
     `漏斗（这座城里实际发生的人数，模拟）：${funnelLine(r.funnel)}`, `宣发强度 ${pct(l.intensity)} · 模型费用约 $${l.spend.usd}（居民思考和使用花的，不是宣发花费；宣发是免费的旋钮）`,
     sec('最让人难受的地方', r.hurts), sec('让人高兴的地方', r.delights), sec('会留下的人', r.who_stays), sec('会走的人', r.who_leaves), sec('看到了却没点开', r.why_not_opened),

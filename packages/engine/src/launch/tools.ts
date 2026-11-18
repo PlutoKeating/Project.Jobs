@@ -54,9 +54,11 @@ const BASE_TOOLS: JobsTool[] = [
     name: 'product_report', admin: false, label: '取一页结论',
     description: '取回一页结论：这个产品好不好用、最让人难受的地方、让人高兴的地方、谁会留下谁会走、看到的人为什么没点开、最该改的一件事。每条都带当事人的原话。同时返回可据此修改代码的问题清单（虚拟人亲身遇到的问题含复现步骤；标过新版本时，注明每个问题在新版本里还有没有出现）和工程附录（无障碍扫描、接口错误等用户看不到的技术信号）。归纳要几分钟：素材变了时会先给上一版并在后台重写。',
     input: { product: z.string().describe('发布 id 或产品名'), refresh: z.boolean().optional().describe('强制重新归纳结论（会等它写完，可能要几分钟）') },
-    run: async ({ product, refresh }, { api }) => {
+    run: async ({ product, refresh }, { api, signal }) => {
       const l = await launchOf(api, product);
-      const r = await api<ReportView>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 600_000 });
+      let r = await api<ReportView>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 600_000 });
+      // 有新的使用、新的一版在后台写：最多等 2 分钟拿新版，别让调用方拿着旧结论自己猜什么时候完整
+      for (let i = 0; r.refreshing && i < 12 && !signal?.aborted; i++) { await sleep(10_000, signal); r = await api<ReportView>(`/launches/${l.id}/report`, { timeoutMs: 120_000 }); }
       const eng = await api<EngineeringView>(`/launches/${l.id}/engineering`);
       return reportText(l, r, eng);
     },

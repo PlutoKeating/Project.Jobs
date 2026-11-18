@@ -20,10 +20,15 @@ export const contextRecord = (c: LiveContext): ContextRecord => ({
 /**
  * 把手机递给一个人：他此刻有空就是此刻的处境；没空（在睡觉、在开车、在上课）就取他接下来第一个有空的时刻。
  */
-export async function nextFreeContext(personaId: string): Promise<LiveContext | undefined> {
+/** 受邀试用要的是「有空、不饿、不累、不赶时间」的时候：否则人人都以饿了、赶着出门为由走掉，看不出产品本身好不好 */
+const comfortable = (c: LiveContext) => c.available && c.phone_affinity >= 0.25 && c.time_left_min >= 20 && c.needs.hunger <= 0.6 && c.needs.energy >= 0.3;
+
+export async function nextFreeContext(personaId: string, opts: { comfortable?: boolean } = {}): Promise<LiveContext | undefined> {
   const now = await liveContextFor(personaId);
   if (!now) return undefined;
-  if (now.available && now.phone_affinity >= 0.2) return now;
+  const ok = (c: LiveContext) => (opts.comfortable ? comfortable(c) : c.available && c.phone_affinity >= 0.2);
+  if (ok(now)) return now;
+  let fallback: LiveContext | undefined;
   const [row] = await getDb().select().from(residents).where(eq(residents.persona_id, personaId));
   const clk = await worldClock();
   const nextDate = (d: string) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + 1); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`; };
@@ -33,9 +38,10 @@ export async function nextFreeContext(personaId: string): Promise<LiveContext | 
   for (const [date, from] of [[clk.date, clk.minute], [nextDate(clk.date), 0]] as [string, number][]) {
     const a = await agendaFor(spec, date, row);
     const slots = a.items.filter((it) => toMin(it.from) >= from).map((it) => ({ it, aff: phoneAffinity(actKindOf(it), it.place_kind, spec) })).filter((x) => x.aff >= 0.25);
-    for (const s of slots) { const c = await liveContextFor(personaId, { date, minute: Math.min(toMin(s.it.to) - 1, toMin(s.it.from) + 3) }); if (c?.available) return c; }
+    for (const s of slots) { const c = await liveContextFor(personaId, { date, minute: Math.min(toMin(s.it.to) - 1, toMin(s.it.from) + 3) }); if (c && ok(c)) return c; if (c?.available) fallback ??= c; }
   }
-  return now.available ? now : undefined;
+  // 找不到舒服的时刻就退而求其次，别让人请不成
+  return fallback ?? (now.available ? now : undefined);
 }
 
 type SessLite = { world_template_id: string; world_context?: unknown };
