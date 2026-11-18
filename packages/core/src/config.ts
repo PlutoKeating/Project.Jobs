@@ -8,7 +8,7 @@ export const PuxConfigSchema = z.object({
   budgets: z.object({ max_steps_per_session: z.number(), max_sessions: z.number(), concurrency: z.number(), round_size: z.number() }),
   guards: z.object({
     loop_repeat_n: z.number().default(3),
-    novelty_budget_k: z.number().default(8),
+    novelty_budget_k: z.number().default(10),
     saturation_m: z.number().default(4),
     max_consecutive_violations: z.number().default(4),
     trust_abandon_threshold: z.number().default(0.15),

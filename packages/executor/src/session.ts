@@ -451,6 +451,9 @@ export class BrowserSession implements Executor {
         case 'reload': await this.page.reload({ timeout: 20000 }); break;
         case 'click': case 'long_press': case 'hover': {
           if (el?.selector.startsWith('dialog:')) { await this.handleDialog(el.selector === 'dialog:accept', req.args?.text as string | undefined); break; }
+          // 下拉框的选项（页面里画出的列表项或原生 <option>）不能走普通点击：原生选项没有可点的盒子，
+          // 画出的列表遇到页面滚动就会收起。统一按「选中这一项」处理
+          if (req.verb === 'click' && el && (el.tag === 'option' || el.role === 'option') && await this.pickOption(el)) break;
           const p = land();
           if (req.verb === 'hover') { await this.moveTo(p, motor, r, size); await sleep(600); break; }
           if (req.verb === 'long_press') { await this.press(p, 900, motor, r); break; }
@@ -564,7 +567,7 @@ export class BrowserSession implements Executor {
     const refreshBox = async (e: UIElement, scroll: boolean) => {
       if (e.selector.startsWith('dialog:')) return e;
       const loc = this.page.locator(e.selector).first();
-      if (scroll) await loc.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+      if (scroll && e.role !== 'option') await loc.scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
       const b = await loc.boundingBox({ timeout: 3000 }).catch(() => null);
       if (!b) throw Object.assign(new Error(`目标「${e.vis_text || e.name}」已不在屏幕上`), { code: 'EXEC_TARGET_NOT_FOUND' });
       const occluded = await loc.evaluate((node, [x, y]) => { const top = document.elementFromPoint(x, y); return !!top && top !== node && !node.contains(top) && !top.contains(node); }, [b.x + b.width / 2, b.y + b.height / 2]).catch(() => false);
@@ -624,6 +627,26 @@ export class BrowserSession implements Executor {
     if (!d) return;
     if (accept) await d.accept(promptText).catch(() => {}); else await d.dismiss().catch(() => {});
   }
+
+  /** 选中下拉框里的一项：先找页面里画出的列表项，再找原生 <option>；成功返回 true，找不到返回 false 让调用方照常点击 */
+  private async pickOption(el: UIElement): Promise<boolean> {
+    const label = (el.vis_text || el.name || '').trim();
+    const viaPopup = await this.page.evaluate((txt) => {
+      const pop = document.querySelector('[data-pux-select]'); if (!pop) return false;
+      const it = Array.from(pop.querySelectorAll('[role=option]')).find((n) => (n.textContent || '').trim() === txt) as HTMLElement | undefined;
+      if (!it) return false;
+      it.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })); return true;
+    }, label).catch(() => false);
+    if (viaPopup) return true;
+    if (!el.selector.startsWith('xpath=')) return false;
+    return await this.page.locator(el.selector).first().evaluate((o) => {
+      const sel = (o as HTMLOptionElement).closest ? (o as HTMLElement).closest('select') : null; if (!sel || !(o instanceof HTMLOptionElement) || o.disabled) return false;
+      sel.selectedIndex = o.index; sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true })); return true;
+    }, undefined, { timeout: 2000 }).catch(() => false);
+  }
+
+  /** 当前页面纵向滚动位置（循环护栏用：滚动后位置变了就不是原地打转） */
+  async scrollY(): Promise<number> { return (await this.probe()).scrollY; }
 
   private async probe(): Promise<{ url: string; mutations: number; lastMutationAt: number; scrollY: number; dialogsInDom: number; textLen: number }> {
     if (this.pendingDialog) return { url: this.page.url(), mutations: -1, lastMutationAt: 0, scrollY: 0, dialogsInDom: 1, textLen: 0 };

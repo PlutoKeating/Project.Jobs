@@ -15,7 +15,7 @@
 8. 结束条件：办成了 / 不用了（可以第一眼就走）/ 耐心耗尽 / 连续预期落空 / 走开后不回来（概率由状态决定）/ 时间或电量用完 / 这次使用的 token 预算用完。
 9. 想法直接落成 UAP 动作，不经过另一个模型转述。`look_closer` 不碰屏幕，只让下一眼那一块清晰，照常花时间；`refresh` 每次使用最多一次。`check_mail` / `back_to_app` 在产品和邮箱 App 之间切换标签页（`BrowserSession.showTab`），按设备、单手与否、数字素养花几秒；切回产品时，按工作记忆、压力、在邮箱里待的时长，有一定概率记不清刚才看到的验证码（想法与记忆里出现过的码被抹掉）。步骤里记为 `switch_app`（`to`、`forgot`）。
 10. `BrowserSession.act`：目标 → 落点（借 DOM 换算或 Midscene 看截图定位）→ Policy Gate → 按人物的手注入 → 比较动作前后截图。
-11. 护栏：同状态同动作重复 N 次 → SIM_LOOP（第二次即 stalled）；连续 K 步无新状态 → stalled。
+11. 护栏：同状态同动作重复 N 次 → SIM_LOOP（第二次即 stalled，结束原因写人话、不带内部标记）；连续 K 步无新状态 → stalled。滚动的动作标识带方向和滚动后的位置，滚动真的动了（位置变了或屏幕有可见变化）既不算重复、也算「有进展」，读长页面不会被误判；点下拉框的选项一律改成「选中这一项」。默认值只在 `packages/core/src/config.ts` 与 `config/pux.config.yaml` 两处且一致（`novelty_budget_k = 10`）。
 12. 模拟耗时 = 阅读（这一眼实际读到的字数/阅读速度）+ 思考 + 动作耗时 + 打字（字数/typing_cps）。
 
 ## 评估流水线（Session 结束后）

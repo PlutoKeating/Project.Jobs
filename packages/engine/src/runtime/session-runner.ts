@@ -310,7 +310,16 @@ export class SessionRunner {
     const typed = String(req.args?.text ?? '').length;
     this.pendingSimSeconds = this.readingSeconds(perc.read_chars) + 3 + 5 * (1 - this.persona.capability.digital_literacy) + res.duration_ms / 1000 + (req.verb === 'type' ? (req.args?.paste ? 2 : typed / motor.typing_cps) : 0) + (req.verb === 'speak' ? typed / 4 : 0);
     const target = req.target?.text || res.resolved_target?.resolved?.a11y_name || req.target?.value || '';
-    return this.guards(obs.state_id, `${req.verb}:${target}:${String(req.args?.text ?? '').slice(0, 10)}`, !!obs.is_new_state);
+    // 滚动要带上方向，并用滚动前后的位置判断有没有真的动：读长页面时每一屏都不一样，不是在原地打转
+    let actKey = `${req.verb}:${target}:${String(req.args?.text ?? '').slice(0, 10)}`;
+    let moved = false;
+    if (req.verb === 'scroll') {
+      const y0 = obs.scroll?.y ?? 0;
+      const y1 = await this.browser.scrollY().catch(() => y0);
+      moved = Math.abs(y1 - y0) >= 8 || res.status === 'success'; // 内部滚动容器不改变窗口位置，但屏幕有可见变化也算动了
+      actKey = `scroll:${req.args?.direction === 'up' ? 'up' : 'down'}:${target}${moved ? `:y${Math.round(y1 / 40)}` : ':stuck'}`;
+    }
+    return this.guards(obs.state_id, actKey, !!obs.is_new_state || moved);
   }
 
   /** 在产品和邮箱之间切换。切过去、找到地方都要花时间（手机、单手、不熟练更慢）；
@@ -355,7 +364,8 @@ export class SessionRunner {
     if (n >= this.cfg.guards.loop_repeat_n) {
       this.loopHits++; this.loopTracker.set(key, 0);
       await putEvidence('action', { study_id: this.study.id, session_id: this.sess.id, step_idx: this.stepIdx - 1 }, { inline: { error: makeError('SIM_LOOP', `同一状态同一动作重复 ${n} 次：${actKey}`) } });
-      if (this.loopHits >= 2) return this.end('stalled', `SIM_LOOP: ${actKey}`);
+      // 结束原因会被写进报告与居民的话里，只能是人话，不放内部标记
+      if (this.loopHits >= 2) return this.end('stalled', zh ? '一直在重复同一个操作，屏幕没有任何变化' : 'kept repeating the same action with nothing changing on screen');
       this.loopNote = zh ? '你发现自己一直在重复同一个操作，但什么都没改变。' : 'You notice you keep doing the same thing and nothing changes.';
     }
     this.noNewState = isNew ? 0 : this.noNewState + 1;
