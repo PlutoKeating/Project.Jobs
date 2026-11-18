@@ -117,3 +117,13 @@ describe('邀请、标记与漏斗的新规则', () => {
     expect(l).toContain('觉得好用 4 人，50%');
   });
 });
+
+describe('点名邀请', () => {
+  it('说清每个没请成的人为什么：找不到、专家、已经在用', async () => {
+    const { pickInvitees } = await import('../packages/engine/src/launch/invite.ts');
+    const mk = (id: string, kind = 'adult') => ({ id, segment: 'office_worker', spec: { kind, locale: 'zh-CN', identity: { name: id, age: 30, occupation: '会计', region: '', life_story: '' } } as never });
+    const r = pickInvitees([mk('a'), mk('b'), mk('x', 'expert')], { persona_ids: ['a', 'b', 'x', 'zz'] }, { used: new Set(), busy: new Set(['b']), productLocale: 'zh-CN', shuffle: (xs) => xs });
+    expect(r.picks.map((p) => p.id)).toEqual(['a']);
+    expect(r.notes.join('；')).toMatch(/b：已经在用.*x：是专家基线.*zz：城里没有/);
+  });
+});

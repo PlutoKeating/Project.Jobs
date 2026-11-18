@@ -22,9 +22,15 @@ export function pickInvitees(roster: InviteCandidate[], f: InviteFilter, o: { us
   const n = Math.max(1, Math.min(20, f.n ?? 3));
   const people = roster.filter((r) => r.spec.kind !== 'expert');
   if (f.persona_ids?.length) {
-    const want = new Set(f.persona_ids); const hit = people.filter((r) => want.has(r.id));
-    const miss = f.persona_ids.filter((id) => !hit.some((r) => r.id === id));
-    if (miss.length) notes.push(`没有找到这些人：${miss.join('、')}`);
+    // 点名请的人：照单来，但每个没请成的都说清楚为什么（找不到、是专家基线、已经在用或排队）
+    const hit: InviteCandidate[] = [];
+    for (const id of f.persona_ids) {
+      const r = roster.find((x) => x.id === id);
+      if (!r) notes.push(`${id}：城里没有这个人`);
+      else if (r.spec.kind === 'expert') notes.push(`${r.spec.identity.name}：是专家基线，不参与试用`);
+      else if (o.busy.has(r.id)) notes.push(`${r.spec.identity.name}：已经在用这个产品或在排队，没有重复邀请`);
+      else hit.push(r);
+    }
     return { picks: hit, matched: hit.length, locale: 'any', notes };
   }
   const locale = f.locale ?? o.productLocale;

@@ -338,17 +338,26 @@ sub(SUBJ.cmdPromote, async (d) => {
   const out = await Engine.setPromotion(l.id, { intensity: c.intensity, status: c.status });
   return out ? { id: out.id, name: out.name, intensity: out.intensity, status: out.status } : { error: 'not_found' };
 });
+const recentInvites = new Map<string, { at: number; out: Record<string, unknown> }>();
 sub(SUBJ.cmdInvite, async (d) => {
   if (!Engine || !engine) throw new Error('runner 未启用');
   const c = d as InviteCmd; const l = await Engine.getLaunch(c.launch_id); if (!l) throw new Error('没有这个发布');
   // 把手机递给谁：指定的人，或者按条件（人群、语言、年龄、职业关键词）挑几位；默认说产品所用语言、没用过它、此刻有空的人优先
-  const { getDb, sessions, eq } = await import('@pux/db');
+  const { getDb, sessions, eq, and, inArray } = await import('@pux/db');
   const used = new Set((await getDb().select({ p: sessions.persona_id }).from(sessions).where(eq(sessions.study_id, l.study_id))).map((x) => x.p));
   const busy = new Set(roster.filter((r) => !!live.get(r.id)?.session).map((r) => r.id));
+  // 同一份请求在几分钟内重复到达（连接中途断了、调用方重试）：返回上一次的结果，不再多请一批人
+  const key = JSON.stringify([c.launch_id, c.n, c.segment, c.locale, c.query, c.min_age, c.max_age, c.persona_ids, c.want]);
+  const prev = recentInvites.get(key); if (prev && Date.now() - prev.at < 180_000) return { ...prev.out, notes: [...(prev.out.notes as string[] ?? []), '这是一份刚刚处理过的相同请求，没有重复邀请，返回的是上一次的结果'] };
+  // 这个产品上已经有排队或进行中的使用的人，不再重复请
+  const active = new Set((await getDb().select({ p: sessions.persona_id }).from(sessions).where(and(eq(sessions.study_id, l.study_id), inArray(sessions.status, ['planned', 'running', 'waiting_human'])))).map((x) => x.p));
+  for (const id of active) busy.add(id);
   const pick = Engine.pickInvitees(roster.map((r) => ({ id: r.id, segment: r.segment, spec: r.spec })), c, { used, busy, productLocale: Engine.productLocale(l), shuffle: (xs) => [...xs].sort(() => Math.random() - 0.5) });
   const r = await Engine.inviteToLaunch(l, pick.picks.map((x) => ({ id: x.id, spec: x.spec })), { want: c.want });
-  engine.enqueue(r.ids, l);
-  return { invited: r.ids.length, session_ids: r.ids, people: r.invited, skipped: r.skipped, matched: pick.matched, notes: pick.notes };
+  await engine.enqueue(r.ids, l);
+  const out = { invited: r.ids.length, session_ids: r.ids, people: r.invited, skipped: r.skipped, matched: pick.matched, notes: pick.notes };
+  recentInvites.set(key, { at: Date.now(), out });
+  return out;
 });
 sub(SUBJ.cmdCancelSessions, async (d) => {
   if (!Engine || !engine) throw new Error('runner 未启用');

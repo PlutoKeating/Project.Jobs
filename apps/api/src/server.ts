@@ -71,6 +71,8 @@ app.setNotFoundHandler((q, r) => {
 });
 
 await app.listen({ port: PORT, host: HOST });
+// 经 Cloudflare Tunnel 等中转时，Node 默认 5 秒的空闲连接超时会在中转复用连接的瞬间把它断掉（502 / ECONNRESET）：必须比中转的空闲时间长
+app.server.keepAliveTimeout = 125_000; app.server.headersTimeout = 126_000;
 logger.info(`JobsWorld API：http://${HOST}:${PORT}/`);
 void warmAvatars();
 

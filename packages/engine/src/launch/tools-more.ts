@@ -7,7 +7,9 @@ interface PersonaRow { id: string; name: string; age: number; gender: string; oc
 interface IssueRow { id: string; track: string; severity: string; title: string; category: string; status: string; where: string | null; people: number; sessions: number; sessions_since_version: number | null; github: { url: string; state: string } | null }
 interface IssueDetail { id: string; launch_id: string | null; track: string; severity: string; title: string; description: string; status: string; where: string | null; recommendation: string | null; steps: string[]; reproduced: boolean | null; moments: { session_id: string; persona_id: string; name: string; who: string; outcome: string | null; quote: string | null; screenshot: string | null }[]; github: { url: string; state: string; number: number; verified_version: number | null } | null }
 
-const SEG = 'office_worker、senior、student、teen、professional、blue_collar、service_worker、freelancer、homemaker、job_seeker';
+/** 城里实际存在的人群（find_people 与 invite_people 共用，是枚举不是自由字符串） */
+export const SEGMENTS = ['office_worker', 'senior', 'student', 'teen', 'professional', 'blue_collar', 'service_worker', 'freelancer', 'homemaker', 'job_seeker', 'busy_parent', 'skeptic', 'freeloader', 'expert', 'child_primary_high', 'child_primary_low'] as const;
+const SEG = SEGMENTS.join('、');
 const STATUS: Record<string, string> = { open: '待处理', confirmed: '确认要改', rejected: '不是问题', known: '已知（暂不改）' };
 const OUT: Record<string, string> = { success: '办成了', gave_up: '放弃了', resource_exhausted: '没时间了', stalled: '卡住了', blocked: '被拦住了', sim_error: '模拟出错' };
 
@@ -44,7 +46,7 @@ export const MORE_TOOLS: JobsTool[] = [
   {
     name: 'find_people', admin: false, label: '按画像找人',
     description: `按画像在城里找人，返回 persona_id（可以交给 invite_people 的 persona_ids 指定请谁试、交给 person_profile 看详情、交给 ask_person 追问）。所有条件都可选、可以组合：query 匹配名字、职业、地区；人群 segment：${SEG}；会用手机的程度 0–1（0.3 以下算不太会用）。`,
-    input: { query: z.string().optional().describe('名字、职业或地区里的关键词，例如「护士」「退休」「上海」'), segment: z.string().optional(), locale: z.enum(['zh-CN', 'en-US']).optional(), min_age: z.number().optional(), max_age: z.number().optional(), max_digital_literacy: z.number().min(0).max(1).optional().describe('只要不太会用手机的人：例如 0.35'), min_digital_literacy: z.number().min(0).max(1).optional(), used_product: z.string().optional().describe('只要用过这个产品的人（产品名）'), using_now: z.boolean().optional().describe('只要此刻正在用产品的人'), limit: z.number().int().min(1).max(40).optional() },
+    input: { query: z.string().optional().describe('名字、职业或地区里的关键词，例如「护士」「退休」「上海」'), segment: z.enum(SEGMENTS).optional().describe('人群（expert 是专家，child_* 是孩子）；想按职业找（大学生、工程师）用 query'), locale: z.enum(['zh-CN', 'en-US']).optional(), min_age: z.number().optional(), max_age: z.number().optional(), max_digital_literacy: z.number().min(0).max(1).optional().describe('只要不太会用手机的人：例如 0.35'), min_digital_literacy: z.number().min(0).max(1).optional(), used_product: z.string().optional().describe('只要用过这个产品的人（产品名）'), using_now: z.boolean().optional().describe('只要此刻正在用产品的人'), limit: z.number().int().min(1).max(40).optional() },
     run: async (a, { api }) => {
       const q = String(a.query ?? '').trim().toLowerCase();
       const hit = (await api<PersonaRow[]>('/personas')).filter((p) =>

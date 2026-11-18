@@ -158,9 +158,9 @@
 | `list_products` | 访客 | 已发布的产品和漏斗人数 |
 | `product_status` | 访客 | 一个产品此刻的状况：漏斗、此刻在用的人（单独列在最前，带 `persona_id`；排队的只给人数）、用过的人、路过的人怎么想 |
 | `product_report` | 访客 | 一页结论 + 亲历的问题（复现步骤；标过新版本时注明新版本里还在不在）+ 工程附录（含验证邮件的仪器读数）。正在后台重写、或归纳没有成功（带原因）时写在标题下面。`refresh: true` 强制重新归纳（等它写完，可能几分钟） |
-| `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`query`（名字/职业/地区/经历关键词）、`min_age`、`max_age`、`want`、`persona_ids`：指定请谁）。不指定 `locale` 时按产品语言挑人（`productLocale`），优先没用过它、此刻不在用别的产品的人。返回 `session_ids`、请到的人、没请成的人与原因、符合条件的总数和说明（`pickInvitees`，`packages/engine/src/launch/invite.ts`） |
+| `invite_people` | 管理员 | 把手机递给 `n` 个人（可选 `segment`、`locale`、`query`（名字/职业/地区/经历关键词）、`min_age`、`max_age`、`want`、`persona_ids`：指定请谁）。不指定 `locale` 时按产品语言挑人（`productLocale`），优先没用过它、此刻不在用别的产品的人；`segment` 是枚举（含 expert、child_*）；这个产品上已经排队或在用的人不会被重复邀请，几分钟内重复到达的相同请求返回上一次的结果（连接中断后重试不会多请一批人）。返回 `session_ids`、请到的人、没请成的人与原因、符合条件的总数和说明（`pickInvitees`，`packages/engine/src/launch/invite.ts`） |
 | `cancel_invites` | 管理员 | 取消排队中（或指定的）使用；`POST /launches/:id/cancel`，世界服务 `jw.cmd.cancel_sessions`；被取消的使用不算人数、不评估、不留口碑 |
-| `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，一次最多 `max_minutes`（默认 2，最多 3）分钟就返回当前进度，再调一次接着等（避免长连接被中途断掉）；进度随时可用 `product_status` 取；客户端带了 `progressToken` 时推送进度 |
+| `wait_for_people` | 访客 | 等受邀的使用结束（默认这个产品所有没用完的受邀使用，或指定 `session_ids`），每 10 秒查一次，一次最多 `max_minutes`（默认 0.75，最多 1.5，即 45–90 秒；经公网中转的长请求常在两分钟内被切断、结果整个丢失）就返回当前进度，再调一次接着等（避免长连接被中途断掉）；进度随时可用 `product_status` 取；客户端带了 `progressToken` 时推送进度 |
 | `mark_new_version` | 管理员 | 标记新版本（`note`），见 `POST /launches/:id/versions` |
 | `reset_product` | 管理员 | 清零（`product`），见 `POST /launches/:id/reset`：城里关于它的经历全部归零，产品本身不动，此刻重新上线 |
 | `remove_product` | 管理员 | 下线（`product`、可选 `wipe_history`），见 `DELETE /launches/:id`：默认保留城里的经历，`wipe_history: true` 时一起删除 |

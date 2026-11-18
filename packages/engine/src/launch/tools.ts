@@ -2,7 +2,7 @@
 // 工具只通过 REST 接口工作（api 由调用方给出：命令行用 HTTP，远程 /mcp 在进程内转发并带上这次授权的身份），
 // 所以权限检查只在接口那一层。这里不碰数据库，也不依赖 MCP SDK。
 import { z } from '@pux/core';
-import { MORE_TOOLS } from './tools-more.ts';
+import { MORE_TOOLS, SEGMENTS } from './tools-more.ts';
 import { cleanReason, funnelLine, reportText, type EngineeringView, type LaunchView, type ReportView } from './text.ts';
 
 export type ToolApi = <T = unknown>(path: string, opts?: { method?: string; body?: unknown; timeoutMs?: number }) => Promise<T>;
@@ -47,7 +47,7 @@ const BASE_TOOLS: JobsTool[] = [
       const now = d.uses.filter((u) => u.status === 'running' || u.status === 'waiting_human');
       const queued = d.uses.filter((u) => u.status === 'planned').length;
       const past = d.uses.filter((u) => !['running', 'waiting_human', 'planned'].includes(u.status));
-      return `${d.name}（${d.status}，宣发 ${Math.round(d.intensity * 100)}%，模型费用约 $${d.spend.usd}（居民思考和使用花的，不是宣发花费））\n${funnelLine(d.funnel)}\n\n此刻在用：\n${now.map(useLine).join('\n') || '  此刻没人在用'}${queued ? `\n  （另有 ${queued} 人排队，还没开始：同时最多跑几个使用，前面的用完才轮到；等太久可以用 cancel_invites 撤掉）` : ''}\n\n用过的人：\n${past.slice(0, 15).map(useLine).join('\n') || '  还没有人用完过'}\n\n看到了没点开的人：\n${pass || '  —'}`;
+      return `${d.name}（${d.status}，宣发 ${Math.round(d.intensity * 100)}%，模型费用约 $${d.spend.usd}（居民思考和使用花的，不是宣发花费））\n${funnelLine(d.funnel)}\n\n此刻在用：\n${now.map(useLine).join('\n') || '  此刻没人在用'}${queued ? `\n  （另有 ${queued} 人排队，还没开始。${now.length ? '同时最多跑几个使用，前面的用完才轮到' : '但此刻没有人在跑：世界服务可能刚重启、模型没接好或世界时钟暂停了，用 system_status 看一下；一直不动就用 cancel_invites 撤掉重请'}）` : ''}\n\n用过的人：\n${past.slice(0, 15).map(useLine).join('\n') || '  还没有人用完过'}\n\n看到了没点开的人：\n${pass || '  —'}`;
     },
   },
   {
@@ -57,8 +57,8 @@ const BASE_TOOLS: JobsTool[] = [
     run: async ({ product, refresh }, { api, signal }) => {
       const l = await launchOf(api, product);
       let r = await api<ReportView>(`/launches/${l.id}/report${refresh ? '?force=1' : ''}`, { timeoutMs: 600_000 });
-      // 有新的使用、新的一版在后台写：最多等 2 分钟拿新版，别让调用方拿着旧结论自己猜什么时候完整
-      for (let i = 0; r.refreshing && i < 12 && !signal?.aborted; i++) { await sleep(10_000, signal); r = await api<ReportView>(`/launches/${l.id}/report`, { timeoutMs: 120_000 }); }
+      // 有新的使用、新的一版在后台写：最多等 1 分钟拿新版，别让调用方拿着旧结论自己猜什么时候完整
+      for (let i = 0; r.refreshing && i < 6 && !signal?.aborted; i++) { await sleep(10_000, signal); r = await api<ReportView>(`/launches/${l.id}/report`, { timeoutMs: 120_000 }); }
       const eng = await api<EngineeringView>(`/launches/${l.id}/engineering`);
       return reportText(l, r, eng);
     },
@@ -77,7 +77,7 @@ const BASE_TOOLS: JobsTool[] = [
   {
     name: 'invite_people', admin: true, label: '把手机递给人',
     description: '把手机递给城里的几个人，请他们现在就试试这个产品（不等他们自己遇到）。受邀的使用会单独标注。可以指定人群和语言。之后用 wait_for_people 等他们用完，再用 product_report 取回结论。',
-    input: { product: z.string(), n: z.number().int().min(1).max(20).optional().describe('请几个人，默认 3'), segment: z.string().optional().describe('人群：office_worker、senior、student、teen、professional、blue_collar、service_worker、freelancer、homemaker、job_seeker'), locale: z.enum(['zh-CN', 'en-US']).optional().describe('语言。不填时按产品的语言挑（中文产品只请说中文的人）'), query: z.string().optional().describe('名字、职业、地区、经历里的关键词，例如「大学生」「工程师」「研究生」'), min_age: z.number().optional(), max_age: z.number().optional(), want: z.string().optional().describe('（可选）希望他们用它做的一件事，用生活里的话说，例如「记一下今天花了多少钱」'), persona_ids: z.array(z.string()).optional().describe('（可选）指定请谁：find_people 找到的 persona_id；给了就不再按人群挑') },
+    input: { product: z.string(), n: z.number().int().min(1).max(20).optional().describe('请几个人，默认 3'), segment: z.enum(SEGMENTS).optional().describe('人群；想按职业挑（大学生、工程师）用 query'), locale: z.enum(['zh-CN', 'en-US']).optional().describe('语言。不填时按产品的语言挑（中文产品只请说中文的人）'), query: z.string().optional().describe('名字、职业、地区、经历里的关键词，例如「大学生」「工程师」「研究生」'), min_age: z.number().optional(), max_age: z.number().optional(), want: z.string().optional().describe('（可选）希望他们用它做的一件事，用生活里的话说，例如「记一下今天花了多少钱」'), persona_ids: z.array(z.string()).optional().describe('（可选）指定请谁：find_people 找到的 persona_id；给了就不再按人群挑') },
     run: async ({ product, ...b }, { api }) => {
       const l = await launchOf(api, product);
       const o = await api<{ invited: number; session_ids?: string[]; people?: { id: string; name: string; session_id: string }[]; skipped?: { name: string; reason: string }[]; matched?: number; notes?: string[] }>(`/launches/${l.id}/invite`, { body: b });
@@ -97,11 +97,11 @@ const BASE_TOOLS: JobsTool[] = [
   },
   {
     name: 'wait_for_people', admin: false, label: '等人用完',
-    description: '等受邀试用的人用完（不用反复调 product_status）。默认等这个产品所有还没用完的受邀使用；也可以只等 invite_people 返回的那几个 session。一次最多等 3 分钟（默认 2 分钟，避免连接被中途断掉），到时还没用完就返回当前进度和每个人用到哪了，再调一次接着等；断了也不丢：随时可以用 product_status 看进度。',
-    input: { product: z.string().describe('发布 id 或产品名'), session_ids: z.array(z.string()).optional().describe('只等这几次使用（invite_people 返回的 session_ids）'), max_minutes: z.number().min(0.2).max(3).optional().describe('最多等几分钟，默认 2，最多 3') },
+    description: '等受邀试用的人用完（不用反复调 product_status）。默认等这个产品所有还没用完的受邀使用；也可以只等 invite_people 返回的那几个 session。一次最多等 90 秒（默认 45 秒：经公网中转的长请求常在两分钟内被切断，结果会整个丢失），到时还没用完就返回当前进度和每个人用到哪了，再调一次接着等；断了也不丢：随时可以用 product_status 看进度。',
+    input: { product: z.string().describe('发布 id 或产品名'), session_ids: z.array(z.string()).optional().describe('只等这几次使用（invite_people 返回的 session_ids）'), max_minutes: z.number().min(0.1).max(1.5).optional().describe('最多等几分钟，默认 0.75（45 秒），最多 1.5') },
     run: async ({ product, session_ids, max_minutes }, { api, signal, progress }) => {
       const ids = Array.isArray(session_ids) && session_ids.length ? new Set(session_ids.map(String)) : null;
-      const deadline = Date.now() + Math.min(3, Number(max_minutes ?? 2)) * 60_000;
+      const deadline = Date.now() + Math.min(1.5, Number(max_minutes ?? 0.75)) * 60_000;
       let watch: Set<string> | null = ids;
       for (;;) {
         const d = await api<Detail>(`/launches/${encodeURIComponent(String(product))}`);
@@ -113,10 +113,10 @@ const BASE_TOOLS: JobsTool[] = [
         if (!mine.length) return `「${d.name}」现在没有正在进行的受邀使用。先用 invite_people 请几个人。`;
         await progress?.(mine.length - pending.length, mine.length, `${mine.length - pending.length}/${mine.length} 人用完`);
         if (!pending.length || Date.now() >= deadline || signal?.aborted) {
-          const head = !pending.length ? `${mine.length} 次使用都结束了${stuck.length ? `（其中 ${stuck.length} 次在等人介入）` : ''}。接下来用 product_report 取回结论和问题清单。` : `等了 ${Math.min(3, Number(max_minutes ?? 2))} 分钟，还有 ${pending.length} 人没用完（${mine.length - pending.length}/${mine.length}）。可以再调一次 wait_for_people 接着等。`;
+          const head = !pending.length ? `${mine.length} 次使用都结束了${stuck.length ? `（其中 ${stuck.length} 次在等人介入）` : ''}。接下来用 product_report 取回结论和问题清单。` : `等了 ${Math.round(Math.min(1.5, Number(max_minutes ?? 0.75)) * 60)} 秒，还有 ${pending.length} 人没用完（${mine.length - pending.length}/${mine.length}）。可以再调一次 wait_for_people 接着等。`;
           return `${d.name}：${head}\n${mine.map(useLine).join('\n')}`;
         }
-        await sleep(10_000, signal);
+        await sleep(5_000, signal);
       }
     },
   },

@@ -19,7 +19,13 @@ export async function startUsage(l: LaunchRow, p: PersonaSpec, o: { channel: Cha
   const [ver] = await db.select({ version: personas.version }).from(personas).where(and(eq(personas.id, p.id), eq(personas.active, true)));
   const goalId = newId('goal');
   const statement = o.want.trim() || (zh ? `看看「${l.name}」是什么、对我有没有用` : `See what "${l.name}" is and whether it's any use to me`);
-  await db.insert(goals).values({ id: goalId, study_id: l.study_id, kind: prior ? 'life_goal' : 'curiosity', statement_for_persona: statement, locale: p.locale });
+  // 被人请来试的：他答应了要认真试一下（不是路过随手划走），并且是照对方请他做的那件事去试
+  const goal = o.invited
+    ? (o.want.trim()
+      ? (zh ? `有人把手机递给你，请你试试「${l.name}」：${o.want.trim()}。你答应了，会认真试一小会儿，照这件事去做，不会看一眼首屏就走；真的不对你的路，也要试过再说。` : `Someone handed you their phone and asked you to try "${l.name}": ${o.want.trim()}. You said yes and will give it a real try, doing that thing rather than leaving after one look at the first screen.`)
+      : (zh ? `有人把手机递给你，请你试试「${l.name}」。你答应了，会认真试一小会儿，不会看一眼首屏就走。` : `Someone handed you their phone and asked you to try "${l.name}". You said yes and will give it a real try, not just a glance.`))
+    : statement;
+  await db.insert(goals).values({ id: goalId, study_id: l.study_id, kind: prior ? 'life_goal' : 'curiosity', statement_for_persona: goal, locale: p.locale });
   const entry = l.landing_url && ['ad', 'billboard', 'feed', 'word_of_mouth'].includes(o.channel) && !prior ? l.landing_url : l.url;
   const id = newId('ses');
   await db.insert(sessions).values({

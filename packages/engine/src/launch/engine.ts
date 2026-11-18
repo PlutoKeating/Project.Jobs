@@ -38,7 +38,7 @@ export class LaunchEngine {
       r.seen++; if (e.reaction === 'not_for_me') r.rejected = true; if (e.reaction === 'opened') r.opened = true; this.rel.set(k, r);
     }
     // 上次停下时排着队、还没开始的使用，接着跑
-    for (const l of await listLaunches({ liveOnly: true })) for (const s of await getDb().select({ id: sessions.id }).from(sessions).where(and(eq(sessions.study_id, l.study_id), eq(sessions.status, 'planned')))) this.queue.push({ sessionId: s.id, launchId: l.id, studyId: l.study_id });
+    for (const l of await listLaunches({ liveOnly: true })) for (const s of await getDb().select({ id: sessions.id }).from(sessions).where(and(eq(sessions.study_id, l.study_id), eq(sessions.status, 'planned')))) if (!this.queue.some((q) => q.sessionId === s.id) && !this.running.has(s.id)) this.queue.push({ sessionId: s.id, launchId: l.id, studyId: l.study_id });
   }
 
   /** 世界往前走了 minutes 分钟：算一遍谁遇到了什么 */
@@ -137,7 +137,12 @@ export class LaunchEngine {
   release(studyIds: string[]) { for (const s of studyIds) this.cancelled.delete(s); }
 
   /** 把手机递给一批人之后，把这些使用排进队列 */
-  enqueue(sessionIds: string[], l: LaunchRow) { if (this.cancelled.has(l.study_id)) return; for (const id of sessionIds) this.queue.push({ sessionId: id, launchId: l.id, studyId: l.study_id }); this.pump(); }
+  async enqueue(sessionIds: string[], l: LaunchRow) {
+    await this.load().catch(() => {});     // 世界服务刚重启时，先把上次排着的接回来；不然受邀的使用会一直「排队」到下一次 tick
+    if (this.cancelled.has(l.study_id)) return;
+    for (const id of sessionIds) if (!this.queue.some((q) => q.sessionId === id) && !this.running.has(id)) this.queue.push({ sessionId: id, launchId: l.id, studyId: l.study_id });
+    this.pump();
+  }
 
   /** 取消排队中或正在进行的使用（受邀的、自己点开的都行）。排队的直接作废，进行中的在当前这一步做完后停下，都不整理记忆、不评估 */
   async cancelSessions(ids: string[]): Promise<number> {
